@@ -21,18 +21,21 @@ Django Slick Reporting
 
 A one stop reports and analytics tool for Django
 
-# Features
-1- Simple Reporting over the content of a model
-2- Preform Different computation grouping over the content of model
-3- Those computation can also be computed on Time Series report (like montly)_, with custom dates ability
-4- Also can be used on Crosstab reports
-5- Custom computation with smart dependency management to optimize calculations
-6- ... and much more 
+Features
+--------
+
+- Simple Reporting over the content of a model.
+- Preform Different computation grouping over the foreign keys.
+- Those computation can also be calculated on Time Series report *like monthly*, with custom dates ability.
+- Can be used on Crosstab reports
+- Create your Custom cCalculation
+- Optimized for speed !
+- ... and much more
 
 Installation
 ------------
 
-Use the package manager `pip <https://pip.pypa.io/en/stable/>_` to install django-slick-reporting.
+Use the package manager `pip <https://pip.pypa.io/en/stable/>`_ to install django-slick-reporting.
 
 .. code-block:: console
 
@@ -42,7 +45,7 @@ Use the package manager `pip <https://pip.pypa.io/en/stable/>_` to install djang
 Usage
 -----
 
-**From high Level**, you can use `SampleReportView` which is a subclass of `django.views.generic.FormView` like this
+**From high Level**, you can use ``SampleReportView`` which is a subclass of ``django.views.generic.FormView`` like this
 
 .. code-block:: python
 
@@ -52,14 +55,14 @@ Usage
 
     class MonthlyProductSales(SampleReportView):
         report_model = MySalesItems
-        date_field = 'order__date_placed'
+        date_field = 'date_placed' # or 'order__date_placed'
         group_by = 'product'
         columns = ['title', 'SKU']
         time_series_pattern = 'monthly'
         time_series_columns = ['__total_quantity__']
 
 
-And the above view would return a page with a table looking something like this:
+hook it into your ``urls.py`` , and it would return a page with a table looking something like this:
 
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 | Product Name | SKU                  | Total Quantity  | Total Quantity | Total Quantity in ... | Total Quantity in December 20 |
@@ -72,6 +75,7 @@ And the above view would return a page with a table looking something like this:
 | Product 3    | <from product model> | 17              | 12             | ...                   | 17                            |
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 
+*This example code assumes your "MySalesItems" contains the fields `product` as foreign key,  `quantity` as number and `date_placed` as a date field. It also assumes your `Product` model has an SKU field..*
 --
 
 **On a low level**
@@ -85,11 +89,13 @@ You can interact with the `ReportGenerator` using same syntax as used with the `
 
     report = ReportGenerator(report_model=MySalesModel,
                             group_by='product',
+                            columns=['title', '__total__']
     )
-    report.get_report_data()
+    report.get_report_data() #-> [{'title':'Product 1', '__total__: 56}, {'title':'Product 2', '__total__: 43}, ]
 
 
 This is just a scratch, for more please visit the documentation 
+
 
 Documentation
 -------------
@@ -98,24 +104,21 @@ Available on `Read The Docs <https://django-slick-reporting.readthedocs.io/en/la
 
 
 
-Running the tests
+Running tests
 -----------------
-First create a virtual environment (maybe with `virtual slick_reports_test`), activate it then ,
+Create a virtual environment (maybe with `virtual slick_reports_test`), activate it; Then ,
  
 .. code-block:: console
     
     $ git clone git+git@github.com:ra-systems/django-slick-reporting.git
     $ cd tests
     $ python -m pip install -e ..
-    $ python runtests.py
 
-        # And for Coverage report
+    $ python runtests.py
+    #     Or for Coverage report
     $ coverage run --include=../* runtests.py [-k]
     $ coverage html
 
-
-
-Tests tests the proper computation and structure generation ,
 
 Contributing
 ------------
@@ -125,10 +128,5 @@ We follow `Django's guidelines <https://docs.djangoproject.com/en/dev/internals/
 Authors
 --------
 
-* **Ramez Ashraf** - *Initial work* - [RamezIssac](https://github.com/RamezIssac)
+* **Ramez Ashraf** - *Initial work* - `RamezIssac <https://github.com/RamezIssac>`_
 
-
-License
--------
-
-This project is licensed under the BSD License - see the [LICENSE.md](LICENSE.md) file for details
