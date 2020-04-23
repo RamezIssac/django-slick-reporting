@@ -27,7 +27,6 @@ install:
   - pip install codecov
 
 script:
-  - cd tests/
   - coverage run --include=../* runtests.py
 
 after_success:
