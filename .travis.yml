@@ -1,0 +1,29 @@
+language: python
+
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8"
+
+env:
+  - DJANGO=django==2.2.12
+  - DJANGO=django==3.0.5
+
+services:
+  - postgresql
+
+before_script:
+  - psql -c 'create database travis_ci_test;' -U postgres
+
+# command to install dependencies
+install:
+  - pip install -e .
+  - pip install $DJANGO
+  - pip install codecov
+
+script:
+  - cd tests/
+  - coverage run --include=../* runtests.py
+
+after_success:
+  - codecov

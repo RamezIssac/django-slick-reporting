@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <form>
+        {{ form }}
+        <input type="submit" value="Submit">
+    </form>
+
+    {% include 'reporting/table.html' with table=report_data %}
+{% endblock %}

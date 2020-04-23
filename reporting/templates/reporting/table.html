@@ -1,0 +1,20 @@
+{% load reporting_tags %}
+<table>
+    <thead>
+<tr>
+    {% for column in table.columns %}
+        <th>{{ column.verbose_name }}</th>
+
+    {% endfor %}
+</tr>
+</thead>
+<tbody>
+{% for row in table.data %}
+    <tr class="{% cycle 'row1' 'row2' %}">
+    {% for column in table.columns %}
+        <td>{% get_data row column %}</td>
+        {% endfor %}
+    </tr>
+{% endfor %}
+</tbody>
+</table>
