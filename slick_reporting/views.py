@@ -26,7 +26,7 @@ from ra.reporting.printing import regroup_data, HTMLPrintingClass, ExportToCSV
 from .generator import ReportGenerator
 from .meta_data import ReportMetaData
 
-logger = logging.getLogger('ra.reporting')
+logger = logging.getLogger('slick_reporting')
 
 
 class SimpleReportView(FormView):
@@ -49,7 +49,7 @@ class SimpleReportView(FormView):
 
     queryset = None
 
-    template_name = 'reporting/simple_report.html'
+    template_name = 'slick_reporting/simple_report.html'
 
     def get(self, request, *args, **kwargs):
         form_class = self.get_form_class()
@@ -115,11 +115,12 @@ class SimpleReportView(FormView):
         return kwargs
 
     def get_report_generator(self, queryset, for_print):
+        q_filters, kw_filters = self.form.get_filters()
         return self.report_generator_class(self.report_model,
-                                           kwargs_filters=self.form.get_fk_filters(),
+                                           kwargs_filters=kw_filters,
                                            date_field=self.date_field,
                                            main_queryset=queryset,
-                                           base_model=self.base_model, print_flag=for_print,
+                                           print_flag=for_print,
                                            limit_records=self.limit_records, swap_sign=self.swap_sign,
                                            columns=self.columns,
                                            group_by=self.group_by,
@@ -447,7 +448,7 @@ class ReportView(UserPassesTestMixin, SimpleReportView):
     # this report will not be visible on the menu or accessed on its own
     hidden = False
 
-    # will swap the sign on the report, useful when reporting on object which main side is credit
+    # will swap the sign on the report, useful when slick_reporting on object which main side is credit
 
     # Control the header report function
     must_exist_filter = None

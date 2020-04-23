@@ -1,5 +1,5 @@
-from reporting.generator import ReportGenerator
-from .models import Order, OrderLine
+from slick_reporting.generator import ReportGenerator
+from .models import OrderLine
 
 
 class GenericGenerator(ReportGenerator):
@@ -33,25 +33,15 @@ class CrosstabOnClient(GenericGenerator):
 
 #
 from django.utils.translation import ugettext_lazy as _
-from reporting.form_factory import report_form_factory
 
-from reporting.generator import ReportGenerator
+from slick_reporting.generator import ReportGenerator
 from .models import Client, SimpleSales, Product
 
 
 class ClientTotalBalance(ReportGenerator):
-    report_title = _('Clients Balances')
 
-    # that's the report url endpoint
-    # So this report ajax request will be sent reports/<namespace>/<report_slug>
-    # this should be unique to the namespace
-    report_slug = 'balances'
-
-    # here we define basic information for the report
-    base_model = Client
-
-    # Where is the data to compute
     report_model = SimpleSales
+    date_field = 'doc_date'
     group_by = 'client'
     columns = ['slug', 'name', '__balance__', '__total__']
 
@@ -67,19 +57,8 @@ class ClientTotalBalancesOrderedDESC(ClientTotalBalance):
 
 
 class ProductTotalSales(ReportGenerator):
-    report_title = _('Product Sales')
-
-    # identifier of the report
-    # This report ajax request will be sent reports/<namespace>/<report_slug>
-    # `report_slug` should be unique to the namespace
-    report_slug = 'total_sales'
-
-    # here we define basic information for the report
-    base_model = Product
-
-    # Where is the data to compute
     report_model = SimpleSales
-
+    date_field = 'doc_date'
     group_by = 'product'
     columns = ['slug', 'name', '__balance__', '__balance_quan__']
 
@@ -194,14 +173,10 @@ class ClientDetailedStatement2(ReportGenerator):
 
 
 class ProductClientSalesMatrix(ReportGenerator):
-    base_model = Product
     report_model = SimpleSales
     date_field = 'doc_date'
-    report_title = _('Matrix')
 
-    swap_sign = True
-
-    group_by = 'client'
+    group_by = 'product'
     columns = ['slug', 'name']
 
     crosstab_model = 'client'

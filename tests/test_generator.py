@@ -4,7 +4,8 @@ import pytz
 from django.test import TestCase
 from django.utils.timezone import now
 
-from reporting.generator import ReportGenerator
+from slick_reporting.generator import ReportGenerator
+from slick_reporting.helpers import get_foreign_keys
 from .models import OrderLine
 
 from .report_generators import GeneratorWithAttrAsColumn, CrosstabOnClient
@@ -86,6 +87,12 @@ class GeneratorReportStructureTest(TestCase):
 class TestReportFields(TestCase):
 
     def test_get_full_dependency_list(self):
-        from reporting.fields import BalanceReportField
+        from slick_reporting.fields import BalanceReportField
         deps = BalanceReportField.get_full_dependency_list()
         self.assertEqual(len(deps), 1)
+
+
+class TestHelpers(TestCase):
+    def test_get_model_for_keys(self):
+        keys = get_foreign_keys(OrderLine)
+        self.assertEqual(len(keys), 3)

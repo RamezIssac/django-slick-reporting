@@ -26,7 +26,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     # 'django.contrib.admin.apps.SimpleAdminConfig',
     'django.contrib.staticfiles',
-    'reporting',
+    'slick_reporting',
     "tests",
 ]
 

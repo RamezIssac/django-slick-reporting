@@ -17,7 +17,7 @@ class RaReportBaseForm(object):
     Holds basic function
     '''
 
-    def get_fk_filters(self):
+    def get_filters(self):
         """
         Get the foreign key filters for report queryset,
         :return: a dicttionary of filters to be used with QuerySet.filter(**returned_value)
@@ -31,7 +31,7 @@ class RaReportBaseForm(object):
                     if val:
                         val = [x for x in val.values_list('pk', flat=True)]
                         _values['%s__in' % key] = val
-            return _values
+            return None, _values
 
     def get_crispy_helper(self, foreign_keys_map=None, crosstab_model=None, **kwargs):
 

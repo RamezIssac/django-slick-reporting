@@ -80,33 +80,21 @@ class BaseTestData:
 # @override_settings(ROOT_URLCONF='reporting_tests.urls', RA_CACHE_REPORTS=False, USE_TZ=False)
 class ReportTest(BaseTestData, TestCase):
 
-    def _test_client_balance(self):
-        self.client.login(username='super', password='secret')
-        response = self.client.get(reverse('ra_admin:report', args=('client', 'balances')),
-                                   HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data['data'][0].get('__balance__'), 300, data['data'][0])
+    def test_client_balance(self):
+        report = report_generators.ClientTotalBalance()
+        data = report.get_report_data()
 
-    def _test_product_total_sales(self):
-        self.client.login(username='super', password='secret')
-        response = self.client.get(reverse('ra_admin:report', args=('product', 'total_sales')),
-                                   HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data['data'][0]['__balance__'], 1800)
+        self.assertEqual(data[0].get('__balance__'), 300, data[0])
+
+    def test_product_total_sales(self):
+        report = report_generators.ProductTotalSales()
+        data = report.get_report_data()
+        self.assertEqual(data[0]['__balance__'], 1800)
 
     def test_client_client_sales_monthly(self):
         report = report_generators.ClientSalesMonthlySeries()
 
-        # self.client.login(username='super', password='secret')
-        # response = self.client.get(reverse('ra_admin:report', args=('client', 'clientsalesmonthlyseries')), data={
-        #     'client_id': self.client1.pk
-        # }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-        # self.assertEqual(response.status_code, 200)
         data = report.get_report_data()
-        # import pdb; pdb.set_trace()
-        # print(data['data'][0])
 
         self.assertEqual(data[0].get('__balance__TS%s0301' % year), 200, data[0])
         self.assertEqual(data[0]['__balance__TS%s0201' % year], 100)
@@ -129,20 +117,11 @@ class ReportTest(BaseTestData, TestCase):
         self.assertEqual(len(data), 9)
 
     def test_productclientsalesmatrix(self):
-        report = report_generators.ProductClientSalesMatrix()
-
+        report = report_generators.ProductClientSalesMatrix(crosstab_ids=[self.client1.pk, self.client2.pk])
         data = report.get_report_data()
-        # product1_row = get_obj_from_list(data['data'], 'client_id', str(self.product1.pk))
-        # print(product1_row)
-        # # self.assertEqual(product1_row['__total_MXclient-%s' % self.client1.pk], 300)
-        # self.assertEqual(product1_row['__total_MXclient-%s' % self.client2.pk], 600)
-        # self.assertEqual(product1_row['__total_MXclient-----'], 900)
-
-        # response = self.client.get(reverse('ra_admin:report', args=('product', 'productclientsalesmatrix')),
-        #                            data={'matrix_entities': [self.client1.pk, self.client2.pk],
-        #                                  'matrix_show_other': False},
-        #                            HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-        # self.assertEqual(response.status_code, 200)
+        self.assertEqual(data[0]['__total__CT%s' % self.client1.pk], 300)
+        self.assertEqual(data[0]['__total__CT%s' % self.client2.pk], 600)
+        self.assertEqual(data[0]['__total__CT----'], 900)
 
     def _test_default_order_by(self):
         self.client.login(username='super', password='secret')
