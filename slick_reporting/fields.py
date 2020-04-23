@@ -285,7 +285,7 @@ class LineCount(BaseReportField):
 # class DocValue
 
 class TotalQTYReportField(BaseReportField):
-    name = '__total_quan__'
+    name = '__total_quantity__'
     verbose_name = _('total QTY')
     calculation_field = 'quantity'
 

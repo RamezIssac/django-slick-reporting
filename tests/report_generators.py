@@ -26,9 +26,9 @@ class GeneratorWithAttrAsColumn(GenericGenerator):
 
 class CrosstabOnClient(GenericGenerator):
     group_by = 'product'
-    columns = ['name', '__total_quan__']
+    columns = ['name', '__total_quantity__']
     crosstab_model = 'client'
-    crosstab_columns = ['__total_quan__']
+    crosstab_columns = ['__total_quantity__']
 
 
 #

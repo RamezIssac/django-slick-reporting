@@ -30,7 +30,7 @@ class MatrixTests(BaseTestData, TestCase):
         self.assertEqual(len(columns), 4)
 
         report = CrosstabOnClient(crosstab_ids=[self.client1.pk, self.client2.pk],
-                                  crosstab_columns=['__total_quan__', '__balance_quan__'])
+                                  crosstab_columns=['__total_quantity__', '__balance_quan__'])
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 8, [x['name'] for x in columns])
 
@@ -38,7 +38,7 @@ class MatrixTests(BaseTestData, TestCase):
 class GeneratorReportStructureTest(TestCase):
     def test_time_series_columns_inclusion(self):
         x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client', columns=['name'],
-                            time_series_columns=['__total_quan__'], time_series_pattern='monthly',
+                            time_series_columns=['__total_quantity__'], time_series_pattern='monthly',
                             start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone('utc')),
                             end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone('utc')))
         # import pdb;
