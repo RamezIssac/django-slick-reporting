@@ -8,9 +8,6 @@ python:
 env:
   - DJANGO=django==2.2.12
   - DJANGO=django==3.0.5
-  - DB=sqlite
-  - DB=mysql
-  - DB=postgres
 
 services:
   - postgresql
