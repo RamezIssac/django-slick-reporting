@@ -13,6 +13,11 @@ services:
   - postgresql
   - mysql
 
+ matrix:
+  - DB=pgsql
+  - DB=mysql
+
+
 before_script:
   - psql -c 'create database travis_ci_test;' -U postgres
   - sh -c "if [ '$DB' = 'mysql' ]; then mysql -e 'CREATE DATABASE IF NOT EXISTS travis_ci_test;'; fi"
