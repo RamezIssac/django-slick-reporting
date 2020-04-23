@@ -8,12 +8,17 @@ python:
 env:
   - DJANGO=django==2.2.12
   - DJANGO=django==3.0.5
+  - DB=sqlite
+  - DB=mysql
+  - DB=postgres
 
 services:
   - postgresql
+  - mysql
 
 before_script:
   - psql -c 'create database travis_ci_test;' -U postgres
+  - sh -c "if [ '$DB' = 'mysql' ]; then mysql -e 'CREATE DATABASE IF NOT EXISTS travis_ci_test;'; fi"
 
 # command to install dependencies
 install:
