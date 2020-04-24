@@ -7,21 +7,39 @@ from .registry import field_registry
 
 
 class BaseReportField(object):
-    plus_minus_modifier_field = 'doc_type'
+    """
+    Computation field responsible for making the calculation unit
+    """
+
+    name = ''
+    """The name to be used in the ReportGenerator"""
+
     calculation_field = 'value'
+    """the Field to compute on"""
+
     calculation_method = Sum
+    """The computation Method"""
+
+    verbose_name = None
+    """Verbose name to be used in front end when needed"""
+
+    requires = None
+    """This can be a list of sibling classes,
+    they will be asked to compute and their value would be available to you in the `resolve` method
+    requires = [BasicCalculationA, BasicCalculationB]
+    """
+
+
+    type = 'number'
+    """Just a string describing what this computation field return"""
+
     report_model = None
+    group_by = None
     plus_side_q = None
     minus_side_q = None
-    _debit_and_credit = True
-    component_of = None
-    name = None
-    verbose_name = None
-    type = 'date'
-    requires = None
-    _require_classes = None
 
-    group_by = None
+    _require_classes = None
+    _debit_and_credit = True
 
     def __init__(self, plus_side_q=None, minus_side_q=None,
                  report_model=None,
@@ -62,6 +80,17 @@ class BaseReportField(object):
         return queryset
 
     def prepare(self, q_filters=None, kwargs_filters=None, **kwargs):
+        """
+        This is the first hook where you can customize the calculation away from the Django Query aggregation method
+        This method et called with all available parameters , so you can prepare the results for the whole set and save
+        it in a local cache (like self._cache) .
+        The flow will later call the method `resolve`,  giving you the id, for you to return it respective calculation
+
+        :param q_filters:
+        :param kwargs_filters:
+        :param kwargs:
+        :return:
+        """
         kwargs_filters = kwargs_filters or {}
 
         dep_values = self._prepare_dependencies(q_filters, kwargs_filters.copy())
@@ -125,6 +154,15 @@ class BaseReportField(object):
         return self.final_calculation(debit_value, credit_value, dependencies_value)
 
     def get_dependency_value(self, current_obj, name=None):
+        """
+        Get the values of the ReportFields specified in `requires`
+
+        :param current_obj: the current object which we want the calculation for
+        :param name: Optional, the name of the specific dependency you want.
+
+        :return: a dict containing dependencies names as keys and their calculation as values
+                 or a specific value if name is specified.
+        """
         values = self._resolve_dependencies(current_obj)
         if name:
             return values.get(name)

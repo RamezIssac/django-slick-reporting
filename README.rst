@@ -19,13 +19,13 @@
 Django Slick Reporting
 ======================
 
-A one stop reports and analytics tool for Django
+A one stop reports engine with batteries included.
 
 What it does:
 -------------
 
 Given a model that contains some data *(ex: an OrderLine Model)*; Slick Reporting allows you to compute any kind of stats
-(Sum, AVG, etc.. ) over any field.
+(Sum, AVG, etc.. ) over any field using simple and intuitive analogy.
 It also allow you to use those computation units in a time series and cross tab.
 
 Features
@@ -61,11 +61,48 @@ You can use ``SampleReportView`` which is a subclass of ``django.views.generic.F
     from slick_reporting.views import SampleReportView
     from .models import MySalesItems
 
+    class TotalProductSales(SampleReportView):
+
+        # The model where you have the data
+        report_model = MySalesItems
+
+        # the main date to use if date filter is needed
+        date_field = 'date_placed' # or 'order__date_placed'
+        # date_field support traversing,
+        # date_field = 'order__date_placed'
+
+        # A foreign key to group calculation on
+        group_by = 'product'
+
+        # The columns you want to display
+        columns = ['title', '__total_quantity__', '__total__']
+
+This will return a page, with a table looking like
+
++-----------+----------------+-------------+
+| Product   | Total Quantity | Total Value |
++-----------+----------------+-------------+
+| Product 1 | 8              | 120         |
++-----------+----------------+-------------+
+| Product 2 | 13             | 240         |
++-----------+----------------+-------------+
+
+You can also do a monthly time series :
+
+
+.. code-block:: python
+
+    # in views.py
+    from slick_reporting.views import SampleReportView
+    from .models import MySalesItems
+
     class MonthlyProductSales(SampleReportView):
         report_model = MySalesItems
-        date_field = 'date_placed' # or 'order__date_placed'
+        date_field = 'date_placed'
         group_by = 'product'
         columns = ['name', 'sku']
+
+        # Analogy for time series
         time_series_pattern = 'monthly'
         time_series_columns = ['__total_quantity__']
 
