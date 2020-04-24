@@ -1,7 +1,5 @@
 from django import template
 
-from ra.utils.permissions import has_report_permission_permission
-
 register = template.Library()
 
 

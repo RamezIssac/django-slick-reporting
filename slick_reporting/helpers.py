@@ -1,15 +1,6 @@
-import logging
 from collections import OrderedDict
 
-from django.apps import apps
-from django.conf import settings
 from django.db import models
-
-get_model = apps.get_model
-
-User = settings.AUTH_USER_MODEL
-
-logger = logging.getLogger(__name__)
 
 
 def get_calculation_annotation(calculation_field, calculation_method):
@@ -21,21 +12,6 @@ def get_calculation_annotation(calculation_field, calculation_method):
     '''
 
     return '__'.join([calculation_field.lower(), calculation_method.name.lower()])
-
-
-def apply_order_to_list(lst, order_list):
-    values = []
-    unordered = list(lst)
-    for o in order_list:
-        o = o.strip()
-        if o in lst:
-            values.append(o)
-            try:
-                unordered.remove(o)
-            except ValueError:
-                pass
-    values += unordered
-    return values
 
 
 def get_foreign_keys(model):

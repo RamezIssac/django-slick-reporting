@@ -7,7 +7,8 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 
-from .models import Client, Product, SimpleSales
+from slick_reporting import ReportGenerator
+from .models import Client, Product, SimpleSales, OrderLine
 
 User = get_user_model()
 SUPER_LOGIN = dict(username='superlogin', password='password')
@@ -150,3 +151,27 @@ class ReportTest(BaseTestData, TestCase):
                 previous_balance = line['__balance__']
             else:
                 self.assertTrue(line['__balance__'] < previous_balance)
+
+    def test_show_empty_records(self):
+        report = report_generators.ClientTotalBalance()
+        data = report.get_report_data()
+        with_show_empty_len = len(data)
+        wo_show_empty = report_generators.ClientTotalBalance(show_empty_records=False)
+        self.assertNotEqual(with_show_empty_len, wo_show_empty)
+        # self.assertEqual(data[0].get('__balance__'), 300, data[0])
+
+
+class TestView(BaseTestData, TestCase):
+    def test_view(self):
+        reponse = self.client.get(reverse('report1'))
+        self.assertEqual(reponse.status_code, 200)
+        # import pdb; pdb.set_trace()
+        view_report_data = reponse.context['report_data']['data']
+        report_generator = ReportGenerator(report_model=OrderLine,
+                                           date_field='date_placed',  # or 'order__date_placed',
+                                           group_by='product',
+                                           columns=['name', 'sku'],
+                                           time_series_pattern='monthly',
+                                           time_series_columns=['__total_quantity__'],
+                                           )
+        self.assertEqual(view_report_data, report_generator.get_report_data())

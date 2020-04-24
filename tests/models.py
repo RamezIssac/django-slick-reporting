@@ -95,6 +95,7 @@ class Order(models.Model):
 
 
 class OrderLine(models.Model):
+    date_placed = models.DateTimeField(auto_created=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=0)

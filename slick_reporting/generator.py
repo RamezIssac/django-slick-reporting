@@ -96,7 +96,6 @@ class ReportGenerator(object):
 
         main_queryset = main_queryset or self.report_model.objects
 
-
         self.columns = self.columns or columns
         self.group_by = self.group_by or group_by
 
@@ -280,7 +279,6 @@ class ReportGenerator(object):
         return data
 
     def get_report_data(self):
-
         main_queryset = self.main_queryset[:self.limit_records] if self.limit_records else self.main_queryset
 
         all_columns = (
@@ -291,8 +289,6 @@ class ReportGenerator(object):
 
         get_record_data = self._get_record_data
         data = [get_record_data(obj, all_columns) for obj in main_queryset]
-        data = [x for x in data if x]
-
         return data
 
     def _parse(self):
@@ -335,8 +331,10 @@ class ReportGenerator(object):
                     else:
                         field = model_to_use._meta.get_field(col)
                 except FieldDoesNotExist:
+                    import pdb;
+                    pdb.set_trace()
                     raise FieldDoesNotExist(
-                        f'Field {col} not found as an attribute to the generator class, nor as computation field, nor as a database column for the model {model_to_use._meta.model_name}')
+                        f'Field "{col}" not found as an attribute to the generator class, nor as computation field, nor as a database column for the model "{model_to_use._meta.model_name}"')
 
                 col_data = {'name': col,
                             'verbose_name': field.verbose_name,

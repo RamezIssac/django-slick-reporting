@@ -21,14 +21,20 @@ Django Slick Reporting
 
 A one stop reports and analytics tool for Django
 
+What it does:
+-------------
+
+Given a model that contains some data *(ex: an OrderLine Model)*; Slick Reporting allows you to compute any kind of stats
+(Sum, AVG, etc.. ) over any field.
+It also allow you to use those computation units in a time series and cross tab.
+
 Features
 --------
 
-- Simple Reporting over the content of a model.
 - Preform Different computation grouping over the foreign keys.
 - Those computation can also be calculated on Time Series report *like monthly*, with custom dates ability.
-- Can be used on Crosstab reports
-- Create your Custom cCalculation
+- Computation can be used on Cross tab reports
+- Create your Custom Calculation
 - Optimized for speed !
 - ... and much more
 
@@ -45,7 +51,9 @@ Use the package manager `pip <https://pip.pypa.io/en/stable/>`_ to install djang
 Usage
 -----
 
-**From high Level**, you can use ``SampleReportView`` which is a subclass of ``django.views.generic.FormView`` like this
+**From high Level**,
+
+You can use ``SampleReportView`` which is a subclass of ``django.views.generic.FormView`` like this
 
 .. code-block:: python
 
@@ -57,7 +65,7 @@ Usage
         report_model = MySalesItems
         date_field = 'date_placed' # or 'order__date_placed'
         group_by = 'product'
-        columns = ['title', 'SKU']
+        columns = ['name', 'sku']
         time_series_pattern = 'monthly'
         time_series_columns = ['__total_quantity__']
 

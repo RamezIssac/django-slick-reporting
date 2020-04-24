@@ -1,14 +1,9 @@
-# from __future__ import unicode_literals
-"""
-    WIP
-"""
 from collections import OrderedDict
 
 from django import forms
 from django.utils.translation import ugettext_lazy as _
 
 from . import app_settings
-from .form_fields import RaAutocompleteSelectMultiple, RaDateDateTimeField
 from .helpers import get_foreign_keys
 
 
@@ -88,17 +83,17 @@ def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=N
     fkeys_list = []
     fields = OrderedDict()
 
-    fields['start_date'] = RaDateDateTimeField(required=False, label=_('From date'),
-                                               initial=app_settings.SLICK_REPORTING_DEFAULT_START_DATE,
-                                               # widget=RaBootstrapDateTime(),
-                                               input_date_formats=['%Y-%m-%d', '%Y-%m-%d'],
-                                               input_time_formats=['%H:%M', '%H:%M:%S'],
-                                               )
+    fields['start_date'] = forms.SplitDateTimeField(required=False, label=_('From date'),
+                                                    initial=app_settings.SLICK_REPORTING_DEFAULT_START_DATE,
+                                                    # widget=RaBootstrapDateTime(),
+                                                    input_date_formats=['%Y-%m-%d', '%Y-%m-%d'],
+                                                    input_time_formats=['%H:%M', '%H:%M:%S'],
+                                                    )
 
-    fields['end_date'] = RaDateDateTimeField(required=False, label=_('To  date'),
-                                             initial=app_settings.SLICK_REPORTING_DEFAULT_END_DATE,
-                                             # widget=RaBootstrapDateTime(),
-                                             )
+    fields['end_date'] = forms.SplitDateTimeField(required=False, label=_('To  date'),
+                                                  initial=app_settings.SLICK_REPORTING_DEFAULT_END_DATE,
+                                                  # widget=RaBootstrapDateTime(),
+                                                  )
 
     for name, f_field in fkeys_map.items():
         fkeys_list.append(name)
