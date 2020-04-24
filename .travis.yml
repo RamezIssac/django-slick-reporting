@@ -5,18 +5,26 @@ python:
   - "3.7"
   - "3.8"
 
-env:
-  - DJANGO=django==2.2.12
-  - DJANGO=django==3.0.5
 
+  global:
+    - PYTHONWARNINGS=default,ignore::PendingDeprecationWarning,ignore::ResourceWarning
+    - DJANGO_DATABASE_USER_POSTGRES=postgres
+    - DJANGO_DATABASE_USER_MYSQL=travis
+  matrix:
+    - DJANGO='>=3.0,<3.1'
+    - DJANGO='>=2.2,<3.0'
+    - DJANGO='>=2.1,<2.2'
+
+matrix:
+  fast_finish: true
+
+addons:
+  apt:
+    packages:
+      - libmysqlclient-dev
 services:
   - postgresql
   - mysql
-
- matrix:
-  - DB=pgsql
-  - DB=mysql
-
 
 before_script:
   - psql -c 'create database travis_ci_test;' -U postgres

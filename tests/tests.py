@@ -22,6 +22,7 @@ class ReportRegistryTest(SimpleTestCase):
 
 
 class BaseTestData:
+    databases = '__all__'
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()

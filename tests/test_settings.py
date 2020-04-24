@@ -1,4 +1,5 @@
 import os
+
 SECRET_KEY = 'fake-key'
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -9,13 +10,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
+    },
 }
 
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.MD5PasswordHasher',
 ]
-
 
 INSTALLED_APPS = [
     # 'django.contrib.admin',
@@ -31,7 +31,6 @@ INSTALLED_APPS = [
 ]
 
 ROOT_URLCONF = 'tests.urls'
-
 
 TEMPLATES = [
     {
