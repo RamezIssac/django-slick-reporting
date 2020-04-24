@@ -7,7 +7,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 
-from slick_reporting import ReportGenerator
+from slick_reporting.generator import ReportGenerator
 from .models import Client, Product, SimpleSales, OrderLine
 
 User = get_user_model()

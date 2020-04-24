@@ -1,6 +1,3 @@
-from __future__ import unicode_literals
-
-
 def report_field_register(report_field, *args, **kwargs):
     """
     Registers the given model(s) classes and wrapped ModelAdmin class with

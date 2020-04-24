@@ -1,15 +1,12 @@
-from __future__ import unicode_literals
-
 from django.db.models import Sum
 from django.utils.translation import ugettext_lazy as _
 
-from .helpers import get_calculation_annotation
 from .decorators import report_field_register
+from .helpers import get_calculation_annotation
 from .registry import field_registry
 
 
 class BaseReportField(object):
-    # date_field = 'doc_date'
     plus_minus_modifier_field = 'doc_type'
     calculation_field = 'value'
     calculation_method = Sum

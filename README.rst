@@ -92,7 +92,7 @@ You can interact with the `ReportGenerator` using same syntax as used with the `
 
 .. code-block:: python
 
-    from slick_reporting import ReportGenerator
+    from slick_reporting.generator import ReportGenerator
     from . models import MySalesModel
 
     report = ReportGenerator(report_model=MySalesModel,
