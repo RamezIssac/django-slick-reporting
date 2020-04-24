@@ -53,8 +53,8 @@ This can be written like this
 Worth Noting here that the ``SampleReportView`` calls a form generator which return a form containing
 all foreign keys in the report_model + start and end date filter.
 
-2. A Group By report
---------------------
+2. Group By report
+-------------------
 
 Where we can group by product -for example- and sum the quantity, or value sold.
 
@@ -101,6 +101,7 @@ can be written like this
             report_model = MySalesItem
             group_by = 'product'
             columns = ['name', 'sku']
+
             time_series_pattern = 'monthly'
             time_series_columns = ['__total_quantity__']
 

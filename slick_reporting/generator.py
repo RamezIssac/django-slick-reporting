@@ -19,7 +19,8 @@ class ReportGenerator(object):
     """
 
     field_registry_class = field_registry
-    """You can have a custom computation field locator!"""
+    """You can have a custom computation field locator! It only needs a `get_field_by_name(string)` 
+    and returns a ReportField`"""
 
     report_model = None
     """The main model where data is """
@@ -360,7 +361,6 @@ class ReportGenerator(object):
         return data
 
     def _parse(self):
-        from .registry import field_registry
 
         if self.group_by:
             self.group_by_field = [x for x in self.report_model._meta.fields if x.name == self.group_by][0]

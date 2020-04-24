@@ -1,14 +1,14 @@
 .. _computation_field:
 
 
-Computation Field
-=================
+Computation Field API
+=====================
 
 Responsible for preforming the calculation.
 
 You can create your computation field following this analogy.
 
-.. code-block::python
+.. code-block:: python
 
     from slick_reporting.fields import BaseReportField
 
