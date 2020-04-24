@@ -5,7 +5,7 @@ python:
   - "3.7"
   - "3.8"
 
-
+env:
   global:
     - PYTHONWARNINGS=default,ignore::PendingDeprecationWarning,ignore::ResourceWarning
     - DJANGO_DATABASE_USER_POSTGRES=postgres
@@ -14,9 +14,7 @@ python:
     - DJANGO='>=3.0,<3.1'
     - DJANGO='>=2.2,<3.0'
     - DJANGO='>=2.1,<2.2'
-
-matrix:
-  fast_finish: true
+    - DJANGO='>=2.0,<2.1'
 
 addons:
   apt:
