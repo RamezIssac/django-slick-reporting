@@ -105,8 +105,8 @@ can be written like this
             time_series_columns = ['__total_quantity__']
 
 
-Cross tab report
-----------------
+4. Cross tab report
+--------------------
 
 Where we can cross product sold over client for example
 
@@ -121,9 +121,23 @@ Where we can cross product sold over client for example
 | Product 3    | <from product model> | 17              | 12             | ...                   | 17                            |
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 
+Which can be written like this
+
+.. code-block:: python
+
+    class CrosstabProductClientValue(SampleReportView):
+            report_model = MySalesItem
+            group_by = 'product'
+            columns = ['name', 'sku']
+
+            crosstab_model = 'client'
+            crosstab_columns = ['__total_value__']
+            crosstab_ids = [client1.pk, client2.pk, client3.pk]
+            crosstab_compute_reminder = True
 
 
-Time series - Cross tab
------------------------
+
+5. Time series - Cross tab
+--------------------------
  (#2 & #3 together) Not support at the time.. but soon we hope.
 

@@ -44,11 +44,6 @@ You can start by using ``SampleReportView`` which is a subclass of ``django.view
         # The columns you want to display
         columns = ['title', '__total_quantity__']
 
-What is that `__total_quantity__` ?
-
-This is a `Report Field` , it Sums the field `quantity` and display the according results.
-more on :ref:`computation_field`
-
 
 
 .. toctree::
