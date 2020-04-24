@@ -21,6 +21,8 @@ project = 'Django Slick Reporting'
 copyright = '2020, Ramez Ashraf'
 author = 'Ramez Ashraf'
 
+master_doc = 'index'
+
 # The full version, including alpha/beta/rc tags
 release = '0.1.3'
 
@@ -33,7 +35,7 @@ autosummary_generate = True
 autoclass_content = "class"
 extensions = [
     'sphinx.ext.viewcode', 'sphinx.ext.autodoc',
-    # 'sphinx.ext.autosummary',
+    'sphinx.ext.autosummary',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
