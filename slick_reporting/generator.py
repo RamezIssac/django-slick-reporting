@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import datetime
 import logging
 from inspect import isclass
-from dateutil.relativedelta import relativedelta
 
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
 from django.db.models import Q
@@ -419,6 +418,7 @@ class ReportGenerator(object):
         return []
 
     def _get_time_series_dates(self):
+        from dateutil.relativedelta import relativedelta
         _values = []
         series = self.time_series_pattern
         if series:
