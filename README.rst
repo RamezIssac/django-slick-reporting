@@ -77,6 +77,9 @@ You can use ``SampleReportView`` which is a subclass of ``django.views.generic.F
         # The columns you want to display
         columns = ['title', '__total_quantity__', '__total__']
 
+    # in your urls.py
+    path('url-to-report', TotalProductSales.as_view())
+
 This will return a page, with a table looking like
 
 +-----------+----------------+-------------+

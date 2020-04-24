@@ -1,7 +1,5 @@
-Tour
-====
-
-What **Slick Reporting** can do for you.
+Usage
+=====
 
 
 I recon that you already have a model where there are data stored, and you want to generate reports on it.
@@ -21,29 +19,44 @@ Let's say we have a a data similar to this
 
 Based on this data we can have several kind of reports, let's explore them one by one.
 
-1. A report where it displays the data as is. we can apply date and other filters.
-2. A Group By report, where we can group by product -for example- and sum the quantity, or value sold.
-3. A time Series report, where we can say how much sum of the quantity sold over a chunks of time periods (like weekly, monthly, ... )
-4. A Cross tab report, where we can cross product sold over customers
-5. A time series - Cross tab (#2 & #3 together) which is not support at the time
+1. Basic filtering
+------------------
 
-Below are how those 5 kinds of reports would look like
+A report where it displays the data as is. however we can apply date and other filters
 
-1. A straight out report from the model
++------------+---------------+-------------+----------+-------+-------+
+| order_date | Product Name  | Client Name | quantity | price | value |
++------------+---------------+-------------+----------+-------+-------+
+| 2019-01-01 | Product 1     | Client 1    | 5        | 15    | 75    |
++------------+---------------+-------------+----------+-------+-------+
+| 2019-02-15 | Product 2     | Client 2    | 7        | 20    | 140   |
++------------+---------------+-------------+----------+-------+-------+
+| 2019-02-20 | Product 2     | Client 1    | 5        | 20    | 100   |
++------------+---------------+-------------+----------+-------+-------+
+| 2019-03-14 | Product 1     | Client 2    | 3        | 15    | 45    |
++------------+---------------+-------------+----------+-------+-------+
 
-+------------+------------+-----------+----------+-------+-------+
-| order_date | product_id | client_id | quantity | price | value |
-+------------+------------+-----------+----------+-------+-------+
-| 2019-01-01 | 1          | 1         | 5        | 15    | 75    |
-+------------+------------+-----------+----------+-------+-------+
-| 2019-02-15 | 2          | 2         | 7        | 20    | 140   |
-+------------+------------+-----------+----------+-------+-------+
-| 2019-02-20 | 2          | 1         | 5        | 20    | 100   |
-+------------+------------+-----------+----------+-------+-------+
-| 2019-03-14 | 1          | 2         | 3        | 15    | 45    |
-+------------+------------+-----------+----------+-------+-------+
+This can be written like this
 
-2. A Group by report
+.. code-block:: python
+
+    # in your views.py
+    from slick_reporting.views import SampleReportView
+
+    class TransactionsReport(SampleReportView):
+        report_model = MySalesItem
+        columns = ['order_date', 'product__name' , 'client__name', 'quantity', 'price', 'value]
+
+    # in your urls.py
+    path('to-report', TransactionsReport.as_view())
+
+Worth Noting here that the ``SampleReportView`` calls a form generator which return a form containing
+all foreign keys in the report_model + start and end date filter.
+
+2. A Group By report
+--------------------
+
+Where we can group by product -for example- and sum the quantity, or value sold.
 
 +-----------+----------------+-------------+
 | Product   | Total Quantity | Total Value |
@@ -53,7 +66,21 @@ Below are how those 5 kinds of reports would look like
 | Product 2 | 13             | 240         |
 +-----------+----------------+-------------+
 
-3. A time Series report
+which can be written like this:
+
+.. code-block:: python
+
+        class TotalQuanAndValueReport(SampleReportView):
+            report_model = MySalesItem
+            group_by = 'product'
+            columns = ['name', '__total_quantity__', '__total__' ]
+
+
+
+3. Time Series report
+------------------------
+
+where we can say how much sum of the quantity sold over a chunks of time periods (like weekly, monthly, ... )
 
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 | Product Name | SKU                  | Total Quantity  | Total Quantity | Total Quantity in ... | Total Quantity in December 20 |
@@ -66,8 +93,22 @@ Below are how those 5 kinds of reports would look like
 | Product 3    | <from product model> | 17              | 12             | ...                   | 17                            |
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 
+can be written like this
 
-4. A Cross Tab report
+.. code-block:: python
+
+        class TotalQuantityMonthly(SampleReportView):
+            report_model = MySalesItem
+            group_by = 'product'
+            columns = ['name', 'sku']
+            time_series_pattern = 'monthly'
+            time_series_columns = ['__total_quantity__']
+
+
+Cross tab report
+----------------
+
+Where we can cross product sold over client for example
 
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 | Product Name | SKU                  | Client 1        | Client 2       | Client (n)            | The Reminder                  |
@@ -81,4 +122,8 @@ Below are how those 5 kinds of reports would look like
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 
 
-5. Support Coming Soon...
+
+Time series - Cross tab
+-----------------------
+ (#2 & #3 together) Not support at the time.. but soon we hope.
+

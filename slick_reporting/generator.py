@@ -15,31 +15,96 @@ logger = logging.getLogger(__name__)
 
 class ReportGenerator(object):
     field_registry_class = field_registry
+    """You can have a custom computation field locator!"""
+
+    report_model = None
+    """The main model where data is """
+
+
     """
-    Class to generate a Json Object containing report data based on
-    report form , main_queryset and teh report model
+    Class to generate a Json Object containing report data.
     """
     date_field = None
+    """Main date field to use whenever date filter is needed"""
+
     print_flag = None
     list_display_links = []
 
-    # V2
     group_by = None
+    """The field to use for grouping, if not set then the report is expected to be a sub version of the report model"""
+
     columns = None
+    """A list of column names.
+    Columns names can be 
+    
+    1. A Computation Field
+    
+    2. If group_by is set, then any field on teh group_by model
+    
+    3. If group_by is not set, then any field name on the report_model / queryset
+     
+    4. A callable on the generator
+      
+    5. Special __time_series__, and __crosstab__ 
+       Those can be use to control the position of the time series inside the columns, defaults it's appended at the end
+       
+       Example:
+       columns = ['product_id', '__time_series__', 'col_b']
+       Same is true with __crosstab__ 
+     """
 
     time_series_pattern = ''
+    """
+    If set the Report will compute a time series.
+    
+    Possible options are: daily, weekly, semimonthly, monthly, quarterly, semiannually, annually and custom.
+    
+    if `custom` is set, you'd need to override  `get_custom_time_series_dates`
+    """
     time_series_columns = None
-    show_empty_records = None
-    report_model = None
+    """
+    a list of Calculation Field names which will be included in the series calculation.
+     Example: ['__total__', '__total_quantity__'] with compute those 2 fields for all the series
+     
+    """
+
     crosstab_model = None
+    """
+    If set, a cross tab over this model selected ids (via `crosstab_ids`)  
+    """
     crosstab_columns = None
+    """The computation fields which will be computed for each crosstab-ed ids """
+
+    crosstab_ids = None
+    """A list is the ids to create a crosstab report on"""
+
+    crosstab_compute_reminder = True
+    """Include an an extra crosstab_columns for the outer group ( ie: all expects those `crosstab_ids`) """
+
+    show_empty_records = True
+    """
+    If group_by is set, this option control if the report result will include all objects regardless of appearing in the report_model/qs.
+    If set False, only those objects which are found in the report_model/qs
+    Example: Say you group by client
+    show_empty_records = True will get the computation fields for all clients in the Client model (including those who 
+    didnt make a transaction.
+    
+    show_empty_records = False will get the computation fields for all clients in the Client model (including those who 
+    didnt make a transaction.
+     
+    """
+
     limit_records = None
+    """Serves are a main limit to  the returned data of teh report_model.
+    Can be beneficial if the results may be huge.
+    """
     swap_sign = False
 
     def __init__(self, report_model=None, main_queryset=None, start_date=None, end_date=None, date_field=None,
                  q_filters=None, kwargs_filters=None,
-                 group_by=None, columns=None, time_series_pattern=None, time_series_columns=None,
-                 crosstab_model=None, crosstab_columns=None, crosstab_ids=None, crosstab_compute_reminder=True,
+                 group_by=None, columns=None,
+                 time_series_pattern=None, time_series_columns=None,
+                 crosstab_model=None, crosstab_columns=None, crosstab_ids=None, crosstab_compute_reminder=None,
                  swap_sign=False, show_empty_records=True,
                  print_flag=False,
                  doc_type_plus_list=None, doc_type_minus_list=None, limit_records=False, ):
@@ -88,10 +153,10 @@ class ReportGenerator(object):
         self.q_filters = q_filters or []
         self.kwargs_filters = kwargs_filters or {}
 
-        self.crosstab_model = crosstab_model or self.crosstab_model
-        self.crosstab_columns = crosstab_columns or self.crosstab_columns
-        self.crosstab_ids = crosstab_ids or []
-        self.crosstab_compute_reminder = crosstab_compute_reminder
+        self.crosstab_model = self.crosstab_model or crosstab_model
+        self.crosstab_columns = crosstab_columns or self.crosstab_columns or []
+        self.crosstab_ids = self.crosstab_ids or crosstab_ids or []
+        self.crosstab_compute_reminder = self.crosstab_compute_reminder if crosstab_compute_reminder is None else crosstab_compute_reminder
 
         main_queryset = main_queryset or self.report_model.objects
 
@@ -403,10 +468,11 @@ class ReportGenerator(object):
 
     def get_time_series_field_verbose_name(self, column_name, date_period):
         """
-        Sent the column data to construct a verbose name, below is only a basic implementation
-        :param column_name:
-        :param date_period:
-        :return:
+        Sent the column data to construct a verbose name.
+        Default implemenetation is column name + the end date %Y%m%d
+        :param column_name: the computation field_name
+        :param date_period: a tuple of (start_date, end_date)
+        :return: a verbose string
         """
         return column_name + date_period[1].strftime('%Y%m%d')
 
