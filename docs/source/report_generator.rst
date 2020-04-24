@@ -3,11 +3,11 @@
 Report Generator
 =================
 
-Let's explore creating a ReportGenerator and teh analogy involved
+The main class responsible generating the report and managing the flow
 
 
-Attributes :
-------------
+ReportGenerator
+---------------
 
 .. autoclass:: slick_reporting.generator.ReportGenerator
 
@@ -19,15 +19,15 @@ Attributes :
     .. rubric:: Below are the needed attrs and methods for time series manipulation
     .. autoattribute:: time_series_pattern
     .. autoattribute:: time_series_columns
-    .. autoattribute:: get_custom_time_series_dates
-    .. autoattribute:: get_time_series_field_verbose_name
+    .. automethod:: get_custom_time_series_dates
+    .. automethod:: get_time_series_field_verbose_name
 
     .. rubric:: Below are the needed attrs and methods for crosstab manipulation
     .. autoattribute:: crosstab_model
     .. autoattribute:: crosstab_columns
     .. autoattribute:: crosstab_ids
     .. autoattribute:: crosstab_compute_reminder
-    .. autoattribute:: get_crosstab_field_verbose_name
+    .. automethod:: get_crosstab_field_verbose_name
 
 
 

@@ -31,8 +31,8 @@ You can create your computation field following this analogy.
         verbose name = 'Net quantity'
 
 
-Attributes :
-------------
+BaseReportField
+---------------
 
 .. autoclass:: slick_reporting.fields.BaseReportField
 

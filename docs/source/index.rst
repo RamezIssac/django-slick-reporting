@@ -51,6 +51,7 @@ You can start by using ``SampleReportView`` which is a subclass of ``django.view
    :caption: Contents:
 
    tour
+   customization
    report_generator
    computation_field
 

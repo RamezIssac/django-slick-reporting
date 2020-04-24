@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class ReportGenerator(object):
+    """
+    The main class responsible generating the report and managing the flow
+    """
+
     field_registry_class = field_registry
     """You can have a custom computation field locator!"""
 
