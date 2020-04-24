@@ -47,7 +47,7 @@ You can start by using ``SampleReportView`` which is a subclass of ``django.view
 What is that `__total_quantity__` ?
 
 This is a `Report Field` , it Sums the field `quantity` and display the according results.
-more on :ref:`report_field`
+more on :ref:`computation_field`
 
 
 
@@ -55,7 +55,6 @@ more on :ref:`report_field`
    :maxdepth: 2
    :caption: Contents:
 
-   quickstart
    tour
    report_generator
    computation_field
