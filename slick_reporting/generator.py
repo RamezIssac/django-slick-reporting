@@ -8,7 +8,6 @@ from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
 from django.db.models import Q
 
-from .app_settings import SLICK_REPORTING_DEFAULT_START_DATE, SLICK_REPORTING_DEFAULT_END_DATE
 from .helpers import get_field_from_query_text
 from .registry import field_registry
 
@@ -70,6 +69,7 @@ class ReportGenerator(object):
         :param doc_type_minus_list:
         :param limit_records:
         """
+        from .app_settings import SLICK_REPORTING_DEFAULT_START_DATE, SLICK_REPORTING_DEFAULT_END_DATE
 
         super(ReportGenerator, self).__init__()
 
