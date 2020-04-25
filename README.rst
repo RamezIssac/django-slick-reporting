@@ -31,12 +31,10 @@ It also allow you to use those computation units in a time series and cross tab.
 Features
 --------
 
-- Preform Different computation grouping over the foreign keys.
-- Those computation can also be calculated on Time Series report *like monthly*, with custom dates ability.
-- Computation can be used on Cross tab reports
-- Create your Custom Calculation
-- Optimized for speed !
-- ... and much more
+- Create Simple, Grouped, Time series and Crosstab reports.. effortlessly in a handful of code lines.
+- Create your Custom Calculation easily, which will be integrated with the above reports kinds
+- Optimized for speed.
+- Batteries included! Charts.js , DataTable.net & a Bootstrap form.
 
 Installation
 ------------
@@ -144,6 +142,21 @@ You can interact with the `ReportGenerator` using same syntax as used with the `
 
 This is just a scratch, for more please visit the documentation 
 
+Batteries Included
+------------------
+
+Slick Reporting comes with
+
+* A Bootstrap Filter Form
+* Charting support `Charts.js <https://www.chartjs.org/>`_
+* Powerful tables `datatables.net <https://datatables.net/>`_
+
+A Preview:
+
+.. image:: https://i.ibb.co/SvxTM23/Selection-294.png
+    :target: https://i.ibb.co/SvxTM23/Selection-294.png
+    :alt: Shipped in View Page
+
 
 Documentation
 -------------
@@ -170,8 +183,11 @@ Create a virtual environment (maybe with `virtual slick_reports_test`), activate
 
 Contributing
 ------------
+This project is young and can use your support.
+Please consider star the project to keep an eye on it, and your PR, review are most welcome and needed.
 
-We follow `Django's guidelines <https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/>`_ guidelines.
+For the guideline, `Django's guidelines <https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/>`_ should do the job.
+
 
 Authors
 --------

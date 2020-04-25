@@ -34,9 +34,10 @@ class RaReportBaseForm(object):
 
         helper = FormHelper()
         helper.form_class = 'form-horizontal'
-        helper.label_class = 'col-sm-2 col-md-2 col-lg-1'
-        helper.field_class = 'col-sm-10 col-md-10 col-lg-11'
+        helper.label_class = 'col-sm-2 col-md-2 col-lg-2'
+        helper.field_class = 'col-sm-10 col-md-10 col-lg-10'
         helper.form_tag = False
+        helper.disable_csrf = True
 
         foreign_keys_map = foreign_keys_map or self.foreign_keys
         from crispy_forms.layout import Layout, Div, Row, Field
@@ -55,7 +56,7 @@ class RaReportBaseForm(object):
                 Column(
                     Field('end_date'), css_class='col-sm-6'),
 
-                css_class='row raReportDateRange'),
+                css_class='raReportDateRange'),
             Div(css_class="mt-20", style='margin-top:20px')
         )
 

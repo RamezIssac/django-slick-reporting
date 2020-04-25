@@ -1,7 +1,7 @@
 .. Django Slick Reporting documentation master file, created by
-   sphinx-quickstart on Fri Apr 24 17:39:17 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+sphinx-quickstart on Fri Apr 24 17:39:17 2020.
+You can adapt this file completely to your liking, but it should at least
+contain the root `toctree` directive.
 
 Django Slick Reporting
 ======================
@@ -44,6 +44,14 @@ You can start by using ``SampleReportView`` which is a subclass of ``django.view
         # The columns you want to display
         columns = ['title', '__total_quantity__']
 
+        # Charts
+        charts_settings = [
+         {
+            'type': 'bar',
+            'data_source': '__total_quantity__',
+            'title_source': 'title',
+         },
+        ]
 
 
 .. toctree::

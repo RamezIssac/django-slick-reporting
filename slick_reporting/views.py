@@ -7,6 +7,7 @@ from django.utils.encoding import force_text
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
+from .app_settings import SLICK_REPORTING_DEFAULT_END_DATE, SLICK_REPORTING_DEFAULT_START_DATE
 from .form_factory import report_form_factory
 from .generator import ReportGenerator
 
@@ -30,6 +31,12 @@ class SampleReportView(FormView):
     limit_records = None
 
     queryset = None
+
+    chart_settings = None
+    """
+    A list of chart settings objects instructing front end on how to plot the data.
+    
+    """
 
     template_name = 'slick_reporting/simple_report.html'
 
@@ -138,9 +145,11 @@ class SampleReportView(FormView):
         data = report_generator.get_report_data()
         data = self.filter_results(data, for_print)
         data = {
+            'report_slug': self.get_report_slug(),
             'data': data,
             'columns': self.get_columns_data(report_generator.get_list_display_columns()),
-            'metadata': self.get_metadata(generator=report_generator)
+            'metadata': self.get_metadata(generator=report_generator),
+            'chart_settings': self.get_chart_settings()
         }
         return data
 
@@ -157,6 +166,15 @@ class SampleReportView(FormView):
         }
         return metadata
 
+    def get_chart_settings(self):
+        """setting the chart id.. can be better """
+        output = []
+        for i, x in enumerate(self.chart_settings or []):
+            x['id'] = f"{x['type']}-{i}"
+            output.append(x)
+        return output
+
+
     def get_queryset(self):
         return self.queryset or self.report_model.objects
 
@@ -168,3 +186,14 @@ class SampleReportView(FormView):
         :return: filtered data
         """
         return data
+
+    @classmethod
+    def get_report_slug(cls):
+        return cls.__name__.lower()
+
+    def get_initial(self):
+        # todo revise why not actually displaying datetime on screen
+        return {
+            'start_date': SLICK_REPORTING_DEFAULT_START_DATE,
+            'end_date': SLICK_REPORTING_DEFAULT_END_DATE
+        }
