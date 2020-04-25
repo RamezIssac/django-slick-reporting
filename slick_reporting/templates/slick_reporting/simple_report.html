@@ -5,7 +5,7 @@
 {% block content %}
     <form>
         {% crispy form form.get_crispy_helper %}
-        <input type="submit" value="Submit">
+        <input type="submit" value="Filter" class="btn btn-primary btn-lg btn-block">
     </form>
 
 
@@ -17,11 +17,11 @@
                         {% for chart in report_data.chart_settings %}
                             <li class="list-inline-item"><a href="#" data-chart-id="{{ chart.id }}">
                                 {% if chart.type == 'pie' %}
-                                    <i class="fas fa-chart-pie"></i>
+                                    <i class="fa fa-pie-chart"></i>
                                 {% elif chart.type == 'line' %}
-                                    <i class="fas fa-chart-line"></i>
+                                    <i class="fa fa-line-chart"></i>
                                 {% else %}
-                                    <i class="fas fa-chart-bar"></i>
+                                    <i class="fa fa-bar-chart"></i>
 
                                 {% endif %} {{ chart.title }}
                             </a></li>
