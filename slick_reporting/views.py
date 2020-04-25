@@ -7,6 +7,7 @@ from django.utils.encoding import force_text
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
+from .app_settings import SLICK_REPORTING_DEFAULT_END_DATE, SLICK_REPORTING_DEFAULT_START_DATE
 from .form_factory import report_form_factory
 from .generator import ReportGenerator
 
@@ -184,3 +185,10 @@ class SampleReportView(FormView):
     @classmethod
     def get_report_slug(cls):
         return cls.__name__.lower()
+
+    def get_initial(self):
+        # todo revise why not actually displaying datetime on screen
+        return {
+            'start_date': SLICK_REPORTING_DEFAULT_START_DATE,
+            'end_date': SLICK_REPORTING_DEFAULT_END_DATE
+        }
