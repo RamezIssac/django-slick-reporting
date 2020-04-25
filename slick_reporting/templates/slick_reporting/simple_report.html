@@ -10,13 +10,27 @@
 
     {% include 'slick_reporting/table.html' with table=report_data %}
 
+    <div class="card">
+        <div class="card-body">
+            <div class="chartContainer screenOnly">
+                <div class="controls"></div>
+                <div class="reportChart screenOnly" dir="ltr"></div>
+                {% if report.chart_settings %}
+                    <canvas id="{{ report.get_report_slug }}" class="chartsJsCanvas" width="400"
+                            height="100"></canvas>
+                {% endif %}
+            </div>
+            <div class="report-table"></div>
+        </div>
+    </div>
+
     {{ report_data|json_script:'report-data' }}
 
 {% endblock %}
 {% block js_script %}
     <script>
-    let value = JSON.parse(document.getElementById('hello-data').textContent);
-    $.slick_reporting.report_loader.displayReport(value, '/dummy/')
+        let value = JSON.parse(document.getElementById('hello-data').textContent);
+        $.slick_reporting.report_loader.displayReport(value, '/dummy/')
     </script>
 
 {% endblock %}
