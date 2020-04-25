@@ -153,10 +153,11 @@ Slick reporting comes with
 * Charting support `Charts.js <https://www.chartjs.org/>`_
 * Powerful tables `datatables.net <https://datatables.net/>`_
 
+A Preview:
 
-.. image:: https://rasystems.io/static/images/slick-reporting/form.png
-    :target: https://rasystems.io/static/images/slick-reporting/form.png
-    :alt: Landing Ra framework Dashboard
+.. image:: https://i.ibb.co/SvxTM23/Selection-294.png
+    :target: https://i.ibb.co/SvxTM23/Selection-294.png
+    :alt: Shipped in View Page
 
 
 Documentation
