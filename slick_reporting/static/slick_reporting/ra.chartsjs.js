@@ -144,7 +144,7 @@
     }
 
     function getChartSettingsFromResponse(response, chart_id) {
-        return $.slick_reporting.dataComprehension.getObjFromArray(response.chart_settings, 'id', chart_id, true)
+        return getObjFromArray(response.chart_settings, 'id', chart_id, true)
     }
 
     function getBackgroundColors(i) {
@@ -152,6 +152,22 @@
             return COLORS[i]
         }
         return COLORS
+    }
+
+        function getObjFromArray(objList, obj_key, key_value, failToFirst) {
+        failToFirst = typeof (failToFirst) !== 'undefined';
+        if (key_value !== '') {
+            for (var i = 0; i < objList.length; i++) {
+                if (objList[i][obj_key] === key_value) {
+                    return objList[i];
+                }
+            }
+        }
+        if (failToFirst && objList.length > 0) {
+            return objList[0]
+        }
+
+        return false;
     }
 
     $.slick_reporting.chartsjs = {

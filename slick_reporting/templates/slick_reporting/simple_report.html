@@ -8,19 +8,35 @@
         <input type="submit" value="Submit">
     </form>
 
-    {% include 'slick_reporting/table.html' with table=report_data %}
 
-    <div class="card">
+    <div class="card" id="{{ report_data.report_slug }}">
         <div class="card-body">
             <div class="chartContainer screenOnly">
-                <div class="controls"></div>
+                <div class="controls text-center">
+                    <ul class="nav-charts list-inline">
+                        {% for chart in report_data.chart_settings %}
+                            <li class="list-inline-item"><a href="#" data-chart-id="{{ chart.id }}">
+                                {% if chart.type == 'pie' %}
+                                    <i class="fas fa-chart-pie"></i>
+                                {% elif chart.type == 'line' %}
+                                    <i class="fas fa-chart-line"></i>
+                                {% else %}
+                                    <i class="fas fa-chart-bar"></i>
+
+                                {% endif %} {{ chart.title }}
+                            </a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
                 <div class="reportChart screenOnly" dir="ltr"></div>
-                {% if report.chart_settings %}
-                    <canvas id="{{ report.get_report_slug }}" class="chartsJsCanvas" width="400"
+                {% if report_data.chart_settings %}
+                    <canvas id="{{ report_data.report_slug }}" class="chartsJsCanvas" width="400"
                             height="100"></canvas>
                 {% endif %}
             </div>
             <div class="report-table"></div>
+            {% include 'slick_reporting/table.html' with table=report_data %}
+
         </div>
     </div>
 
@@ -29,8 +45,51 @@
 {% endblock %}
 {% block js_script %}
     <script>
-        let value = JSON.parse(document.getElementById('hello-data').textContent);
-        $.slick_reporting.report_loader.displayReport(value, '/dummy/')
+        let value = JSON.parse(document.getElementById('report-data').textContent);
+        {#$.slick_reporting.report_loader.displayReport(value, '/dummy/')#}
+        $('table').DataTable();
+
+
+        $('.chartContainer').on('click', '.nav-charts a', function (e) {
+            e.preventDefault();
+            DisplayChart($(this));
+        });
+
+        $('.nav-charts').find('a:first').trigger('click');
+
+
+        function DisplayChart($this) {
+            {#var $this = $(this);#}
+
+            {#var report_slug = $this.attr('data-report-slug');#}
+            {#var $tabcontent = $('#' + report_slug);#}
+            {#if ($tabcontent.length === 0) {#}
+            {#    $tabcontent = $('.chartWidget[data-report-slug=' + report_slug + ']');#}
+            {# }#}
+            var data = value;
+
+
+            var $chart = $('canvas');
+            let chartObject = $.slick_reporting.chartsjs.createChartObject(data, $this.attr('data-chart-id'), {});
+
+            try {
+                myChart.destroy();
+
+            } catch (err) {
+                {#console.log(err);#}
+            }
+            myChart = new Chart($chart, chartObject);
+
+            var ul = $this.parents('ul');
+            //remove old active classes
+            ul.find('li').removeClass('active');
+            // set the new active class
+            ul.find('li[data-chart-id=' + $this.attr("data-chart-id") + ']').addClass('active');
+
+
+        }
+
+
     </script>
 
 {% endblock %}
