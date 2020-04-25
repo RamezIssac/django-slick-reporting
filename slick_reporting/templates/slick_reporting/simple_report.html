@@ -1,10 +1,22 @@
-{% extends 'base.html' %}
+{% extends 'slick_reporting/base.html' %}
+{% load crispy_forms_tags %}
+
 
 {% block content %}
     <form>
-        {{ form }}
+        {% crispy form form.get_crispy_helper %}
         <input type="submit" value="Submit">
     </form>
 
     {% include 'slick_reporting/table.html' with table=report_data %}
+
+    {{ report_data|json_script:'report-data' }}
+
+{% endblock %}
+{% block js_script %}
+    <script>
+    let value = JSON.parse(document.getElementById('hello-data').textContent);
+    $.slick_reporting.report_loader.displayReport(value, '/dummy/')
+    </script>
+
 {% endblock %}
