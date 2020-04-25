@@ -1,8 +1,8 @@
 .. image:: https://img.shields.io/pypi/v/django-slick-reporting.svg
-    :target: https://pypi.org/project/django-ra
+    :target: https://pypi.org/project/django-slick-reproting
 
 .. image:: https://img.shields.io/pypi/pyversions/django-slick-reporting.svg
-    :target: https://pypi.org/project/django-ra
+    :target: https://pypi.org/project/django-slick-reporting
 
 .. image:: https://img.shields.io/readthedocs/django-slick-reporting
     :target: https://django-slick-reporting.readthedocs.io/
@@ -123,7 +123,7 @@ hook it into your ``urls.py`` , and it would return a page with a table looking 
 | Product 3    | <from product model> | 17              | 12             | ...                   | 17                            |
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 
-*This example code assumes your "MySalesItems" contains the fields `product` as foreign key,  `quantity` as number and `date_placed` as a date field. It also assumes your `Product` model has an SKU field..*
+*This example code assumes your "MySalesItems" model contains the fields `product` as foreign key,  `quantity` as number and `date_placed` as a date field. It also assumes your `Product` model has an SKU field.. Change those to better suit your structure.*
 --
 
 **On a low level**

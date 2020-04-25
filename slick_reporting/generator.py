@@ -25,7 +25,6 @@ class ReportGenerator(object):
     report_model = None
     """The main model where data is """
 
-
     """
     Class to generate a Json Object containing report data.
     """
@@ -165,7 +164,7 @@ class ReportGenerator(object):
 
         main_queryset = main_queryset or self.report_model.objects
 
-        self.columns = self.columns or columns
+        self.columns = self.columns or columns or []
         self.group_by = self.group_by or group_by
 
         self.time_series_pattern = self.time_series_pattern or time_series_pattern
@@ -178,7 +177,8 @@ class ReportGenerator(object):
         self.existing_dependencies = {'series': [], 'matrix': [], 'normal': []}
 
         self.print_flag = print_flag or self.print_flag
-        #
+
+        # todo validate columns is not empty (if no time series / cross tab)
 
         if self.group_by:
             try:
@@ -221,7 +221,6 @@ class ReportGenerator(object):
             self.main_queryset = self._apply_queryset_options(main_queryset, self.get_database_columns())
 
         self._prepare_report_dependencies()
-        # self.prepare_calculation()
 
     def _apply_queryset_options(self, query, fields=None):
         """
@@ -399,8 +398,6 @@ class ReportGenerator(object):
                     else:
                         field = model_to_use._meta.get_field(col)
                 except FieldDoesNotExist:
-                    import pdb;
-                    pdb.set_trace()
                     raise FieldDoesNotExist(
                         f'Field "{col}" not found as an attribute to the generator class, nor as computation field, nor as a database column for the model "{model_to_use._meta.model_name}"')
 
@@ -463,14 +460,15 @@ class ReportGenerator(object):
 
                 _values.append({
                     'name': col + 'TS' + dt[1].strftime('%Y%m%d'),
-                    'verbose_name': self.get_time_series_field_verbose_name(col, dt),
+                    'original_name': col,
+                    'verbose_name': self.get_time_series_field_verbose_name(magic_field_class, dt),
                     'ref': magic_field_class,
                     'start_date': dt[0],
                     'end_date': dt[1],
                 })
         return _values
 
-    def get_time_series_field_verbose_name(self, column_name, date_period):
+    def get_time_series_field_verbose_name(self, computation_class, date_period):
         """
         Sent the column data to construct a verbose name.
         Default implemenetation is column name + the end date %Y%m%d
@@ -478,7 +476,7 @@ class ReportGenerator(object):
         :param date_period: a tuple of (start_date, end_date)
         :return: a verbose string
         """
-        return column_name + date_period[1].strftime('%Y%m%d')
+        return computation_class.get_time_series_field_verbose_name(date_period)
 
     def get_custom_time_series_dates(self):
         """
@@ -543,7 +541,7 @@ class ReportGenerator(object):
 
                 output_cols.append({
                     'name': f'{col}CT{id}',
-                    'verbose_name': self.get_crosstab_field_verbose_name(col, id),
+                    'verbose_name': self.get_crosstab_field_verbose_name(magic_field_class, self.crosstab_model, id),
                     'ref': magic_field_class,
                     'id': id,
                     'model': self.crosstab_model,
@@ -552,15 +550,12 @@ class ReportGenerator(object):
 
         return output_cols
 
-        # entity_name = self.crosstab_model
-        # ids = [entity_name + '-' + id for id in ids if id != '']
-        #
-        # report_columns = [col + 'MX' for col in report_columns]
-        #
-        # _values = []
-        # if ids:
-        #     _values = [col + dt for dt in ids for col in report_columns]
-        # return _values
-
-    def get_crosstab_field_verbose_name(self, col, id):
-        return f'{col}CT{id}'
+    def get_crosstab_field_verbose_name(self, computation_class, model, id):
+        """
+        Hook to change the crosstab field verbose name, default it delegate this function to the ReportField
+        :param computation_class: ReportField Class
+        :param model: the model name as string
+        :param id: the current crosstab id
+        :return: a verbose string
+        """
+        return computation_class.get_crosstab_field_verbose_name(model, id)

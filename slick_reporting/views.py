@@ -139,9 +139,23 @@ class SampleReportView(FormView):
         data = self.filter_results(data, for_print)
         data = {
             'data': data,
-            'columns': self.get_columns_data(report_generator.get_list_display_columns())
+            'columns': self.get_columns_data(report_generator.get_list_display_columns()),
+            'metadata': self.get_metadata(generator=report_generator)
         }
         return data
+
+    def get_metadata(self, generator):
+        """
+        A hook to send data about the report for front end which can later be used in charting
+        :return:
+        """
+        time_series_columns = generator.get_time_series_parsed_columns()
+        metadata = {
+            'time_series_pattern': self.time_series_pattern,
+            'time_series_column_names': [x['name'] for x in time_series_columns],
+            'time_series_column_verbose_names': [x['verbose_name'] for x in time_series_columns]
+        }
+        return metadata
 
     def get_queryset(self):
         return self.queryset or self.report_model.objects

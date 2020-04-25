@@ -29,7 +29,6 @@ class BaseReportField(object):
     requires = [BasicCalculationA, BasicCalculationB]
     """
 
-
     type = 'number'
     """Just a string describing what this computation field return"""
 
@@ -239,6 +238,27 @@ class BaseReportField(object):
             return klasses
 
         return get_dependency(cls)
+
+    @classmethod
+    def get_crosstab_field_verbose_name(cls, model, id):
+        """
+        Construct a verbose name for the crosstab field
+        :param model: the model name
+        :param id: the id of the current crosstab object
+        :return: a verbose string
+        """
+        return f'{cls.verbose_name} {model} {id}'
+
+    @classmethod
+    def get_time_series_field_verbose_name(cls, date_period):
+        """
+        Sent the column data to construct a verbose name.
+        Default implemenetation is column name + the end date %Y%m%d
+        :param column_name: the computation field_name
+        :param date_period: a tuple of (start_date, end_date)
+        :return: a verbose string
+        """
+        return f'{cls.verbose_name} {date_period[1].strftime("%Y%m%d")}'
 
 
 class FirstBalanceField(BaseReportField):
