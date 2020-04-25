@@ -24,9 +24,12 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django.contrib.sessions',
     'django.contrib.messages',
+
+
     # 'django.contrib.admin.apps.SimpleAdminConfig',
     'django.contrib.staticfiles',
     'slick_reporting',
+    'crispy_forms',
     "tests",
 ]
 
@@ -43,7 +46,10 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.static',
+
             ],
         },
     },
 ]
+STATIC_URL = '/static/'

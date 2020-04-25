@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import datetime
 import logging
+from collections import Iterable
 from inspect import isclass
 
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
@@ -109,7 +110,7 @@ class ReportGenerator(object):
                  group_by=None, columns=None,
                  time_series_pattern=None, time_series_columns=None,
                  crosstab_model=None, crosstab_columns=None, crosstab_ids=None, crosstab_compute_reminder=None,
-                 swap_sign=False, show_empty_records=True,
+                 swap_sign=False, show_empty_records=None,
                  print_flag=False,
                  doc_type_plus_list=None, doc_type_minus_list=None, limit_records=False, ):
         """
@@ -206,16 +207,26 @@ class ReportGenerator(object):
 
         # in case of a group by, do we show a grouped by model data regardless of their appearance in the results
         # a client who didnt make a transaction during the date period.
-        self.show_empty_records = self.show_empty_records or show_empty_records
+        self.show_empty_records = False # show_empty_records if show_empty_records else self.show_empty_records
+        # Looks like this options is harder then what i thought as it interfere with the usual filtering of the report
 
         # Preparing actions
         self._parse()
         if self.group_by:
+
             if self.show_empty_records:
-                self.main_queryset = self.group_by_field.related_model.objects.values()
+                pass
+                # group_by_filter = self.kwargs_filters.get(self.group_by, '')
+                # qs = self.group_by_field.related_model.objects
+                # if group_by_filter:
+                #     import pdb; pdb.set_trace()
+                #     lookup = 'pk__in' if isinstance(group_by_filter, Iterable) else 'pk'
+                #     qs = qs.filter(**{lookup: group_by_filter})
+                # self.main_queryset = qs.values()
+
             else:
                 self.main_queryset = self._apply_queryset_options(main_queryset)
-                ids = main_queryset.values_list(self.group_by_field.attname)
+                ids = self.main_queryset.values_list(self.group_by_field.attname).distinct()
                 self.main_queryset = self.group_by_field.related_model.objects.filter(pk__in=ids).values()
         else:
             self.main_queryset = self._apply_queryset_options(main_queryset, self.get_database_columns())

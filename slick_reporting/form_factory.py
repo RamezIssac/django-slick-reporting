@@ -1,5 +1,7 @@
 from collections import OrderedDict
 
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Column
 from django import forms
 from django.utils.translation import ugettext_lazy as _
 
@@ -30,37 +32,45 @@ class RaReportBaseForm(object):
 
     def get_crispy_helper(self, foreign_keys_map=None, crosstab_model=None, **kwargs):
 
-        from crispy_forms.layout import Layout, Div, Row, Field
-        from .crispy_layouts import StackedField2
+        helper = FormHelper()
+        helper.form_class = 'form-horizontal'
+        helper.label_class = 'col-sm-2 col-md-2 col-lg-1'
+        helper.field_class = 'col-sm-10 col-md-10 col-lg-11'
+        helper.form_tag = False
 
-        layout = Layout(
+        foreign_keys_map = foreign_keys_map or self.foreign_keys
+        from crispy_forms.layout import Layout, Div, Row, Field
+        # from crispy_forms.bootstrap import
+
+        helper.layout = Layout(
             # PanelContainer(
             # #     Div(
             #         _('filters'),
-            Div(
+            Row(
                 # Div(StackedField('doc_date'), css_class='col-sm-3'),
-                Div(StackedField2('from_date', css_class='form-control dateinput'), css_class='col-sm-6'),
-                Div(StackedField2('to_date', css_class='form-control dateinput'), css_class='col-sm-6'),
+                # InlineField('start_date', css_class='form-control dateinput'), css_class='col-sm-6'),
+                # Div(InlineField('end_date', css_class='form-control dateinput'), css_class='col-sm-6'),
+                Column(
+                    Field('start_date'), css_class='col-sm-6'),
+                Column(
+                    Field('end_date'), css_class='col-sm-6'),
 
                 css_class='row raReportDateRange'),
             Div(css_class="mt-20", style='margin-top:20px')
         )
 
-        # We add foreign keys to 3rd item in the layout object (count top level only) , which is the
-        # fieldset containing doc_date , from_doc_date & to_doc_date
-        entry_point = layout.fields[1]
-        if crosstab_model:
-            entry_point.append(Row(
-                Div('matrix_entities', css_class='col-sm-9'),
-                Div('matrix_show_other', css_class='col-sm-3')
-                , css_class='matrixField')
-            )
+        # if crosstab_model:
+        #     entry_point.append(Row(
+        #         Div('matrix_entities', css_class='col-sm-9'),
+        #         Div('matrix_show_other', css_class='col-sm-3')
+        #         , css_class='matrixField')
+        #     )
 
         for k in foreign_keys_map:
             if k[:-3] != crosstab_model:
-                entry_point.append(Field(k))
+                helper.layout.fields[1].append(Field(k))
 
-        return layout
+        return helper
 
 
 def _default_foreign_key_widget(f_field):

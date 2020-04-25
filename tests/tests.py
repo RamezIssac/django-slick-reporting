@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils.timezone import now
 
 from slick_reporting.generator import ReportGenerator
+from tests.report_generators import ClientTotalBalance
 from .models import Client, Product, SimpleSales, OrderLine
 
 User = get_user_model()
@@ -23,6 +24,7 @@ class ReportRegistryTest(SimpleTestCase):
 
 class BaseTestData:
     databases = '__all__'
+
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
@@ -160,6 +162,24 @@ class ReportTest(BaseTestData, TestCase):
         wo_show_empty = report_generators.ClientTotalBalance(show_empty_records=False)
         self.assertNotEqual(with_show_empty_len, wo_show_empty)
         # self.assertEqual(data[0].get('__balance__'), 300, data[0])
+
+    def test_filters(self):
+        report = ClientTotalBalance(kwargs_filters={'client': self.client1.pk}, show_empty_records=True)
+        data = report.get_report_data()
+        self.assertEqual(len(data), 1, data)
+
+        report = ClientTotalBalance(kwargs_filters={'client': self.client1.pk}, show_empty_records=False)
+        data = report.get_report_data()
+        self.assertEqual(len(data), 1, data)
+
+    def test_filter_as_int_n_list(self):
+        report = ClientTotalBalance(kwargs_filters={'client': self.client1.pk}, show_empty_records=True)
+        data = report.get_report_data()
+        self.assertEqual(len(data), 1, data)
+
+        report = ClientTotalBalance(kwargs_filters={'client_id__in': [self.client1.pk]}, show_empty_records=True)
+        data = report.get_report_data()
+        self.assertEqual(len(data), 1, data)
 
 
 class TestView(BaseTestData, TestCase):
