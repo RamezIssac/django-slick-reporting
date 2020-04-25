@@ -142,3 +142,34 @@ Which can be written like this
 --------------------------
  (#2 & #3 together) Not support at the time.. but soon we hope.
 
+
+
+
+Charts
+-------
+
+To create a report we need to a dictionary to a ``chart_settings`` to the SampleReportView.
+
+.. code-block:: python
+
+    class MonthlySalesReport(SampleReportView):
+        # ....
+
+        charts_settings = [{
+                'type': 'bar',
+                'title_source': 'title',
+                'data_source': '__total_quantity__',
+                'title': _('Total Monthly Sales'),
+                'plot_total': True,
+            },
+            # ... another chart goes here
+        ]
+
+
+* type: what kind of chart it is: Possible options are bar, pie, line and others subject of the underlying charting engine.
+  Hats off to : `Charts.js <https://www.chartjs.org/>`_.
+* data_source: Field name of containing the numbers we want to plot.
+* title_source: Field name of the labels of the data_source
+* title: the Chart title
+* plot_total if True the chart will plot the total of the columns. Useful with time series and crosstab reports
+

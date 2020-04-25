@@ -167,7 +167,12 @@ class SampleReportView(FormView):
         return metadata
 
     def get_chart_settings(self):
-        return self.chart_settings or []
+        """setting the chart id.. can be better """
+        output = []
+        for i, x in enumerate(self.chart_settings or []):
+            x['id'] = f"{x['type']}-{i}"
+            output.append(x)
+        return output
 
 
     def get_queryset(self):

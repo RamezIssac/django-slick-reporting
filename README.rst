@@ -144,6 +144,20 @@ You can interact with the `ReportGenerator` using same syntax as used with the `
 
 This is just a scratch, for more please visit the documentation 
 
+Batteries Included
+------------------
+
+Slick reporting comes with
+
+* A Bootstrap Filter Form
+* Charting support `Charts.js <https://www.chartjs.org/>`_
+* Powerful tables `datatables.net <https://datatables.net/>`_
+
+
+.. image:: https://rasystems.io/static/images/slick-reporting/form.png
+    :target: https://rasystems.io/static/images/slick-reporting/form.png
+    :alt: Landing Ra framework Dashboard
+
 
 Documentation
 -------------
