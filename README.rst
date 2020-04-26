@@ -108,7 +108,7 @@ You can also do a monthly time series :
         time_series_columns = ['__total_quantity__']
 
 
-hook it into your ``urls.py`` , and it would return a page with a table looking something like this:
+This would return a table looking something like this:
 
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 | Product Name | SKU                  | Total Quantity  | Total Quantity | Total Quantity in ... | Total Quantity in December 20 |
@@ -122,6 +122,8 @@ hook it into your ``urls.py`` , and it would return a page with a table looking 
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 
 *This example code assumes your "MySalesItems" model contains the fields `product` as foreign key,  `quantity` as number and `date_placed` as a date field. It also assumes your `Product` model has an SKU field.. Change those to better suit your structure.*
+
+
 --
 
 **On a low level**
@@ -180,11 +182,19 @@ Create a virtual environment (maybe with `virtual slick_reports_test`), activate
     $ coverage run --include=../* runtests.py [-k]
     $ coverage html
 
+Road Ahead
+----------
+
+This project is young and can use your support. Some of the ideas / feature that ought be added
+
+. Support Other backends like SQL Alchemy & Pandas
+. Support Grouping by non foreign key fields
+. Support Time Series and Crosstab at the same time
+
 
 Contributing
 ------------
-This project is young and can use your support.
-Please consider star the project to keep an eye on it, and your PR, review are most welcome and needed.
+Please consider star the project to keep an eye on it. Your PRs, reviews are most welcome and needed.
 
 For the guideline, `Django's guidelines <https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/>`_ should do the job.
 

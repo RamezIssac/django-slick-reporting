@@ -51,6 +51,19 @@ If you want AVG to the field `price` then the ReportField would look like this
         verbose name = 'Avg. Price'
 
 
+Bundled Report Fields
+---------------------
+
+* __total__ : Sum of the field names value
+* __total_quantity__ :Sum of the field names 'quantity'
+* __fb__ : Sum of the field value on the start date (or the start date of the active time series window)
+* __balance__: Compound some of the field `value` .
+
+Difference between total and balance is:
+
+The field __total__ will return that client 1 bought 10 in Jan, 12 in Feb , 13 in March. while __balance__ will report
+client compound buy: 10 in Jan, 22 in Feb and 35 in March
+
 
 Registering Report Field
 ------------------------
