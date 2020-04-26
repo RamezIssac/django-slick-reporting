@@ -16,6 +16,8 @@ To install django-slick-reporting:
 
 1.  Install with pip: ``pip install django-slick-reporting``.
 2.  Add ``'slick_reporting'`` to ``INSTALLED_APPS``.
+3. For the shipped in View, add ``'cirspy_forms'`` to ``INSTALLED_APPS``and add `CRISPY_TEMPLATE_PACK = 'bootstrap4'`
+   to your `settings.py`
 
 
 Quickstart
