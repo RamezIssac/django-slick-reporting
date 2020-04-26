@@ -1,3 +1,4 @@
+
 default_app_config = 'slick_reporting.apps.ReportAppConfig'
 
 VERSION = (0, 2, 2)
