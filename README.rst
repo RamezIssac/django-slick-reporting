@@ -21,12 +21,6 @@ Django Slick Reporting
 
 A one stop reports engine with batteries included.
 
-What it does:
--------------
-
-Given a model that contains some data *(ex: an OrderLine Model)*; Slick Reporting allows you to compute any kind of stats
-(Sum, AVG, etc.. ) over any field using simple and intuitive analogy.
-It also allow you to use those computation units in a time series and cross tab.
 
 Features
 --------
@@ -51,7 +45,7 @@ Usage
 
 **From high Level**,
 
-You can use ``SampleReportView`` which is a subclass of ``django.views.generic.FormView`` like this
+You can use ``SampleReportView`` *which is an enhanced subclass of ``django.views.generic.FormView``* like this
 
 .. code-block:: python
 
@@ -65,8 +59,8 @@ You can use ``SampleReportView`` which is a subclass of ``django.views.generic.F
         report_model = MySalesItems
 
         # the main date to use if date filter is needed
-        date_field = 'date_placed' # or 'order__date_placed'
-        # date_field support traversing,
+        date_field = 'date_placed'
+        # date_field support traversing, you can
         # date_field = 'order__date_placed'
 
         # A foreign key to group calculation on
@@ -121,7 +115,7 @@ This would return a table looking something like this:
 | Product 3    | <from product model> | 17              | 12             | ...                   | 17                            |
 +--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
 
-*This example code assumes your "MySalesItems" model contains the fields `product` as foreign key,  `quantity` as number and `date_placed` as a date field. It also assumes your `Product` model has an SKU field.. Change those to better suit your structure.*
+*This example code assumes your "MySalesItems" model contains the fields `product` as foreign key,  `quantity` as number , and `date_placed` as a date field. It also assumes your `Product` model has an SKU field.. Change those to better suit your structure.*
 
 
 --
@@ -165,6 +159,16 @@ Documentation
 
 Available on `Read The Docs <https://django-slick-reporting.readthedocs.io/en/latest/>`_
 
+Road Ahead
+----------
+
+This project is young and can use your support.
+
+Some of the ideas / features that ought be added
+
+* Support Other backends like SQL Alchemy & Pandas
+* Support Grouping by non foreign key fields
+* Support Time Series and Crosstab at the same time
 
 
 Running tests
@@ -182,21 +186,13 @@ Create a virtual environment (maybe with `virtual slick_reports_test`), activate
     $ coverage run --include=../* runtests.py [-k]
     $ coverage html
 
-Road Ahead
-----------
 
-This project is young and can use your support. Some of the ideas / feature that ought be added
+Support & Contributing
+----------------------
 
-. Support Other backends like SQL Alchemy & Pandas
-. Support Grouping by non foreign key fields
-. Support Time Series and Crosstab at the same time
-
-
-Contributing
-------------
 Please consider star the project to keep an eye on it. Your PRs, reviews are most welcome and needed.
 
-For the guideline, `Django's guidelines <https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/>`_ should do the job.
+We honor the well formulated `Django's guidelines <https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/>`_ to serve as contribution guide here too.
 
 
 Authors
