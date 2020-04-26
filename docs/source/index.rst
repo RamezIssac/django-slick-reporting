@@ -1,7 +1,3 @@
-.. Django Slick Reporting documentation master file, created by
-sphinx-quickstart on Fri Apr 24 17:39:17 2020.
-You can adapt this file completely to your liking, but it should at least
-contain the root `toctree` directive.
 
 Django Slick Reporting
 ======================
@@ -55,6 +51,13 @@ You can start by using ``SampleReportView`` which is a subclass of ``django.view
          },
         ]
 
+The above simple code will result in a page similar to this
+
+.. image:: https://i.ibb.co/SvxTM23/Selection-294.png
+    :target: https://i.ibb.co/SvxTM23/Selection-294.png
+    :alt: Shipped in View Page
+
+Neat huh ? Next step :ref:`usage`
 
 .. toctree::
    :maxdepth: 2

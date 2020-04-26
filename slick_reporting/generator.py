@@ -482,8 +482,10 @@ class ReportGenerator(object):
     def get_time_series_field_verbose_name(self, computation_class, date_period):
         """
         Sent the column data to construct a verbose name.
-        Default implemenetation is column name + the end date %Y%m%d
-        :param column_name: the computation field_name
+        Default implementation is delegated to the ReportField.get_time_series_field_verbose_name
+        (which is  name + the end date %Y%m%d)
+
+        :param computation_class: the computation field_name
         :param date_period: a tuple of (start_date, end_date)
         :return: a verbose string
         """
