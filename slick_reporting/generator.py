@@ -335,7 +335,7 @@ class ReportGenerator(object):
 
                 name = col_data['name']
 
-                if name.startswith('__') and self.group_by:
+                if col_data.get('source', '') == 'magic_field' and self.group_by:
                     source = self._report_fields_dependencies[window].get(name, False)
                     if source:
                         computation_class = self.report_fields_classes[source]
@@ -475,6 +475,7 @@ class ReportGenerator(object):
                     'ref': magic_field_class,
                     'start_date': dt[0],
                     'end_date': dt[1],
+                    'source': 'magic_field' if magic_field_class else '',
                 })
         return _values
 
@@ -557,7 +558,8 @@ class ReportGenerator(object):
                     'ref': magic_field_class,
                     'id': id,
                     'model': self.crosstab_model,
-                    'is_reminder': counter == ids_length
+                    'is_reminder': counter == ids_length,
+                    'source': 'magic_field' if magic_field_class else '',
                 })
 
         return output_cols
