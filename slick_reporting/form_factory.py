@@ -1,7 +1,5 @@
 from collections import OrderedDict
 
-from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Column
 from django import forms
 from django.utils.translation import ugettext_lazy as _
 
@@ -9,7 +7,7 @@ from . import app_settings
 from .helpers import get_foreign_keys
 
 
-class RaReportBaseForm(object):
+class BaseReportForm(object):
     '''
     Holds basic function
     '''
@@ -31,6 +29,8 @@ class RaReportBaseForm(object):
             return None, _values
 
     def get_crispy_helper(self, foreign_keys_map=None, crosstab_model=None, **kwargs):
+        from crispy_forms.helper import FormHelper
+        from crispy_forms.layout import Column, Layout, Div, Row, Field
 
         helper = FormHelper()
         helper.form_class = 'form-horizontal'
@@ -40,17 +40,9 @@ class RaReportBaseForm(object):
         helper.disable_csrf = True
 
         foreign_keys_map = foreign_keys_map or self.foreign_keys
-        from crispy_forms.layout import Layout, Div, Row, Field
-        # from crispy_forms.bootstrap import
 
         helper.layout = Layout(
-            # PanelContainer(
-            # #     Div(
-            #         _('filters'),
             Row(
-                # Div(StackedField('doc_date'), css_class='col-sm-3'),
-                # InlineField('start_date', css_class='form-control dateinput'), css_class='col-sm-6'),
-                # Div(InlineField('end_date', css_class='form-control dateinput'), css_class='col-sm-6'),
                 Column(
                     Field('start_date'), css_class='col-sm-6'),
                 Column(
@@ -75,12 +67,8 @@ class RaReportBaseForm(object):
 
 
 def _default_foreign_key_widget(f_field):
-    # import pdb; pdb.set_trace()
     return {'form_class': forms.ModelMultipleChoiceField,
-            'required': False,
-            # 'widget': RaAutocompleteSelectMultiple(f_field.remote_field, ra_admin_site,
-            #                                        attrs={'class': 'select2bs4'})
-            }
+            'required': False, }
 
 
 def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=None, **kwargs):
@@ -112,7 +100,7 @@ def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=N
         fields[name] = f_field.formfield(
             **foreign_key_widget_func(f_field))
 
-    new_form = type('ReportForm', (RaReportBaseForm, forms.BaseForm,),
+    new_form = type('ReportForm', (BaseReportForm, forms.BaseForm,),
                     {"base_fields": fields,
                      '_fkeys': fkeys_list,
                      'foreign_keys': fkeys_map,

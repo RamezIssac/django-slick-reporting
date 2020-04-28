@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 
 ## [Unreleased]
+### Added
+- Ability to create a ReportField on the fly
+- Document SLICK_REPORTING_DEFAULT_START_DATE & SLICK_REPORTING_DEFAULT_START_DATE settings
+- Test Field Registry
+
+ 
+## [0.2.2] - 2020-04-26
+- Port Charting from [Ra Framework](https://github.com/ra-systems/RA)
+- Enhance ReportView HTML response
 
 
 ## [0.0.1] - 2020-04-24

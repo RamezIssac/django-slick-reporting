@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import datetime
 import logging
-from collections import Iterable
 from inspect import isclass
 
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist

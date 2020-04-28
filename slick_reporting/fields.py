@@ -1,3 +1,5 @@
+import uuid
+
 from django.db.models import Sum
 from django.utils.translation import ugettext_lazy as _
 
@@ -11,6 +13,7 @@ class BaseReportField(object):
     Computation field responsible for making the calculation unit
     """
 
+    _field_registry = field_registry
     name = ''
     """The name to be used in the ReportGenerator"""
 
@@ -39,6 +42,31 @@ class BaseReportField(object):
 
     _require_classes = None
     _debit_and_credit = True
+
+    @classmethod
+    def create(cls, method, field, name=None, verbose_name=None):
+        """
+        Creates a ReportField class on the fly
+        :param method:
+        :param field:
+        :param name:
+        :param verbose_name:
+        :return:
+        """
+        if not name:
+            identifier = str(uuid.uuid4()).split('-')[-1]
+            name = name or f"__{method.name}_{field}_{identifier}__"
+            assert name not in cls._field_registry.get_all_report_fields_names()
+
+        verbose_name = verbose_name or f'{method.name} {field}'
+        report_klass = type(f'ReportField_{name}', (BaseReportField,), {
+            'name': name,
+            'verbose_name': verbose_name,
+            'calculation_field': field,
+            'calculation_method': method
+        })
+        cls._field_registry.register(report_klass)
+        return name
 
     def __init__(self, plus_side_q=None, minus_side_q=None,
                  report_model=None,
