@@ -8,8 +8,10 @@ from django.urls import reverse
 from django.utils.timezone import now
 
 from slick_reporting.generator import ReportGenerator
+from slick_reporting.fields import BaseReportField
 from tests.report_generators import ClientTotalBalance
 from .models import Client, Product, SimpleSales, OrderLine
+from slick_reporting.registry import field_registry
 
 User = get_user_model()
 SUPER_LOGIN = dict(username='superlogin', password='password')
@@ -196,3 +198,57 @@ class TestView(BaseTestData, TestCase):
                                            time_series_columns=['__total_quantity__'],
                                            )
         self.assertEqual(view_report_data, report_generator.get_report_data())
+
+
+class TestReportFieldRegistry(TestCase):
+    def test_unregister(self):
+        # unregister a field that we know exists
+        field_registry.unregister('__balance__')
+        self.assertNotIn('__balance__', field_registry.get_all_report_fields_names())
+
+    def test_registering_new(self):
+        def register():
+            class ReportFieldWDuplicatedName(BaseReportField):
+                name = '__total_field__'
+                calculation_field = 'field'
+
+            field_registry.register(ReportFieldWDuplicatedName)
+
+        register()
+        self.assertIn('__total_field__', field_registry.get_all_report_fields_names())
+
+    def test_already_registered(self):
+        def register():
+            class ReportFieldWDuplicatedName(BaseReportField):
+                name = '__total__'
+
+            field_registry.register(ReportFieldWDuplicatedName)
+
+        with self.assertRaises(Exception):
+            register()
+
+    def test_unregister_a_non_existent(self):
+        def register():
+            field_registry.unregister('__a_weird_name__')
+
+        with self.assertRaises(Exception):
+            register()
+
+    def test_get_non_existent_field(self):
+        def register():
+            field = field_registry.get_field_by_name('__a_weird_name__')
+            return field
+
+        with self.assertRaises(Exception):
+            field = register()
+            self.assertIsNone(field)
+
+    def test_creating_a_report_field_on_the_fly(self):
+        from django.db.models import Sum
+        name = BaseReportField.create(Sum, 'value', '__sum_of_value__')
+        self.assertIn(name, field_registry.get_all_report_fields_names())
+
+    def test_creating_a_report_field_on_the_fly_wo_name(self):
+        from django.db.models import Sum
+        name = BaseReportField.create(Sum, 'value')
+        self.assertIn(name, field_registry.get_all_report_fields_names())

@@ -1,4 +1,4 @@
-include LICENSE
+include LICENSE.md
 include README.md
 recursive-include ra/static *
 recursive-include reporting/templates *
