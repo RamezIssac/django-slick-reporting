@@ -25,8 +25,8 @@ A one stop reports engine with batteries included.
 Features
 --------
 
-- Create Simple, Grouped, Time series and Crosstab reports.. effortlessly in a handful of code lines.
-- Create your Custom Calculation easily, which will be integrated with the above reports kinds
+- Effortlessly create Simple, Grouped, Time series and Crosstab reports in a handful of code lines.
+- Create your Custom Calculation easily, which will be integrated with the above reports types
 - Optimized for speed.
 - Batteries included! Charts.js , DataTable.net & a Bootstrap form.
 
@@ -50,6 +50,7 @@ You can use ``SampleReportView`` *which is an enhanced subclass of ``django.view
 .. code-block:: python
 
     # in views.py
+    from django.db.models import Sum
     from slick_reporting.views import SampleReportView
     from .models import MySalesItems
 
@@ -66,8 +67,11 @@ You can use ``SampleReportView`` *which is an enhanced subclass of ``django.view
         # A foreign key to group calculation on
         group_by = 'product'
 
-        # The columns you want to display
-        columns = ['title', '__total_quantity__', '__total__']
+        # The columns you want to display , `quantity` and `value` are fields on `MySalesItem` model.
+        columns = ['title', BaseReportField.create(Sum, 'quantity') , BaseReportField.create(Sum, 'value') ]
+
+        # Another way making use of the built-in Report Fields which is identical to the above
+        # columns = ['title', '__total_quantity__', '__total__']
 
     # in your urls.py
     path('url-to-report', TotalProductSales.as_view())
