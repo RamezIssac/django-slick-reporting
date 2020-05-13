@@ -42,3 +42,10 @@ Following those 2 simple recommendation, your awesome custom form will work as y
 
 :ref:`computation_field`
 
+4. Settings
+-----------
+
+Slick Reporting comes with only 2 settings that can manipulated from `settings.py`
+
+1. ``SLICK_REPORTING_DEFAULT_START_DATE``: Default to the beginning of this year
+2. ``SLICK_REPORTING_DEFAULT_END_DATE``: Defaults to the end of the current  year.
