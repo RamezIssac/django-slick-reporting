@@ -2,11 +2,11 @@
 All notable changes to this project will be documented in this file.
 
 
-## [Unreleased]
+## [0.2.3] - 2020-05-13
 ### Added
-- Ability to create a ReportField on the fly
+- Ability to create a ReportField on the fly.
 - Document SLICK_REPORTING_DEFAULT_START_DATE & SLICK_REPORTING_DEFAULT_START_DATE settings
-- Test Field Registry
+- Test Report Field Registry
 - Lift the assumption that a Report field name should start and end with "__". This is only a convention now.
 
  
