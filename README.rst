@@ -204,3 +204,12 @@ Authors
 
 * **Ramez Ashraf** - *Initial work* - `RamezIssac <https://github.com/RamezIssac>`_
 
+Cross Reference
+---------------
+
+If you like this package, chances are you may like those packages too!
+
+`Django Tabular Permissions <https://github.com/RamezIssac/django-tabular-permissions>`_ Display Django permissions in a HTML table that is translatable and easy customized.
+
+`Django Ra ERP Framework <https://github.com/ra-systems/RA>`_ A framework to build business solutions with ease.
+
