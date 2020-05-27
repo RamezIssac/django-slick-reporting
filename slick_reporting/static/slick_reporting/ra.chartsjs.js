@@ -154,7 +154,7 @@
         return COLORS
     }
 
-        function getObjFromArray(objList, obj_key, key_value, failToFirst) {
+    function getObjFromArray(objList, obj_key, key_value, failToFirst) {
         failToFirst = typeof (failToFirst) !== 'undefined';
         if (key_value !== '') {
             for (var i = 0; i < objList.length; i++) {
@@ -170,6 +170,9 @@
         return false;
     }
 
+    if (typeof($.slick_reporting) === 'undefined') {
+        $.slick_reporting = {}
+    }
     $.slick_reporting.chartsjs = {
         createChartObject: createChartObject,
         defaults: {
@@ -183,7 +186,8 @@
                 text: 'RaSystems.io',
                 href: 'https://rasystems.io'
             },
-            notify_error: function(){},
+            notify_error: function () {
+            },
             enable3d: false,
 
         }
