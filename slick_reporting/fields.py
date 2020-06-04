@@ -275,6 +275,8 @@ class BaseReportField(object):
         :param id: the id of the current crosstab object
         :return: a verbose string
         """
+        if id == '----':
+            return _('The reminder')
         return f'{cls.verbose_name} {model} {id}'
 
     @classmethod
@@ -307,7 +309,7 @@ field_registry.register(FirstBalanceField)
 
 class TotalReportField(BaseReportField):
     name = '__total__'
-    verbose_name = _('total')
+    verbose_name = _('Sum of value')
     requires = ['__debit__', '__credit__']
 
 
@@ -316,7 +318,7 @@ field_registry.register(TotalReportField)
 
 class BalanceReportField(BaseReportField):
     name = '__balance__'
-    verbose_name = _('balance')
+    verbose_name = _('Cumulative Total')
     requires = ['__fb__']
 
     def final_calculation(self, debit, credit, dep_dict):
@@ -332,7 +334,7 @@ field_registry.register(BalanceReportField)
 
 class CreditReportField(BaseReportField):
     name = '__credit__'
-    verbose_name = _('credit')
+    verbose_name = _('Credit')
 
     def final_calculation(self, debit, credit, dep_dict):
         return credit
@@ -343,7 +345,7 @@ field_registry.register(CreditReportField)
 
 class DebitReportField(BaseReportField):
     name = '__debit__'
-    verbose_name = _('debit')
+    verbose_name = _('Debit')
 
     def final_calculation(self, debit, credit, dep_dict):
         return debit
@@ -369,7 +371,7 @@ class LineCount(BaseReportField):
 
 class TotalQTYReportField(BaseReportField):
     name = '__total_quantity__'
-    verbose_name = _('total QTY')
+    verbose_name = _('Total QTY')
     calculation_field = 'quantity'
 
 
@@ -378,7 +380,7 @@ field_registry.register(TotalQTYReportField)
 
 class FirstBalanceQTYReportField(FirstBalanceField):
     name = '__fb_quan__'
-    verbose_name = _('first balance QTY')
+    verbose_name = _('starting QTY')
     calculation_field = 'quantity'
 
 
@@ -387,7 +389,7 @@ field_registry.register(FirstBalanceQTYReportField)
 
 class BalanceQTYReportField(BaseReportField):
     name = '__balance_quan__'
-    verbose_name = _('balance QTY')
+    verbose_name = _('Cumulative QTY')
     calculation_field = 'quantity'
     requires = ['__fb_quan__']
 

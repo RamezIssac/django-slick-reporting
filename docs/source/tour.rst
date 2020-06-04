@@ -172,6 +172,6 @@ To create a report we need to a dictionary to a ``chart_settings`` to the Sample
   Hats off to : `Charts.js <https://www.chartjs.org/>`_.
 * data_source: Field name of containing the numbers we want to plot.
 * title_source: Field name of the labels of the data_source
-* title: the Chart title
+* title: the Chart title. Defaults to the `report_title`.
 * plot_total if True the chart will plot the total of the columns. Useful with time series and crosstab reports
 

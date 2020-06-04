@@ -41,8 +41,6 @@ class GeneratorReportStructureTest(TestCase):
                             time_series_columns=['__total_quantity__'], time_series_pattern='monthly',
                             start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone('utc')),
                             end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone('utc')))
-        # import pdb;
-        # pdb.set_trace()
         self.assertEqual(len(x.get_list_display_columns()), 13)
 
     def test_time_series(self):

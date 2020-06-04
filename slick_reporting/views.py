@@ -33,6 +33,12 @@ class SampleReportView(FormView):
     queryset = None
 
     chart_settings = None
+
+    crosstab_model = None
+    crosstab_ids = None
+    crosstab_columns = None
+    crosstab_compute_reminder = True
+
     """
     A list of chart settings objects instructing front end on how to plot the data.
     
@@ -105,7 +111,12 @@ class SampleReportView(FormView):
 
     def get_report_generator(self, queryset, for_print):
         q_filters, kw_filters = self.form.get_filters()
+        if self.crosstab_model:
+            self.crosstab_ids = self.form.get_crosstab_ids()
+            self.crosstab_compute_reminder = self.form.get_crosstab_compute_reminder()
+            
         return self.report_generator_class(self.report_model,
+                                           q_filters=q_filters,
                                            kwargs_filters=kw_filters,
                                            date_field=self.date_field,
                                            main_queryset=queryset,
@@ -115,6 +126,11 @@ class SampleReportView(FormView):
                                            group_by=self.group_by,
                                            time_series_pattern=self.time_series_pattern,
                                            time_series_columns=self.time_series_columns,
+
+                                           crosstab_model=self.crosstab_model,
+                                           crosstab_ids=self.crosstab_ids,
+                                           crosstab_columns=self.crosstab_columns,
+                                           crosstab_compute_reminder=self.crosstab_compute_reminder
                                            )
 
     def get_columns_data(self, columns):
@@ -171,9 +187,10 @@ class SampleReportView(FormView):
         output = []
         for i, x in enumerate(self.chart_settings or []):
             x['id'] = f"{x['type']}-{i}"
+            if not x.get('title', False):
+                x['title'] = self.report_title
             output.append(x)
         return output
-
 
     def get_queryset(self):
         return self.queryset or self.report_model.objects

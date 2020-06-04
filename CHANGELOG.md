@@ -1,10 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.2.5] - 2020-06-04
+### Added
+
+Crosstab support 
+Chart title defaults to report_title
+Enhance fields naming
+
 ## [0.2.4] - 2020-05-27
 ### Added
 - Fix a naming issue with license (@iLoveTux)
-
 
 ## [0.2.3] - 2020-05-13
 ### Added
