@@ -1,12 +1,21 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.2.6] - Unreleased
+### Added
+
+- Fix a bug with time series adding one extra period.
+- Adds `is_summable` option for ReportFields, and pass it to response 
+- Enhance Time series default column verbose name
+- Add option to override a report fields while registering it.
+
+
 ## [0.2.5] - 2020-06-04
 ### Added
 
-Crosstab support 
-Chart title defaults to report_title
-Enhance fields naming
+- Crosstab support 
+- Chart title defaults to report_title
+- Enhance fields naming
 
 ## [0.2.4] - 2020-05-27
 ### Added

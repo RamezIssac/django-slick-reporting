@@ -206,7 +206,7 @@ class ReportGenerator(object):
 
         # in case of a group by, do we show a grouped by model data regardless of their appearance in the results
         # a client who didnt make a transaction during the date period.
-        self.show_empty_records = False # show_empty_records if show_empty_records else self.show_empty_records
+        self.show_empty_records = False  # show_empty_records if show_empty_records else self.show_empty_records
         # Looks like this options is harder then what i thought as it interfere with the usual filtering of the report
 
         # Preparing actions
@@ -274,8 +274,6 @@ class ReportGenerator(object):
         for window, window_cols in all_columns:
             for col_data in window_cols:
                 klass = col_data['ref']
-                dependencies_names = []
-                # try:
 
                 if isclass(klass) and issubclass(klass, BaseReportField):
                     dependencies_names = klass.get_full_dependency_list()
@@ -377,27 +375,33 @@ class ReportGenerator(object):
 
         self.parsed_columns = []
         for col in self.columns:
-            # import pdb; pdb.set_trace()
             attr = getattr(self, col, None)
+            try:
+                magic_field_class = field_registry.get_field_by_name(col)
+            except KeyError:
+                magic_field_class = None
+
             if attr:
+                #todo Add testing here
                 col_data = {'name': col,
                             'verbose_name': getattr(attr, 'verbose_name', col),
                             # 'type': 'method',
                             'ref': attr,
                             'type': 'text'
                             }
-            elif col.startswith('__'):
+            elif magic_field_class:
                 # a magic field
                 if col in ['__time_series__', '__crosstab__']:
                     #     These are placeholder not real computation field
                     continue
 
-                magic_field_class = field_registry.get_field_by_name(col)
                 col_data = {'name': col,
                             'verbose_name': magic_field_class.verbose_name,
                             'source': 'magic_field',
                             'ref': magic_field_class,
-                            'type': magic_field_class.type}
+                            'type': magic_field_class.type,
+                            'is_summable': magic_field_class.is_summable
+                            }
             else:
                 # A database field
                 model_to_use = self.group_by_model if self.group_by else self.report_model
@@ -476,6 +480,7 @@ class ReportGenerator(object):
                     'start_date': dt[0],
                     'end_date': dt[1],
                     'source': 'magic_field' if magic_field_class else '',
+                    'is_summable': magic_field_class.is_summable,
                 })
         return _values
 
@@ -525,12 +530,11 @@ class ReportGenerator(object):
             done = False
             start_date = self.start_date
 
-            # import pdb; pdb.set_trace()
             while not done:
                 to_date = start_date + time_delta
                 _values.append((start_date, to_date))
                 start_date = to_date
-                if to_date > self.end_date:
+                if to_date >= self.end_date:
                     done = True
         return _values
 
@@ -560,6 +564,7 @@ class ReportGenerator(object):
                     'model': self.crosstab_model,
                     'is_reminder': counter == ids_length,
                     'source': 'magic_field' if magic_field_class else '',
+                    'summable': magic_field_class.is_summable,
                 })
 
         return output_cols

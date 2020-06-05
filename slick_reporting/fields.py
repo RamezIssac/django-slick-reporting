@@ -33,7 +33,10 @@ class BaseReportField(object):
     """
 
     type = 'number'
-    """Just a string describing what this computation field return"""
+    """Just a string describing what this computation field return, usually passed to frontend"""
+
+    is_summable = True
+    """Indicate if this computation can be summed over. Useful to be passed to frontend or whenever needed"""
 
     report_model = None
     group_by = None
@@ -288,7 +291,8 @@ class BaseReportField(object):
         :param date_period: a tuple of (start_date, end_date)
         :return: a verbose string
         """
-        return f'{cls.verbose_name} {date_period[1].strftime("%Y%m%d")}'
+        dt_format = '%Y/%m/%d'
+        return f'{cls.verbose_name} {date_period[0].strftime(dt_format)} - {date_period[1].strftime(dt_format)}'
 
 
 class FirstBalanceField(BaseReportField):
@@ -354,25 +358,11 @@ class DebitReportField(BaseReportField):
 field_registry.register(DebitReportField)
 
 
-@report_field_register
-class DocCount(BaseReportField):
-    name = '__doc_count__'
-    verbose_name = _('document count')
-
-
-@report_field_register
-class LineCount(BaseReportField):
-    name = '__line_count__'
-    verbose_name = 'Line Count'
-
-
-# @report_field_register
-# class DocValue
-
 class TotalQTYReportField(BaseReportField):
     name = '__total_quantity__'
     verbose_name = _('Total QTY')
     calculation_field = 'quantity'
+    is_summable = False
 
 
 field_registry.register(TotalQTYReportField)
@@ -382,6 +372,7 @@ class FirstBalanceQTYReportField(FirstBalanceField):
     name = '__fb_quan__'
     verbose_name = _('starting QTY')
     calculation_field = 'quantity'
+    is_summable = False
 
 
 field_registry.register(FirstBalanceQTYReportField)

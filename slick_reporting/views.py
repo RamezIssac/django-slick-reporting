@@ -114,7 +114,7 @@ class SampleReportView(FormView):
         if self.crosstab_model:
             self.crosstab_ids = self.form.get_crosstab_ids()
             self.crosstab_compute_reminder = self.form.get_crosstab_compute_reminder()
-            
+
         return self.report_generator_class(self.report_model,
                                            q_filters=q_filters,
                                            kwargs_filters=kw_filters,
@@ -141,12 +141,14 @@ class SampleReportView(FormView):
         """
         # columns = report_generator.get_list_display_columns()
         data = []
+
         for col in columns:
             data.append({
                 'name': col['name'],
                 'verbose_name': col['verbose_name'],
                 'visible': col.get('visible', True),
-                'type': col.get('type', 'text')
+                'type': col.get('type', 'text'),
+                'is_summable': col.get('is_summable'),
             })
         return data
 

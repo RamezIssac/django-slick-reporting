@@ -8,8 +8,14 @@ class ReportFieldRegistry(object):
         super(ReportFieldRegistry, self).__init__()
         self._registry = {}  # holds
 
-    def register(self, report_field):
-        if report_field.name in self._registry:
+    def register(self, report_field, override=False):
+        """
+        Register a report_field into the registry,
+        :param report_field:
+        :param override: if True, a report_field will get replaced if found, else it would throw an AlreadyRegistered
+        :return: report_field passed
+        """
+        if report_field.name in self._registry and not override:
             raise AlreadyRegistered('This field is already registered')
         self._registry[report_field.name] = report_field
         return report_field
