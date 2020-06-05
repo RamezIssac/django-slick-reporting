@@ -467,11 +467,7 @@ class ReportGenerator(object):
 
         for dt in series:
             for col in cols:
-                try:
-                    magic_field_class = field_registry.get_field_by_name(col)
-                except:
-                    magic_field_class = None
-
+                magic_field_class = field_registry.get_field_by_name(col)
                 _values.append({
                     'name': col + 'TS' + dt[1].strftime('%Y%m%d'),
                     'original_name': col,

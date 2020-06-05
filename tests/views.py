@@ -1,11 +1,11 @@
 from slick_reporting.views import SampleReportView
-from .models import OrderLine
+from .models import SimpleSales
 
 
 class MonthlyProductSales(SampleReportView):
-    report_model = OrderLine
-    date_field = 'date_placed'  # or 'order__date_placed'
-    group_by = 'product'
-    columns = ['name', 'sku']
+    report_model = SimpleSales
+    date_field = 'doc_date'
+    group_by = 'client'
+    columns = ['slug', 'name']
     time_series_pattern = 'monthly'
-    time_series_columns = ['__total_quantity__']
+    time_series_columns = ['__total__', '__balance__']

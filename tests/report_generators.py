@@ -1,4 +1,7 @@
+from django.utils.translation import ugettext_lazy as _
+
 from slick_reporting.generator import ReportGenerator
+from .models import Client, SimpleSales, Product
 from .models import OrderLine
 
 
@@ -32,14 +35,8 @@ class CrosstabOnClient(GenericGenerator):
 
 
 #
-from django.utils.translation import ugettext_lazy as _
-
-from slick_reporting.generator import ReportGenerator
-from .models import Client, SimpleSales, Product
-
 
 class ClientTotalBalance(ReportGenerator):
-
     report_model = SimpleSales
     date_field = 'doc_date'
     group_by = 'client'

@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils.timezone import now
 
 from slick_reporting.generator import ReportGenerator
-from slick_reporting.fields import BaseReportField
+from slick_reporting.fields import BaseReportField, BalanceReportField
 from tests.report_generators import ClientTotalBalance
 from .models import Client, Product, SimpleSales, OrderLine
 from slick_reporting.registry import field_registry
@@ -186,18 +186,32 @@ class ReportTest(BaseTestData, TestCase):
 
 class TestView(BaseTestData, TestCase):
     def test_view(self):
-        reponse = self.client.get(reverse('report1'))
-        self.assertEqual(reponse.status_code, 200)
-        # import pdb; pdb.set_trace()
-        view_report_data = reponse.context['report_data']['data']
-        report_generator = ReportGenerator(report_model=OrderLine,
-                                           date_field='date_placed',  # or 'order__date_placed',
-                                           group_by='product',
-                                           columns=['name', 'sku'],
+        response = self.client.get(reverse('report1'))
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.context['report_data']['data']
+        report_generator = ReportGenerator(report_model=SimpleSales,
+                                           date_field='doc_date',
+                                           group_by='client',
+                                           columns=['slug', 'name'],
                                            time_series_pattern='monthly',
-                                           time_series_columns=['__total_quantity__'],
+                                           time_series_columns=['__total__', '__balance__']
                                            )
+        self.assertTrue(view_report_data)
         self.assertEqual(view_report_data, report_generator.get_report_data())
+
+    def test_ajax(self):
+        report_generator = ReportGenerator(report_model=SimpleSales,
+                                           date_field='doc_date',
+                                           group_by='client',
+                                           columns=['slug', 'name'],
+                                           time_series_pattern='monthly',
+                                           time_series_columns=['__total__', '__balance__']
+                                           )
+        data = report_generator.get_report_data()
+        response = self.client.get(reverse('report1'), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data['data'], data)
 
 
 class TestReportFieldRegistry(TestCase):
@@ -205,6 +219,8 @@ class TestReportFieldRegistry(TestCase):
         # unregister a field that we know exists
         field_registry.unregister('__balance__')
         self.assertNotIn('__balance__', field_registry.get_all_report_fields_names())
+        # bring it back again as later tests using it would fail
+        field_registry.register(BalanceReportField)
 
     def test_registering_new(self):
         def register():
