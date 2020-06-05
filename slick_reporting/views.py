@@ -84,7 +84,8 @@ class SampleReportView(FormView):
         Automatically instantiate a form based on details provided
         :return:
         """
-        return self.form_class or report_form_factory(self.report_model)
+        return self.form_class or report_form_factory(self.report_model, crosstab_model=self.crosstab_model,
+                                                      display_compute_reminder=self.crosstab_compute_reminder)
 
     def get_form_kwargs(self):
         """
