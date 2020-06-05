@@ -4,10 +4,12 @@ All notable changes to this project will be documented in this file.
 ## [0.2.6] - Unreleased
 ### Added
 
-- Fix a bug with time series adding one extra period.
-- Adds `is_summable` option for ReportFields, and pass it to response 
-- Enhance Time series default column verbose name
+- Adds `is_summable` option for ReportFields, and pass it to response
 - Add option to override a report fields while registering it.
+
+### Updated
+- Fix a bug with time series adding one extra period. 
+- Enhance Time series default column verbose name
 
 
 ## [0.2.5] - 2020-06-04
