@@ -1,20 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.2.6] - Unreleased
+## [0.2.6] - 2020-06-06
 ### Added
 
 - Adds `is_summable` option for ReportFields, and pass it to response
 - Add option to override a report fields while registering it.
 - Test ajax Request
 
-
-
 ### Updates and fixes
 - Fix a bug with time series adding one extra period. 
 - Fix a bug with Crosstab data not passed to `report_form_factory`
 - Enhance Time series default column verbose name
 - testing: brought back ReportField after unregister test
+- Fix Pypi package not including statics.  
 
 
 ## [0.2.5] - 2020-06-04
