@@ -199,6 +199,23 @@ class TestView(BaseTestData, TestCase):
         self.assertTrue(view_report_data)
         self.assertEqual(view_report_data, report_generator.get_report_data())
 
+    def test_view_filter(self):
+        report_generator = ReportGenerator(report_model=SimpleSales,
+                                           date_field='doc_date',
+                                           group_by='client',
+                                           columns=['slug', 'name'],
+                                           time_series_pattern='monthly',
+                                           time_series_columns=['__total__', '__balance__']
+                                           )
+        data = report_generator.get_report_data()
+        response = self.client.get(reverse('report1'), data={
+            'client_id': [self.client2.pk, self.client1.pk],
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertTrue(len(data), 2)
+        # self.assertEqual(view_report_data['data'], data)
+
     def test_ajax(self):
         report_generator = ReportGenerator(report_model=SimpleSales,
                                            date_field='doc_date',
@@ -212,6 +229,29 @@ class TestView(BaseTestData, TestCase):
         self.assertEqual(response.status_code, 200)
         view_report_data = response.json()
         self.assertEqual(view_report_data['data'], data)
+
+    def test_crosstab_report_view(self):
+        from .report_generators import ProductClientSalesMatrix
+        data = ProductClientSalesMatrix(crosstab_compute_reminder=True,
+                                        crosstab_ids=[self.client1.pk, self.client2.pk]).get_report_data()
+
+        response = self.client.get(reverse('product_crosstab_client'), data={
+            'client_id': [self.client1.pk, self.client2.pk],
+            'crosstab_compute_reminder': True,
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data['data'], data)
+
+    def test_chart_settings(self):
+        response = self.client.get(reverse('product_crosstab_client'), data={
+            'client_id': [self.client1.pk, self.client2.pk],
+            'crosstab_compute_reminder': True,
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue('pie' in data['chart_settings'][0]['id'])
+        self.assertTrue(data['chart_settings'][0]['title'], 'awesome report title')
 
 
 class TestReportFieldRegistry(TestCase):
