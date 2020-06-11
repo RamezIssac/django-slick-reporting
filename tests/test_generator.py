@@ -42,7 +42,7 @@ class MatrixTests(BaseTestData, TestCase):
         report = CrosstabOnClient(crosstab_ids=[self.client1.pk], crosstab_compute_reminder=False)
         columns = report.get_crosstab_parsed_columns()
         for col in columns:
-            self.assertTrue(col.get('is_summable', False))
+            self.assertTrue('is_summable' in col.keys(), col)
 
 
 class GeneratorReportStructureTest(TestCase):
