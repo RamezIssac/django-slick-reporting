@@ -34,6 +34,16 @@ class MatrixTests(BaseTestData, TestCase):
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 8, [x['name'] for x in columns])
 
+    def test_get_crosstab_parsed_columns(self):
+        """
+        Test important attributes are passed .
+        :return:
+        """
+        report = CrosstabOnClient(crosstab_ids=[self.client1.pk], crosstab_compute_reminder=False)
+        columns = report.get_crosstab_parsed_columns()
+        for col in columns:
+            self.assertTrue(col.get('is_summable', False))
+
 
 class GeneratorReportStructureTest(TestCase):
     def test_time_series_columns_inclusion(self):

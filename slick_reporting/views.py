@@ -146,6 +146,7 @@ class SampleReportView(FormView):
         for col in columns:
             data.append({
                 'name': col['name'],
+                'computation_field': col.get('original_name', ''),
                 'verbose_name': col['verbose_name'],
                 'visible': col.get('visible', True),
                 'type': col.get('type', 'text'),
