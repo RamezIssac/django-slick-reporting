@@ -1,5 +1,5 @@
 {% load slick_reporting_tags %}
-<table class="table .reportTable ">
+<table class="table reportTable {{ table_class|default:'' }} ">
     <thead>
 <tr>
     {% for column in table.columns %}

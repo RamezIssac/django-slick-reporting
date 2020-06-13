@@ -58,8 +58,9 @@ class BaseReportForm(object):
         helper.form_class = 'form-horizontal'
         helper.label_class = 'col-sm-2 col-md-2 col-lg-2'
         helper.field_class = 'col-sm-10 col-md-10 col-lg-10'
-        helper.form_tag = False
+        helper.form_tag = True
         helper.disable_csrf = True
+        helper.render_unmentioned_fields = True
 
         foreign_keys_map = foreign_keys_map or self.foreign_keys
 
@@ -69,21 +70,12 @@ class BaseReportForm(object):
                     Field('start_date'), css_class='col-sm-6'),
                 Column(
                     Field('end_date'), css_class='col-sm-6'),
-
                 css_class='raReportDateRange'),
             Div(css_class="mt-20", style='margin-top:20px')
         )
 
-        # if crosstab_model:
-        #     entry_point.append(Row(
-        #         Div('matrix_entities', css_class='col-sm-9'),
-        #         Div('matrix_show_other', css_class='col-sm-3')
-        #         , css_class='matrixField')
-        #     )
-
         for k in foreign_keys_map:
-            if k[:-3] != crosstab_model:
-                helper.layout.fields[1].append(Field(k))
+            helper.layout.fields[1].append(Field(k))
 
         return helper
 
@@ -105,17 +97,17 @@ def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=N
     fkeys_list = []
     fields = OrderedDict()
 
-    fields['start_date'] = forms.SplitDateTimeField(required=False, label=_('From date'),
-                                                    initial=app_settings.SLICK_REPORTING_DEFAULT_START_DATE,
-                                                    # widget=RaBootstrapDateTime(),
-                                                    input_date_formats=['%Y-%m-%d', '%Y-%m-%d'],
-                                                    input_time_formats=['%H:%M', '%H:%M:%S'],
-                                                    )
+    fields['start_date'] = forms.DateTimeField(required=False, label=_('From date'),
+                                               initial=app_settings.SLICK_REPORTING_DEFAULT_START_DATE,
+                                               widget=forms.DateTimeInput(format='%m/%d/%Y %H:%M',
+                                                                          attrs={'autocomplete': "off"}),
+                                               )
 
-    fields['end_date'] = forms.SplitDateTimeField(required=False, label=_('To  date'),
-                                                  initial=app_settings.SLICK_REPORTING_DEFAULT_END_DATE,
-                                                  # widget=RaBootstrapDateTime(),
-                                                  )
+    fields['end_date'] = forms.DateTimeField(required=False, label=_('To  date'),
+                                             initial=app_settings.SLICK_REPORTING_DEFAULT_END_DATE,
+                                             widget=forms.DateTimeInput(format='%m/%d/%Y %H:%M',
+                                                                        attrs={'autocomplete': "off"})
+                                             )
 
     for name, f_field in fkeys_map.items():
         fkeys_list.append(name)
@@ -132,6 +124,7 @@ def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=N
                     {"base_fields": fields,
                      '_fkeys': fkeys_list,
                      'foreign_keys': fkeys_map,
-                     'crosstab_model': crosstab_model
+                     'crosstab_model': crosstab_model,
+                     'crosstab_display_compute_reminder': display_compute_reminder,
                      })
     return new_form
