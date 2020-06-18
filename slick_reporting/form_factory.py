@@ -74,8 +74,15 @@ class BaseReportForm(object):
             Div(css_class="mt-20", style='margin-top:20px')
         )
 
+        # first add the crosstab model and its display reimder then the rest of the fields
+        if self.crosstab_model:
+            helper.layout.fields[1].append(Field(self.crosstab_key_name))
+            if self.crosstab_display_compute_reminder:
+                helper.layout.fields[1].append(Field('crosstab_compute_reminder'))
+
         for k in foreign_keys_map:
-            helper.layout.fields[1].append(Field(k))
+            if k != self.crosstab_key_name:
+                helper.layout.fields[1].append(Field(k))
 
         return helper
 

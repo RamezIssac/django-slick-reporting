@@ -179,10 +179,14 @@ class SampleReportView(FormView):
         :return:
         """
         time_series_columns = generator.get_time_series_parsed_columns()
+        crosstab_columns = generator.get_crosstab_parsed_columns()
         metadata = {
             'time_series_pattern': self.time_series_pattern,
             'time_series_column_names': [x['name'] for x in time_series_columns],
-            'time_series_column_verbose_names': [x['verbose_name'] for x in time_series_columns]
+            'time_series_column_verbose_names': [x['verbose_name'] for x in time_series_columns],
+            'crosstab_model': self.crosstab_model,
+            'crosstab_column_names': [x['name'] for x in crosstab_columns],
+            'crosstab_column_verbose_names': [x['verbose_name'] for x in crosstab_columns],
         }
         return metadata
 
