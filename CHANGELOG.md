@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.2.7] - 2020-07-24
+### Updates
+- Bring back crosstab capability
+- Rename `quan` to the more verbose `quantity` 
+- Minor enhancements around templates 
+
 ## [0.2.6] - 2020-06-06
 ### Added
 
