@@ -30,9 +30,19 @@ class MatrixTests(BaseTestData, TestCase):
         self.assertEqual(len(columns), 4)
 
         report = CrosstabOnClient(crosstab_ids=[self.client1.pk, self.client2.pk],
-                                  crosstab_columns=['__total_quantity__', '__balance_quan__'])
+                                  crosstab_columns=['__total_quantity__', '__balance_quantity__'])
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 8, [x['name'] for x in columns])
+
+    def test_get_crosstab_parsed_columns(self):
+        """
+        Test important attributes are passed .
+        :return:
+        """
+        report = CrosstabOnClient(crosstab_ids=[self.client1.pk], crosstab_compute_reminder=False)
+        columns = report.get_crosstab_parsed_columns()
+        for col in columns:
+            self.assertTrue('is_summable' in col.keys(), col)
 
 
 class GeneratorReportStructureTest(TestCase):

@@ -7,12 +7,12 @@ import datetime
 
 def get_first_of_this_year():
     d = datetime.datetime.today()
-    return datetime.datetime(d.year, 1, 1, 0, 0, 0, 0, pytz.timezone(settings.TIME_ZONE))
+    return datetime.datetime(d.year, 1, 1, 0, 0)
 
 
 def get_end_of_this_year():
     d = datetime.datetime.today()
-    return datetime.datetime(d.year + 1, 1, 1, 0, 0, 0, 0, pytz.timezone(settings.TIME_ZONE))
+    return datetime.datetime(d.year + 1, 1, 1, 0, 0)
 
 
 SLICK_REPORTING_DEFAULT_START_DATE = getattr(settings, '', lazy(get_first_of_this_year, datetime.datetime)())

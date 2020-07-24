@@ -13,6 +13,11 @@ def get_calculation_annotation(calculation_field, calculation_method):
 
 
 def get_foreign_keys(model):
+    """
+    Scans a model and return an Ordered Dictionary with the foreign keys found
+    :param model: the model to scan
+    :return: Ordered Dict
+    """
     from django.db import models
     fields = model._meta.get_fields()
     fkeys = OrderedDict()

@@ -57,7 +57,7 @@ class ProductTotalSales(ReportGenerator):
     report_model = SimpleSales
     date_field = 'doc_date'
     group_by = 'product'
-    columns = ['slug', 'name', '__balance__', '__balance_quan__']
+    columns = ['slug', 'name', '__balance__', '__balance_quantity__']
 
 
 class ClientList(ReportGenerator):
@@ -81,7 +81,7 @@ class ProductClientSales(ReportGenerator):
     header_report = ClientList
 
     group_by = 'product'
-    columns = ['slug', 'name', '__balance_quan__', '__balance__']
+    columns = ['slug', 'name', '__balance_quantity__', '__balance__']
 
 
 class ProductSalesMonthlySeries(ReportGenerator):
@@ -94,13 +94,13 @@ class ProductSalesMonthlySeries(ReportGenerator):
         'group_columns': ['slug', 'name'],
 
         'time_series_pattern': 'monthly',
-        'time_series_columns': ['__balance_quan__', '__balance__'],
+        'time_series_columns': ['__balance_quantity__', '__balance__'],
     }
 
     group_by = 'product'
     columns = ['slug', 'name']
     time_series_pattern = 'monthly',
-    time_series_columns = ['__balance_quan__', '__balance__']
+    time_series_columns = ['__balance_quantity__', '__balance__']
 
     chart_settings = [
         {

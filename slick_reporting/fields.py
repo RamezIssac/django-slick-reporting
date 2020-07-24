@@ -379,7 +379,7 @@ field_registry.register(FirstBalanceQTYReportField)
 
 
 class BalanceQTYReportField(BaseReportField):
-    name = '__balance_quan__'
+    name = '__balance_quantity__'
     verbose_name = _('Cumulative QTY')
     calculation_field = 'quantity'
     requires = ['__fb_quan__']
