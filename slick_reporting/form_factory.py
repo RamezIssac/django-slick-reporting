@@ -94,6 +94,17 @@ def _default_foreign_key_widget(f_field):
 
 def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=None, crosstab_model=None,
                         display_compute_reminder=True, **kwargs):
+    """
+    Create a Reprot Form based on the report_model passed
+    
+    :param model: 
+    :param fkeys_filter_func: 
+    :param foreign_key_widget_func: 
+    :param crosstab_model: 
+    :param display_compute_reminder: 
+    :param kwargs: 
+    :return: 
+    """
     foreign_key_widget_func = foreign_key_widget_func or _default_foreign_key_widget
     fkeys_filter_func = fkeys_filter_func or (lambda x: x)
 
