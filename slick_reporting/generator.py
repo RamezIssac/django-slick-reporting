@@ -382,7 +382,7 @@ class ReportGenerator(object):
                 magic_field_class = None
 
             if attr:
-                #todo Add testing here
+                # todo Add testing here
                 col_data = {'name': col,
                             'verbose_name': getattr(attr, 'verbose_name', col),
                             # 'type': 'method',
@@ -547,20 +547,17 @@ class ReportGenerator(object):
         ids_length = len(ids) - 1
         for counter, id in enumerate(ids):
             for col in report_columns:
-                # try:
                 magic_field_class = field_registry.get_field_by_name(col)
-                # except:
-                #     magic_field_class = None
-
                 output_cols.append({
                     'name': f'{col}CT{id}',
+                    'original_name': col,
                     'verbose_name': self.get_crosstab_field_verbose_name(magic_field_class, self.crosstab_model, id),
                     'ref': magic_field_class,
                     'id': id,
                     'model': self.crosstab_model,
                     'is_reminder': counter == ids_length,
                     'source': 'magic_field' if magic_field_class else '',
-                    'summable': magic_field_class.is_summable,
+                    'is_summable': magic_field_class.is_summable,
                 })
 
         return output_cols

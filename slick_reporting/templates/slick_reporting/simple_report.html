@@ -35,9 +35,9 @@
                             height="100"></canvas>
                 {% endif %}
             </div>
-            <div class="report-table"></div>
-            {% include 'slick_reporting/table.html' with table=report_data %}
-
+            <div class="report-table">
+                {% include 'slick_reporting/table.html' with table=report_data %}
+            </div>
         </div>
     </div>
 
