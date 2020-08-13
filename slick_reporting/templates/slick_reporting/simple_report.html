@@ -1,5 +1,5 @@
 {% extends 'slick_reporting/base.html' %}
-{% load crispy_forms_tags i18n %}
+{% load crispy_forms_tags i18n slick_reporting_tags %}
 
 
 {% block content %}
@@ -31,8 +31,10 @@
                 </div>
                 <div class="reportChart screenOnly" dir="ltr"></div>
                 {% if report_data.chart_settings %}
-                    <canvas id="{{ report_data.report_slug }}" class="chartsJsCanvas" width="400"
-                            height="100"></canvas>
+{#                    <canvas id="{{ report_data.report_slug }}" class="chartsJsCanvas" width="400"#}
+{#                            height="100"></canvas>#}
+                    <div id="{{ report_data.report_slug }}" data-report-chart style="width:100%; height:400px;"></div>
+
                 {% endif %}
             </div>
             <div class="report-table">
@@ -40,8 +42,7 @@
             </div>
         </div>
     </div>
-
-    {{ report_data|json_script:'report-data' }}
+    {{ report_data|serialize_to_json:'report-data' }}
 
 {% endblock %}
 {% block js_script %}
@@ -125,14 +126,14 @@
 
         function DisplayChart($this) {
             var data = value;
-            var $chart = $('canvas');
-            let chartObject = $.slick_reporting.chartsjs.createChartObject(data, $this.attr('data-chart-id'), {});
-            try {
-                myChart.destroy();
-            } catch (err) {
-                console.error(err);
-            }
-            myChart = new Chart($chart, chartObject);
+            var $chart = $('[data-report-chart]');
+            let chartObject = $.slick_reporting.highcharts.displayChart(data, $chart);
+            {#try {#}
+            {#    myChart.destroy();#}
+            {# } catch (err) {#}
+            {#    console.error(err);#}
+            {# }#}
+            {#myChart = new Chart($chart, chartObject);#}
 
             var ul = $this.parents('ul');
             //remove old active classes

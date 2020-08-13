@@ -2,6 +2,7 @@ import datetime
 
 import simplejson as json
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponse
 from django.utils.encoding import force_text
 from django.utils.functional import Promise
@@ -38,6 +39,7 @@ class SampleReportView(FormView):
     crosstab_ids = None
     crosstab_columns = None
     crosstab_compute_reminder = True
+    report_title = ''
 
     """
     A list of chart settings objects instructing front end on how to plot the data.
@@ -222,3 +224,24 @@ class SampleReportView(FormView):
             'start_date': SLICK_REPORTING_DEFAULT_START_DATE,
             'end_date': SLICK_REPORTING_DEFAULT_END_DATE
         }
+
+    def __init_subclass__(cls, **kwargs):
+        # sanity checks
+
+        chart_settings = getattr(cls, 'chart_settings', [])
+        if type(chart_settings) is not list:
+            raise ImproperlyConfigured('chart_setting should be a list.')
+
+        if chart_settings:
+            for i, chart_setting in enumerate(chart_settings):
+                cls._check_chart_setting(i, chart_setting)
+
+    @classmethod
+    def _check_chart_setting(cls, i, setting):
+        available = ['id', 'type', 'title', 'data_source', 'title_source', 'plot_total', 'stacking', 'extra']
+        if type(setting) is not dict:
+            raise ImproperlyConfigured(f'The chart_setting index {i}  should be a dictionary')
+        for key in setting.keys():
+            if key not in available:
+                raise ImproperlyConfigured(f'The Report {cls} chart_setting index {i} have an unsupported key {key}. '
+                                           f'Available Options are {available}')
