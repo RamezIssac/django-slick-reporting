@@ -16,7 +16,7 @@ class ReportFieldRegistry(object):
         :return: report_field passed
         """
         if report_field.name in self._registry and not override:
-            raise AlreadyRegistered('This field is already registered')
+            raise AlreadyRegistered(f'This field {report_field.name} is already registered {self._registry.keys()}')
 
         self._registry[report_field.name] = report_field
         return report_field
