@@ -416,7 +416,7 @@ class ReportGenerator(object):
                         f'Field "{col}" not found as an attribute to the generator class, nor as computation field, nor as a database column for the model "{model_to_use._meta.model_name}"')
 
                 col_data = {'name': col,
-                            'verbose_name': getattr(attr, 'verbose_name', col),
+                            'verbose_name': getattr(field, 'verbose_name', col),
                             'source': 'database',
                             'ref': field,
                             'type': field.get_internal_type()

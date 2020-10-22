@@ -58,7 +58,7 @@ class BaseReportForm(object):
         helper.form_class = 'form-horizontal'
         helper.label_class = 'col-sm-2 col-md-2 col-lg-2'
         helper.field_class = 'col-sm-10 col-md-10 col-lg-10'
-        helper.form_tag = True
+        helper.form_tag = False
         helper.disable_csrf = True
         helper.render_unmentioned_fields = True
 

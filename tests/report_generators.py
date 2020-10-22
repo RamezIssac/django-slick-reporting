@@ -13,7 +13,7 @@ class GenericGenerator(ReportGenerator):
     # we group the sales per client , we display columns slug and title (of the `base_model` defied above
     # and we add the magic field `__balance__` we compute the client balance.
     group_by = 'client'
-    columns = ['slug', 'name', '__balance__']
+    columns = ['slug', 'name']
 
 
 class GeneratorWithAttrAsColumn(GenericGenerator):
