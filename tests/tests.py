@@ -253,6 +253,10 @@ class TestView(BaseTestData, TestCase):
         self.assertTrue('pie' in data['chart_settings'][0]['id'])
         self.assertTrue(data['chart_settings'][0]['title'], 'awesome report title')
 
+    def _test_column_names_are_always_strings(self):
+        # todo
+        pass
+
 
 class TestReportFieldRegistry(TestCase):
     def test_unregister(self):
@@ -302,9 +306,10 @@ class TestReportFieldRegistry(TestCase):
     def test_creating_a_report_field_on_the_fly(self):
         from django.db.models import Sum
         name = BaseReportField.create(Sum, 'value', '__sum_of_value__')
-        self.assertIn(name, field_registry.get_all_report_fields_names())
+        self.assertNotIn(name, field_registry.get_all_report_fields_names())
+
 
     def test_creating_a_report_field_on_the_fly_wo_name(self):
         from django.db.models import Sum
         name = BaseReportField.create(Sum, 'value')
-        self.assertIn(name, field_registry.get_all_report_fields_names())
+        self.assertNotIn(name, field_registry.get_all_report_fields_names())

@@ -7,6 +7,7 @@ from inspect import isclass
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
 from django.db.models import Q
 
+from .fields import BaseReportField
 from .helpers import get_field_from_query_text
 from .registry import field_registry
 
@@ -375,9 +376,16 @@ class ReportGenerator(object):
 
         self.parsed_columns = []
         for col in self.columns:
-            attr = getattr(self, col, None)
+            magic_field_class = None
+            attr = None
+
+            if type(col) is str:
+                attr = getattr(self, col, None)
+            elif issubclass(col, BaseReportField):
+                magic_field_class = col
+
             try:
-                magic_field_class = field_registry.get_field_by_name(col)
+                magic_field_class = magic_field_class or field_registry.get_field_by_name(col)
             except KeyError:
                 magic_field_class = None
 
@@ -395,7 +403,7 @@ class ReportGenerator(object):
                     #     These are placeholder not real computation field
                     continue
 
-                col_data = {'name': col,
+                col_data = {'name': magic_field_class.name,
                             'verbose_name': magic_field_class.verbose_name,
                             'source': 'magic_field',
                             'ref': magic_field_class,

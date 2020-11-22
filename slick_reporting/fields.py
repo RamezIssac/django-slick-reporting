@@ -68,8 +68,7 @@ class BaseReportField(object):
             'calculation_field': field,
             'calculation_method': method
         })
-        cls._field_registry.register(report_klass)
-        return name
+        return report_klass
 
     def __init__(self, plus_side_q=None, minus_side_q=None,
                  report_model=None,
