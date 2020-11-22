@@ -421,7 +421,7 @@ class ReportGenerator(object):
                         field = model_to_use._meta.get_field(col)
                 except FieldDoesNotExist:
                     raise FieldDoesNotExist(
-                        f'Field "{col}" not found as an attribute to the generator class, nor as computation field, nor as a database column for the model "{model_to_use._meta.model_name}"')
+                        f'Field "{col}" not found either as an attribute to the generator class,a computation field, or a database column for the model "{model_to_use._meta.model_name}"')
 
                 col_data = {'name': col,
                             'verbose_name': getattr(field, 'verbose_name', col),

@@ -12,6 +12,7 @@ from slick_reporting.fields import BaseReportField, BalanceReportField
 from tests.report_generators import ClientTotalBalance
 from .models import Client, Product, SimpleSales, OrderLine
 from slick_reporting.registry import field_registry
+from .views import SampleReportView
 
 User = get_user_model()
 SUPER_LOGIN = dict(username='superlogin', password='password')
@@ -257,6 +258,13 @@ class TestView(BaseTestData, TestCase):
         # todo
         pass
 
+    def test_error_on_missing_date_field(self):
+        def test_function():
+            class TotalClientSales(SampleReportView):
+                report_model = SimpleSales
+
+        self.assertRaises(TypeError, test_function)
+
 
 class TestReportFieldRegistry(TestCase):
     def test_unregister(self):
@@ -307,7 +315,6 @@ class TestReportFieldRegistry(TestCase):
         from django.db.models import Sum
         name = BaseReportField.create(Sum, 'value', '__sum_of_value__')
         self.assertNotIn(name, field_registry.get_all_report_fields_names())
-
 
     def test_creating_a_report_field_on_the_fly_wo_name(self):
         from django.db.models import Sum

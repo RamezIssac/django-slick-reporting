@@ -29,6 +29,13 @@ def get_foreign_keys(model):
 
 
 def get_field_from_query_text(path, model):
+    """
+    return the field of a query text
+    `modelA__modelB__foo_field` would return foo_field on modelsB
+    :param path:
+    :param model:
+    :return:
+    """
     relations = path.split('__')
     _rel = model
     field = None
