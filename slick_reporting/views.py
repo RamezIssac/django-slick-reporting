@@ -227,4 +227,9 @@ class SampleReportView(FormView):
         date_field = getattr(cls, 'date_field', '')
         if not date_field:
             raise TypeError(f'`date_field` is not set on {cls}')
+
+        # sanity check, raises error if the columns or date fields is not mapped
+        cls.report_generator_class.check_columns([cls.date_field], False, cls.report_model)
+        cls.report_generator_class.check_columns(cls.columns, cls.group_by, cls.report_model)
+
         super().__init_subclass__()

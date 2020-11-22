@@ -368,19 +368,27 @@ class ReportGenerator(object):
         data = [get_record_data(obj, all_columns) for obj in main_queryset]
         return data
 
-    def _parse(self):
+    @classmethod
+    def check_columns(cls, columns, group_by, report_model, ):
+        """
+        Check and parse the columns, throw errors in case an item in the columns cant not identified
+        :param columns: List of columns
+        :param group_by: group by field if any
+        :param report_model: the report model
+        :return: List of dict, each dict contains relevant data to the respective field in `columns`
+        """
+        group_by_model = None
+        if group_by:
+            group_by_field = [x for x in report_model._meta.fields if x.name == group_by][0]
+            group_by_model = group_by_field.related_model
 
-        if self.group_by:
-            self.group_by_field = [x for x in self.report_model._meta.fields if x.name == self.group_by][0]
-            self.group_by_model = self.group_by_field.related_model
-
-        self.parsed_columns = []
-        for col in self.columns:
+        parsed_columns = []
+        for col in columns:
             magic_field_class = None
             attr = None
 
             if type(col) is str:
-                attr = getattr(self, col, None)
+                attr = getattr(cls, col, None)
             elif issubclass(col, BaseReportField):
                 magic_field_class = col
 
@@ -412,7 +420,7 @@ class ReportGenerator(object):
                             }
             else:
                 # A database field
-                model_to_use = self.group_by_model if self.group_by else self.report_model
+                model_to_use = group_by_model if group_by else report_model
                 try:
                     if '__' in col:
                         # A traversing link order__client__email
@@ -421,7 +429,8 @@ class ReportGenerator(object):
                         field = model_to_use._meta.get_field(col)
                 except FieldDoesNotExist:
                     raise FieldDoesNotExist(
-                        f'Field "{col}" not found either as an attribute to the generator class,a computation field, or a database column for the model "{model_to_use._meta.model_name}"')
+                        f'Field "{col}" not found either as an attribute to the generator class {cls}, '
+                        f'or a computation field, or a database column for the model "{model_to_use}"')
 
                 col_data = {'name': col,
                             'verbose_name': getattr(field, 'verbose_name', col),
@@ -429,11 +438,14 @@ class ReportGenerator(object):
                             'ref': field,
                             'type': field.get_internal_type()
                             }
-            self.parsed_columns.append(col_data)
+            parsed_columns.append(col_data)
+        return parsed_columns
 
-            self._parsed_columns = list(self.parsed_columns)
-            self._time_series_parsed_columns = self.get_time_series_parsed_columns()
-            self._crosstab_parsed_columns = self.get_crosstab_parsed_columns()
+    def _parse(self):
+        self.parsed_columns = self.check_columns(self.columns, self.group_by, self.report_model)
+        self._parsed_columns = list(self.parsed_columns)
+        self._time_series_parsed_columns = self.get_time_series_parsed_columns()
+        self._crosstab_parsed_columns = self.get_crosstab_parsed_columns()
 
     def get_database_columns(self):
         return [col['name'] for col in self.parsed_columns if col['source'] == 'database']
@@ -475,7 +487,13 @@ class ReportGenerator(object):
 
         for dt in series:
             for col in cols:
-                magic_field_class = field_registry.get_field_by_name(col)
+                magic_field_class = None
+
+                if type(col) is str:
+                    magic_field_class = field_registry.get_field_by_name(col)
+                elif issubclass(col, BaseReportField):
+                    magic_field_class = col
+
                 _values.append({
                     'name': col + 'TS' + dt[1].strftime('%Y%m%d'),
                     'original_name': col,
@@ -555,7 +573,12 @@ class ReportGenerator(object):
         ids_length = len(ids) - 1
         for counter, id in enumerate(ids):
             for col in report_columns:
-                magic_field_class = field_registry.get_field_by_name(col)
+                magic_field_class = None
+                if type(col) is str:
+                    magic_field_class = field_registry.get_field_by_name(col)
+                elif issubclass(col, BaseReportField):
+                    magic_field_class = col
+
                 output_cols.append({
                     'name': f'{col}CT{id}',
                     'original_name': col,

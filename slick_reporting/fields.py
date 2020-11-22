@@ -47,13 +47,14 @@ class BaseReportField(object):
     _debit_and_credit = True
 
     @classmethod
-    def create(cls, method, field, name=None, verbose_name=None):
+    def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
         """
         Creates a ReportField class on the fly
-        :param method:
-        :param field:
-        :param name:
-        :param verbose_name:
+        :param method: The computation Method to be used
+        :param field: The field on which the computation would occur
+        :param name: a name to refer to this field else where
+        :param verbose_name: Verbose name
+        :param is_summable:
         :return:
         """
         if not name:
@@ -66,7 +67,8 @@ class BaseReportField(object):
             'name': name,
             'verbose_name': verbose_name,
             'calculation_field': field,
-            'calculation_method': method
+            'calculation_method': method,
+            'is_summable': is_summable,
         })
         return report_klass
 
