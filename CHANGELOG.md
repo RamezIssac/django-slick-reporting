@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.2.9] - 2020-10-22
+### Updated
+- Fixed an issue getting a db field verbose column name
+- Fixed an issue with the report demo page's filter button not working correctly.
+
+## [0.2.8] - 2020-10-05
+### Updated
+- Fixed an error with ManyToOne Relation not being able to 
+  get its verbose name
+
+
 ## [0.2.7] - 2020-07-24
 ### Updates
 - Bring back crosstab capability

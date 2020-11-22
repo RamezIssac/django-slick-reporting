@@ -8,7 +8,7 @@ from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import get_foreign_keys
 from .models import OrderLine
 
-from .report_generators import GeneratorWithAttrAsColumn, CrosstabOnClient
+from .report_generators import GeneratorWithAttrAsColumn, CrosstabOnClient, GenericGenerator
 
 from .tests import BaseTestData
 from .models import SimpleSales
@@ -89,6 +89,11 @@ class GeneratorReportStructureTest(TestCase):
                                  )
 
         self.assertTrue(report._report_fields_dependencies)
+
+    def test_db_field_column_verbose_name(self):
+        report = GenericGenerator()
+        field_list = report.get_list_display_columns()
+        self.assertEqual(field_list[0]['verbose_name'], 'Client Slug')
 
 
 # test that columns are a straight forward list

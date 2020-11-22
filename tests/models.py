@@ -16,7 +16,7 @@ class Product(models.Model):
 
 
 class Client(models.Model):
-    slug = models.CharField(max_length=200, verbose_name=_('Slug'))
+    slug = models.CharField(max_length=200, verbose_name=_('Client Slug'))
 
     name = models.CharField(max_length=200, verbose_name=_('Name'))
     email = models.EmailField(blank=True)
