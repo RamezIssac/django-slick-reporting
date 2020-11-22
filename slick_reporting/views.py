@@ -19,7 +19,7 @@ class SampleReportView(FormView):
     time_series_pattern = ''
     time_series_columns = None
 
-    date_field = 'doc_date'
+    date_field = None
 
     swap_sign = False
 
@@ -222,3 +222,14 @@ class SampleReportView(FormView):
             'start_date': SLICK_REPORTING_DEFAULT_START_DATE,
             'end_date': SLICK_REPORTING_DEFAULT_END_DATE
         }
+
+    def __init_subclass__(cls) -> None:
+        date_field = getattr(cls, 'date_field', '')
+        if not date_field:
+            raise TypeError(f'`date_field` is not set on {cls}')
+
+        # sanity check, raises error if the columns or date fields is not mapped
+        cls.report_generator_class.check_columns([cls.date_field], False, cls.report_model)
+        cls.report_generator_class.check_columns(cls.columns, cls.group_by, cls.report_model)
+
+        super().__init_subclass__()
