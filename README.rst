@@ -74,7 +74,7 @@ You can use ``SampleReportView`` *which is an enhanced subclass of ``django.view
         # columns = ['title', '__total_quantity__', '__total__']
 
     # in your urls.py
-    path('url-to-report', TotalProductSales.as_view())
+    path('path-to-report', TotalProductSales.as_view())
 
 This will return a page, with a table looking like
 
@@ -213,4 +213,4 @@ If you like this package, chances are you may like those packages too!
 
 `Django Ra ERP Framework <https://github.com/ra-systems/RA>`_ A framework to build business solutions with ease.
 
-If you find this project useful or proimosing , You can support us by a github ⭐
+If you find this project useful or promising , You can support us by a github ⭐

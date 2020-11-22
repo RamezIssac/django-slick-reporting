@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2020-11-23
+
+- Ad Sanity checks against incorrect entries in columns or date_field
+- Add support to create ReportField on the fly in all report types
+- Enhance exception verbosity.  
+- Removed `doc_date` field reference .
+
 ## [0.2.9] - 2020-10-22
 ### Updated
 - Fixed an issue getting a db field verbose column name
