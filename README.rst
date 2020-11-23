@@ -43,11 +43,15 @@ Use the package manager `pip <https://pip.pypa.io/en/stable/>`_ to install djang
 Usage
 -----
 
-**From high Level**,
+So you have a model that contains data, let's call it `MySalesItems`
 
-You can use ``SampleReportView`` *which is an enhanced subclass of ``django.views.generic.FormView``* like this
+You can simply use a code like this
 
 .. code-block:: python
+
+    # in your urls.py
+    path('path-to-report', TotalProductSales.as_view())
+
 
     # in views.py
     from django.db.models import Sum
@@ -56,37 +60,31 @@ You can use ``SampleReportView`` *which is an enhanced subclass of ``django.view
 
     class TotalProductSales(SampleReportView):
 
-        # The model where you have the data
         report_model = MySalesItems
-
-        # the main date to use if date filter is needed
         date_field = 'date_placed'
-        # date_field support traversing, you can
-        # date_field = 'order__date_placed'
-
-        # A foreign key to group calculation on
         group_by = 'product'
+        columns = ['title',
+                    BaseReportField.create(Sum, 'quantity') ,
+                    BaseReportField.create(Sum, 'value', name='sum__value) ]
 
-        # The columns you want to display , `quantity` and `value` are fields on `MySalesItem` model.
-        columns = ['title', BaseReportField.create(Sum, 'quantity') , BaseReportField.create(Sum, 'value') ]
+        chart_settings = [{
+            'type': 'column',
+            'data_source': ['sum__value'],
+            'plot_total': False,
+            'title_source': 'title',
+            'title': _('Detailed Columns'),
 
-        # Another way making use of the built-in Report Fields which is identical to the above
-        # columns = ['title', '__total_quantity__', '__total__']
+        }, ]
 
-    # in your urls.py
-    path('path-to-report', TotalProductSales.as_view())
 
-This will return a page, with a table looking like
+To get something like this
 
-+-----------+----------------+-------------+
-| Product   | Total Quantity | Total Value |
-+-----------+----------------+-------------+
-| Product 1 | 8              | 120         |
-+-----------+----------------+-------------+
-| Product 2 | 13             | 240         |
-+-----------+----------------+-------------+
+.. image:: https://i.ibb.co/SvxTM23/Selection-294.png
+    :target: https://i.ibb.co/SvxTM23/Selection-294.png
+    :alt: Shipped in View Page
 
-You can also do a monthly time series :
+
+You can do a monthly time series :
 
 
 .. code-block:: python
