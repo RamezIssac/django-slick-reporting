@@ -7,7 +7,7 @@ from inspect import isclass
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
 from django.db.models import Q
 
-from .fields import BaseReportField
+from .fields import SlickReportField
 from .helpers import get_field_from_query_text
 from .registry import field_registry
 
@@ -266,7 +266,7 @@ class ReportGenerator(object):
         return filters
 
     def _prepare_report_dependencies(self):
-        from .fields import BaseReportField
+        from .fields import SlickReportField
         all_columns = (
             ('normal', self._parsed_columns),
             ('time_series', self._time_series_parsed_columns),
@@ -276,7 +276,7 @@ class ReportGenerator(object):
             for col_data in window_cols:
                 klass = col_data['ref']
 
-                if isclass(klass) and issubclass(klass, BaseReportField):
+                if isclass(klass) and issubclass(klass, SlickReportField):
                     dependencies_names = klass.get_full_dependency_list()
 
                     # check if any of this dependencies is on the report
@@ -291,7 +291,7 @@ class ReportGenerator(object):
                 name = col_data['name']
 
                 # if column has a dependency then skip it
-                if not (isclass(klass) and issubclass(klass, BaseReportField)):
+                if not (isclass(klass) and issubclass(klass, SlickReportField)):
                     continue
                 if self._report_fields_dependencies[window].get(name, False):
                     continue
@@ -389,7 +389,7 @@ class ReportGenerator(object):
 
             if type(col) is str:
                 attr = getattr(cls, col, None)
-            elif issubclass(col, BaseReportField):
+            elif issubclass(col, SlickReportField):
                 magic_field_class = col
 
             try:
@@ -491,7 +491,7 @@ class ReportGenerator(object):
 
                 if type(col) is str:
                     magic_field_class = field_registry.get_field_by_name(col)
-                elif issubclass(col, BaseReportField):
+                elif issubclass(col, SlickReportField):
                     magic_field_class = col
 
                 _values.append({
@@ -576,7 +576,7 @@ class ReportGenerator(object):
                 magic_field_class = None
                 if type(col) is str:
                     magic_field_class = field_registry.get_field_by_name(col)
-                elif issubclass(col, BaseReportField):
+                elif issubclass(col, SlickReportField):
                     magic_field_class = col
 
                 output_cols.append({

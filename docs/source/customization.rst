@@ -15,7 +15,7 @@ then for each report_model record, the ReportGenerator again asks each Computati
 
 1. View Customization
 ---------------------
-The SampleReportView is a wrapper around FormView. It
+The SlickReportView is a wrapper around FormView. It
 
 1. Passes the needed reporting attributes to the ReportGenerator and get the results into the context.
 2. Work on GET as well as on POST.
