@@ -1,8 +1,8 @@
-from slick_reporting.views import SampleReportView
+from slick_reporting.views import SlickReportView
 from .models import SimpleSales
 
 
-class MonthlyProductSales(SampleReportView):
+class MonthlyProductSales(SlickReportView):
     report_model = SimpleSales
     date_field = 'doc_date'
     group_by = 'client'
@@ -11,7 +11,7 @@ class MonthlyProductSales(SampleReportView):
     time_series_columns = ['__total__', '__balance__']
 
 
-class ProductClientSalesMatrix(SampleReportView):
+class ProductClientSalesMatrix(SlickReportView):
     report_title = 'awesome report title'
     report_model = SimpleSales
     date_field = 'doc_date'
