@@ -8,7 +8,7 @@ from .helpers import get_calculation_annotation
 from .registry import field_registry
 
 
-class BaseReportField(object):
+class SlickReportField(object):
     """
     Computation field responsible for making the calculation unit
     """
@@ -63,7 +63,7 @@ class BaseReportField(object):
             assert name not in cls._field_registry.get_all_report_fields_names()
 
         verbose_name = verbose_name or f'{method.name} {field}'
-        report_klass = type(f'ReportField_{name}', (BaseReportField,), {
+        report_klass = type(f'ReportField_{name}', (SlickReportField,), {
             'name': name,
             'verbose_name': verbose_name,
             'calculation_field': field,
@@ -76,7 +76,7 @@ class BaseReportField(object):
                  report_model=None,
                  qs=None,
                  calculation_field=None, calculation_method=None, date_field='', group_by=None):
-        super(BaseReportField, self).__init__()
+        super(SlickReportField, self).__init__()
         self.date_field = date_field
         self.report_model = self.report_model or report_model
         self.calculation_field = calculation_field if calculation_field else self.calculation_field
@@ -296,7 +296,7 @@ class BaseReportField(object):
         return f'{cls.verbose_name} {date_period[0].strftime(dt_format)} - {date_period[1].strftime(dt_format)}'
 
 
-class FirstBalanceField(BaseReportField):
+class FirstBalanceField(SlickReportField):
     name = '__fb__'
     verbose_name = _('first balance')
 
@@ -312,7 +312,7 @@ class FirstBalanceField(BaseReportField):
 field_registry.register(FirstBalanceField)
 
 
-class TotalReportField(BaseReportField):
+class TotalReportField(SlickReportField):
     name = '__total__'
     verbose_name = _('Sum of value')
     requires = ['__debit__', '__credit__']
@@ -321,7 +321,7 @@ class TotalReportField(BaseReportField):
 field_registry.register(TotalReportField)
 
 
-class BalanceReportField(BaseReportField):
+class BalanceReportField(SlickReportField):
     name = '__balance__'
     verbose_name = _('Cumulative Total')
     requires = ['__fb__']
@@ -337,7 +337,7 @@ class BalanceReportField(BaseReportField):
 field_registry.register(BalanceReportField)
 
 
-class CreditReportField(BaseReportField):
+class CreditReportField(SlickReportField):
     name = '__credit__'
     verbose_name = _('Credit')
 
@@ -348,7 +348,7 @@ class CreditReportField(BaseReportField):
 field_registry.register(CreditReportField)
 
 
-class DebitReportField(BaseReportField):
+class DebitReportField(SlickReportField):
     name = '__debit__'
     verbose_name = _('Debit')
 
@@ -359,7 +359,7 @@ class DebitReportField(BaseReportField):
 field_registry.register(DebitReportField)
 
 
-class TotalQTYReportField(BaseReportField):
+class TotalQTYReportField(SlickReportField):
     name = '__total_quantity__'
     verbose_name = _('Total QTY')
     calculation_field = 'quantity'
@@ -379,7 +379,7 @@ class FirstBalanceQTYReportField(FirstBalanceField):
 field_registry.register(FirstBalanceQTYReportField)
 
 
-class BalanceQTYReportField(BaseReportField):
+class BalanceQTYReportField(SlickReportField):
     name = '__balance_quantity__'
     verbose_name = _('Cumulative QTY')
     calculation_field = 'quantity'

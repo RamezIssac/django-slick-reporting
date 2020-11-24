@@ -8,11 +8,11 @@ from django.urls import reverse
 from django.utils.timezone import now
 
 from slick_reporting.generator import ReportGenerator
-from slick_reporting.fields import BaseReportField, BalanceReportField
+from slick_reporting.fields import SlickReportField, BalanceReportField
 from tests.report_generators import ClientTotalBalance
 from .models import Client, Product, SimpleSales, OrderLine
 from slick_reporting.registry import field_registry
-from .views import SampleReportView
+from .views import SlickReportView
 
 User = get_user_model()
 SUPER_LOGIN = dict(username='superlogin', password='password')
@@ -260,7 +260,7 @@ class TestView(BaseTestData, TestCase):
 
     def test_error_on_missing_date_field(self):
         def test_function():
-            class TotalClientSales(SampleReportView):
+            class TotalClientSales(SlickReportView):
                 report_model = SimpleSales
 
         self.assertRaises(TypeError, test_function)
@@ -276,7 +276,7 @@ class TestReportFieldRegistry(TestCase):
 
     def test_registering_new(self):
         def register():
-            class ReportFieldWDuplicatedName(BaseReportField):
+            class ReportFieldWDuplicatedName(SlickReportField):
                 name = '__total_field__'
                 calculation_field = 'field'
 
@@ -287,7 +287,7 @@ class TestReportFieldRegistry(TestCase):
 
     def test_already_registered(self):
         def register():
-            class ReportFieldWDuplicatedName(BaseReportField):
+            class ReportFieldWDuplicatedName(SlickReportField):
                 name = '__total__'
 
             field_registry.register(ReportFieldWDuplicatedName)
@@ -313,10 +313,10 @@ class TestReportFieldRegistry(TestCase):
 
     def test_creating_a_report_field_on_the_fly(self):
         from django.db.models import Sum
-        name = BaseReportField.create(Sum, 'value', '__sum_of_value__')
+        name = SlickReportField.create(Sum, 'value', '__sum_of_value__')
         self.assertNotIn(name, field_registry.get_all_report_fields_names())
 
     def test_creating_a_report_field_on_the_fly_wo_name(self):
         from django.db.models import Sum
-        name = BaseReportField.create(Sum, 'value')
+        name = SlickReportField.create(Sum, 'value')
         self.assertNotIn(name, field_registry.get_all_report_fields_names())

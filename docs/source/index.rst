@@ -19,15 +19,15 @@ To install django-slick-reporting:
 Quickstart
 ----------
 
-You can start by using ``SampleReportView`` which is a subclass of ``django.views.generic.FormView``
+You can start by using ``SlickReportView`` which is a subclass of ``django.views.generic.FormView``
 
 .. code-block:: python
 
     # in views.py
-    from slick_reporting.views import SampleReportView
+    from slick_reporting.views import SlickReportView
     from .models import MySalesItems
 
-    class MonthlyProductSales(SampleReportView):
+    class MonthlyProductSales(SlickReportView):
         # The model where you have the data
         report_model = MySalesItems
 

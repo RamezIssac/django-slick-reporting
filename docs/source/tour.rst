@@ -43,16 +43,16 @@ This can be written like this
 .. code-block:: python
 
     # in your views.py
-    from slick_reporting.views import SampleReportView
+    from slick_reporting.views import SlickReportView
 
-    class TransactionsReport(SampleReportView):
+    class TransactionsReport(SlickReportView):
         report_model = MySalesItem
         columns = ['order_date', 'product__name' , 'client__name', 'quantity', 'price', 'value]
 
     # in your urls.py
     path('to-report', TransactionsReport.as_view())
 
-Worth Noting here that the ``SampleReportView`` calls a form generator which return a form containing
+Worth Noting here that the ``SlickReportView`` calls a form generator which return a form containing
 all foreign keys in the report_model + start and end date filter.
 
 2. Group By report
@@ -72,7 +72,7 @@ which can be written like this:
 
 .. code-block:: python
 
-        class TotalQuanAndValueReport(SampleReportView):
+        class TotalQuanAndValueReport(SlickReportView):
             report_model = MySalesItem
             group_by = 'product'
             columns = ['name', '__total_quantity__', '__total__' ]
@@ -99,7 +99,7 @@ can be written like this
 
 .. code-block:: python
 
-        class TotalQuantityMonthly(SampleReportView):
+        class TotalQuantityMonthly(SlickReportView):
             report_model = MySalesItem
             group_by = 'product'
             columns = ['name', 'sku']
@@ -128,7 +128,7 @@ Which can be written like this
 
 .. code-block:: python
 
-    class CrosstabProductClientValue(SampleReportView):
+    class CrosstabProductClientValue(SlickReportView):
             report_model = MySalesItem
             group_by = 'product'
             columns = ['name', 'sku']
@@ -150,11 +150,11 @@ Which can be written like this
 Charts
 -------
 
-To create a report we need to a dictionary to a ``chart_settings`` to the SampleReportView.
+To create a report we need to a dictionary to a ``chart_settings`` to the SlickReportView.
 
 .. code-block:: python
 
-    class MonthlySalesReport(SampleReportView):
+    class MonthlySalesReport(SlickReportView):
         # ....
 
         charts_settings = [{
@@ -170,8 +170,8 @@ To create a report we need to a dictionary to a ``chart_settings`` to the Sample
 
 * type: what kind of chart it is: Possible options are bar, pie, line and others subject of the underlying charting engine.
   Hats off to : `Charts.js <https://www.chartjs.org/>`_.
-* data_source: Field name of containing the numbers we want to plot.
-* title_source: Field name of the labels of the data_source
+* data_source: Field name containing the numbers we want to plot.
+* title_source: Field name containing labels of the data_source
 * title: the Chart title. Defaults to the `report_title`.
 * plot_total if True the chart will plot the total of the columns. Useful with time series and crosstab reports
 

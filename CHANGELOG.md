@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2020-11-24 [BREAKING]
+
+- Renamed `SampleReportView` to `SlickReportView`
+- Renamed `BaseReportField` to `SlickReportField`
+- Added `SlickReportViewBase` leaving sanity checks for the `SlickReportView`
+
 ## [0.3.0] - 2020-11-23
 
 - Add Sanity checks against incorrect entries in columns or date_field

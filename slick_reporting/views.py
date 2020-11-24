@@ -12,7 +12,7 @@ from .form_factory import report_form_factory
 from .generator import ReportGenerator
 
 
-class SampleReportView(FormView):
+class SlickReportViewBase(FormView):
     group_by = None
     columns = None
 
@@ -222,6 +222,9 @@ class SampleReportView(FormView):
             'start_date': SLICK_REPORTING_DEFAULT_START_DATE,
             'end_date': SLICK_REPORTING_DEFAULT_END_DATE
         }
+
+
+class SlickReportView(SlickReportViewBase):
 
     def __init_subclass__(cls) -> None:
         date_field = getattr(cls, 'date_field', '')

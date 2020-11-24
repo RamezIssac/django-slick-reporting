@@ -55,17 +55,17 @@ You can simply use a code like this
 
     # in views.py
     from django.db.models import Sum
-    from slick_reporting.views import SampleReportView
+    from slick_reporting.views import SlickReportView
     from .models import MySalesItems
 
-    class TotalProductSales(SampleReportView):
+    class TotalProductSales(SlickReportView):
 
         report_model = MySalesItems
         date_field = 'date_placed'
         group_by = 'product'
         columns = ['title',
-                    BaseReportField.create(Sum, 'quantity') ,
-                    BaseReportField.create(Sum, 'value', name='sum__value) ]
+                    SlickReportField.create(Sum, 'quantity') ,
+                    SlickReportField.create(Sum, 'value', name='sum__value) ]
 
         chart_settings = [{
             'type': 'column',
@@ -90,10 +90,10 @@ You can do a monthly time series :
 .. code-block:: python
 
     # in views.py
-    from slick_reporting.views import SampleReportView
+    from slick_reporting.views import SlickReportView
     from .models import MySalesItems
 
-    class MonthlyProductSales(SampleReportView):
+    class MonthlyProductSales(SlickReportView):
         report_model = MySalesItems
         date_field = 'date_placed'
         group_by = 'product'
@@ -124,7 +124,7 @@ This would return a table looking something like this:
 
 **On a low level**
 
-You can interact with the `ReportGenerator` using same syntax as used with the `SampleReportView` .
+You can interact with the `ReportGenerator` using same syntax as used with the `SlickReportView` .
 
 .. code-block:: python
 
