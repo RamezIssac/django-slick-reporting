@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 - Bring back calculateTotalOnObjectArray (#11)
 - Bypassing default ordering by when generating the report (#10) 
+- Fix in dates in template and view 
 
 
 ## [0.4.0] - 2020-11-24 [BREAKING]

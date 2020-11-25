@@ -117,6 +117,8 @@ class SlickReportViewBase(FormView):
             self.crosstab_compute_reminder = self.form.get_crosstab_compute_reminder()
 
         return self.report_generator_class(self.report_model,
+                                           start_date=self.form.cleaned_data['start_date'],
+                                           end_date=self.form.cleaned_data['end_date'],
                                            q_filters=q_filters,
                                            kwargs_filters=kw_filters,
                                            date_field=self.date_field,
