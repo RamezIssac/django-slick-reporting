@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2020-11-26
+
+- Bring back calculateTotalOnObjectArray (#11)
+- Bypassing default ordering by when generating the report (#10) 
+
+
 ## [0.4.0] - 2020-11-24 [BREAKING]
 
 - Renamed `SampleReportView` to `SlickReportView`
