@@ -50,14 +50,14 @@ class BaseTestData:
 
         SimpleSales.objects.create(
             doc_date=datetime.datetime(year, 1, 2), client=cls.client1,
-            product=cls.product1, quantity=10, price=10)
+            product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 1, 5))
         SimpleSales.objects.create(
             doc_date=datetime.datetime(year, 2, 2), client=cls.client1,
-            product=cls.product1, quantity=10, price=10)
+            product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 2, 3))
 
         SimpleSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2), client=cls.client1,
-            product=cls.product1, quantity=10, price=10)
+            product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 3, 3))
 
         # client 2
         SimpleSales.objects.create(

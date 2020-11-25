@@ -164,6 +164,7 @@ class ReportGenerator(object):
         self.crosstab_compute_reminder = self.crosstab_compute_reminder if crosstab_compute_reminder is None else crosstab_compute_reminder
 
         main_queryset = main_queryset or self.report_model.objects
+        main_queryset = main_queryset.order_by()
 
         self.columns = self.columns or columns or []
         self.group_by = self.group_by or group_by
