@@ -117,14 +117,14 @@ def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=N
 
     fields['start_date'] = forms.DateTimeField(required=False, label=_('From date'),
                                                initial=app_settings.SLICK_REPORTING_DEFAULT_START_DATE,
-                                               widget=forms.DateTimeInput(format='%m/%d/%Y %H:%M',
-                                                                          attrs={'autocomplete': "off"}),
+                                               widget=forms.DateTimeInput(
+                                                   attrs={'autocomplete': "off"}),
                                                )
 
     fields['end_date'] = forms.DateTimeField(required=False, label=_('To  date'),
                                              initial=app_settings.SLICK_REPORTING_DEFAULT_END_DATE,
-                                             widget=forms.DateTimeInput(format='%m/%d/%Y %H:%M',
-                                                                        attrs={'autocomplete': "off"})
+                                             widget=forms.DateTimeInput(
+                                                 attrs={'autocomplete': "off"})
                                              )
 
     for name, f_field in fkeys_map.items():

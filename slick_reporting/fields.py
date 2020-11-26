@@ -153,7 +153,7 @@ class SlickReportField(object):
 
     def get_queryset(self):
         queryset = self.report_model.objects
-        return queryset
+        return queryset.order_by()
 
     def get_annotation_name(self):
         """
