@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.4.2] - 2020-11-29
+
+- Properly initialize Datepicker (#12 @squio)
+- Use previous date-range for initialization if it exists 
+
+
 ## [0.4.1] - 2020-11-26
 
 - Bring back calculateTotalOnObjectArray (#11)
@@ -28,8 +34,7 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.8] - 2020-10-05
 ### Updated
-- Fixed an error with ManyToOne Relation not being able to 
-  get its verbose name
+- Fixed an error with ManyToOne Relation not being able to get its verbose name (@mswastik)
 
 
 ## [0.2.7] - 2020-07-24
