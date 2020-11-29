@@ -65,7 +65,7 @@ You can simply use a code like this
         group_by = 'product'
         columns = ['title',
                     SlickReportField.create(Sum, 'quantity') ,
-                    SlickReportField.create(Sum, 'value', name='sum__value) ]
+                    SlickReportField.create(Sum, 'value', name='sum__value') ]
 
         chart_settings = [{
             'type': 'column',
