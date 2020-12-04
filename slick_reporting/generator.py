@@ -5,7 +5,7 @@ import logging
 from inspect import isclass
 
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
-from django.db.models import Q
+from django.db.models import Q, ForeignKey
 
 from .fields import SlickReportField
 from .helpers import get_field_from_query_text
@@ -227,8 +227,12 @@ class ReportGenerator(object):
 
             else:
                 self.main_queryset = self._apply_queryset_options(main_queryset)
-                ids = self.main_queryset.values_list(self.group_by_field.attname).distinct()
-                self.main_queryset = self.group_by_field.related_model.objects.filter(pk__in=ids).values()
+
+                if type(self.group_by_field) is ForeignKey:
+                    ids = self.main_queryset.values_list(self.group_by_field.attname).distinct()
+                    self.main_queryset = self.group_by_field.related_model.objects.filter(pk__in=ids).values()
+                else:
+                    self.main_queryset = self.main_queryset.distinct().values(self.group_by_field.attname)
         else:
             self.main_queryset = self._apply_queryset_options(main_queryset, self.get_database_columns())
 
@@ -381,7 +385,10 @@ class ReportGenerator(object):
         group_by_model = None
         if group_by:
             group_by_field = [x for x in report_model._meta.fields if x.name == group_by][0]
-            group_by_model = group_by_field.related_model
+            if group_by_field.is_relation:
+                group_by_model = group_by_field.related_model
+            else:
+                group_by_model = report_model
 
         parsed_columns = []
         for col in columns:
@@ -548,7 +555,7 @@ class ReportGenerator(object):
             elif series == 'custom':
                 return self.get_custom_time_series_dates()
             else:
-                raise NotImplementedError()
+                raise NotImplementedError(f'"{series}" is not implemented for time_series_pattern')
 
             done = False
             start_date = self.start_date

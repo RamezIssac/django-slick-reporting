@@ -2,8 +2,6 @@ from datetime import datetime
 
 import pytz
 from django.test import TestCase
-from django.utils.timezone import now
-
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import get_foreign_keys
 from .models import OrderLine

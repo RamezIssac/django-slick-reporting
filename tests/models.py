@@ -48,6 +48,9 @@ class SimpleSales(models.Model):
         ordering = ['-created_at']
 
 
+class UserJoined(models.Model):
+    username = models.CharField(max_length=255)
+    date_joined = models.DateField()
 #
 # class Invoice(BaseMovementInfo):
 #     client = models.ForeignKey(Client, on_delete=models.CASCADE)
