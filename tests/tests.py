@@ -338,8 +338,6 @@ class TestGroupByDate(TestCase):
                                            start_date=datetime.date(2020, 1, 1),
                                            end_date=datetime.date(2020, 1, 10),
                                            columns=['date_joined', 'count__id'],
-                                           # time_series_pattern='daily',
-                                           # time_series_columns=['count__id']
                                            )
 
         data = report_generator.get_report_data()

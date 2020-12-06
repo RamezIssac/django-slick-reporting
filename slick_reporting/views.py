@@ -133,7 +133,9 @@ class SlickReportViewBase(FormView):
                                            crosstab_model=self.crosstab_model,
                                            crosstab_ids=self.crosstab_ids,
                                            crosstab_columns=self.crosstab_columns,
-                                           crosstab_compute_reminder=self.crosstab_compute_reminder
+                                           crosstab_compute_reminder=self.crosstab_compute_reminder,
+                                           
+                                           format_row_func=self.format_row
                                            )
 
     def get_columns_data(self, columns):

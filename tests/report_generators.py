@@ -81,7 +81,12 @@ class ProductClientSales(ReportGenerator):
     header_report = ClientList
 
     group_by = 'product'
-    columns = ['slug', 'name', '__balance_quantity__', '__balance__']
+    columns = ['slug', 'name', '__balance_quantity__', '__balance__', 'get_data']
+    def get_data(self, obj):
+        import pdb;
+        pdb.set_trace()
+        return ''
+
 
 
 class ProductSalesMonthlySeries(ReportGenerator):

@@ -2,7 +2,7 @@
 Django Slick Reporting
 ======================
 
-**Django Slick Reporting** is a report engine that allows you to compute and create diverse report form with custom calculations
+**Django Slick Reporting** is a report engine that where you can create & display diverse analytics. Batteries like a ready to use View and Charts.js integration are included.
 
 
 Installation
@@ -12,7 +12,7 @@ To install django-slick-reporting:
 
 1.  Install with pip: ``pip install django-slick-reporting``.
 2.  Add ``'slick_reporting'`` to ``INSTALLED_APPS``.
-3. For the shipped in View, add ``'cirspy_forms'`` to ``INSTALLED_APPS``and add `CRISPY_TEMPLATE_PACK = 'bootstrap4'`
+3. For the shipped in View, add ``'crispy_forms'`` to ``INSTALLED_APPS``and add `CRISPY_TEMPLATE_PACK = 'bootstrap4'`
    to your `settings.py`
 
 

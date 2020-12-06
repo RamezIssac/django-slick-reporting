@@ -112,7 +112,7 @@ class ReportGenerator(object):
                  crosstab_model=None, crosstab_columns=None, crosstab_ids=None, crosstab_compute_reminder=None,
                  swap_sign=False, show_empty_records=None,
                  print_flag=False,
-                 doc_type_plus_list=None, doc_type_minus_list=None, limit_records=False, ):
+                 doc_type_plus_list=None, doc_type_minus_list=None, limit_records=False, format_row_func=None):
         """
 
         :param report_model: Main model containing the data
@@ -162,6 +162,8 @@ class ReportGenerator(object):
         self.crosstab_columns = crosstab_columns or self.crosstab_columns or []
         self.crosstab_ids = self.crosstab_ids or crosstab_ids or []
         self.crosstab_compute_reminder = self.crosstab_compute_reminder if crosstab_compute_reminder is None else crosstab_compute_reminder
+
+        self.format_row = format_row_func or self._default_format_row
 
         main_queryset = main_queryset or self.report_model.objects
         main_queryset = main_queryset.order_by()
@@ -370,8 +372,17 @@ class ReportGenerator(object):
         )
 
         get_record_data = self._get_record_data
-        data = [get_record_data(obj, all_columns) for obj in main_queryset]
+        format_row = self.format_row
+        data = [format_row(get_record_data(obj, all_columns)) for obj in main_queryset]
         return data
+
+    def _default_format_row(self, row_obj):
+        """
+        Hook where you can format row values like properly format a date
+        :param row_obj:
+        :return:
+        """
+        return row_obj
 
     @classmethod
     def check_columns(cls, columns, group_by, report_model, ):

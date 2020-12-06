@@ -66,6 +66,10 @@ class GeneratorReportStructureTest(TestCase):
         self.assertEqual(len(columns_data), 3)
 
         self.assertEqual(columns_data[0]['verbose_name'], 'get_data_verbose_name')
+        data = report.get_report_data()
+        # todo
+
+
 
     def test_improper_group_by(self):
         def load():

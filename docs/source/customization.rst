@@ -25,7 +25,7 @@ The SlickReportView is a wrapper around FormView. It
 2. Form Customization
 ---------------------
 Behind the scene, Sample report calls ``slick_reporting.form_factory.report_form_factory``
-a helper method which generates a form containing startdate and end date, as well as all foreign keys on the report_model.
+a helper method which generates a form containing start date and end date, as well as all foreign keys on the report_model.
 
 The Form has exactly 2 purposes
 
