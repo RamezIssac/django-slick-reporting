@@ -403,6 +403,10 @@ class ReportGenerator(object):
 
         parsed_columns = []
         for col in columns:
+            if col in ['__time_series__', '__crosstab__']:
+                #     These are placeholder not real computation field
+                continue
+
             magic_field_class = None
             attr = None
 
@@ -478,7 +482,7 @@ class ReportGenerator(object):
             time_series_columns = self.get_time_series_parsed_columns()
             try:
                 index = self.columns.index('__time_series__')
-                columns[index] = time_series_columns
+                columns[index:index] = time_series_columns
             except ValueError:
                 columns += time_series_columns
 
@@ -514,8 +518,8 @@ class ReportGenerator(object):
                     magic_field_class = col
 
                 _values.append({
-                    'name': col + 'TS' + dt[1].strftime('%Y%m%d'),
-                    'original_name': col,
+                    'name': magic_field_class.name + 'TS' + dt[1].strftime('%Y%m%d'),
+                    'original_name': magic_field_class.name,
                     'verbose_name': self.get_time_series_field_verbose_name(magic_field_class, dt),
                     'ref': magic_field_class,
                     'start_date': dt[0],

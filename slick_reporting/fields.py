@@ -59,7 +59,7 @@ class SlickReportField(object):
         """
         if not name:
             identifier = str(uuid.uuid4()).split('-')[-1]
-            name = name or f"__{method.name}_{field}_{identifier}__"
+            name = name or f"{method.name}__{field}"
             assert name not in cls._field_registry.get_all_report_fields_names()
 
         verbose_name = verbose_name or f'{method.name} {field}'

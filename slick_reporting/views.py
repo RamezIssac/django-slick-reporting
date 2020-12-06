@@ -16,6 +16,7 @@ class SlickReportViewBase(FormView):
     group_by = None
     columns = None
 
+    report_title = ''
     time_series_pattern = ''
     time_series_columns = None
 
@@ -134,9 +135,17 @@ class SlickReportViewBase(FormView):
                                            crosstab_ids=self.crosstab_ids,
                                            crosstab_columns=self.crosstab_columns,
                                            crosstab_compute_reminder=self.crosstab_compute_reminder,
-                                           
+
                                            format_row_func=self.format_row
                                            )
+
+    def format_row(self, row_obj):
+        """
+        A hook to format each row . This method gets called on each row in the results. <ust return the object
+        :param row_obj: a dict representing a single row in the results
+        :return: A dict representing a single row in the results
+        """
+        return row_obj
 
     def get_columns_data(self, columns):
         """

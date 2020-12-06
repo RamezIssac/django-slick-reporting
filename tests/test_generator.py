@@ -45,6 +45,13 @@ class MatrixTests(BaseTestData, TestCase):
 
 class GeneratorReportStructureTest(TestCase):
     def test_time_series_columns_inclusion(self):
+        x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client', columns=['name', '__time_series__'],
+                            time_series_columns=['__total_quantity__'], time_series_pattern='monthly',
+                            start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone('utc')),
+                            end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone('utc')))
+        self.assertEqual(len(x.get_list_display_columns()), 13)
+
+    def test_time_series_columns_placeholder(self):
         x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client', columns=['name'],
                             time_series_columns=['__total_quantity__'], time_series_pattern='monthly',
                             start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone('utc')),
