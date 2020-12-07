@@ -8,7 +8,7 @@ from . import app_settings
 from .helpers import get_foreign_keys
 
 
-class BaseReportForm(object):
+class BaseReportForm:
     '''
     Holds basic function
     '''

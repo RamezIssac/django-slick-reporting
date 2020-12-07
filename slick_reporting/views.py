@@ -102,7 +102,7 @@ class SlickReportViewBase(FormView):
                 'data': self.request.POST,
                 'files': self.request.FILES,
             })
-        elif self.request.method in ('GET', 'PUT'):
+        elif self.request.method == 'GET' and self.request.GET:
 
             # elif self.request.GET:
             kwargs.update({

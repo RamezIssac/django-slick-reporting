@@ -1,5 +1,5 @@
 {% extends 'slick_reporting/base.html' %}
-{% load crispy_forms_tags i18n %}
+{% load crispy_forms_tags i18n slick_reporting_tags %}
 
 
 {% block content %}
@@ -33,6 +33,11 @@
                 {% if report_data.chart_settings %}
                     <canvas id="{{ report_data.report_slug }}" class="chartsJsCanvas" width="400"
                             height="100"></canvas>
+
+                    <div id="highchartContainer" data-report-chart
+                                                 style="width:100%; height:400px;"></div>
+
+
                 {% endif %}
             </div>
             <div class="report-table">
@@ -47,7 +52,8 @@
 {% block js_script %}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"
-        integrity="JnbsSLBmv2/R0fUmF2XYIcAEMPHEAO51Gitn9IjL4l89uFTIgtLF1+jqIqqd9FSk" crossorigin="anonymous"></script>
+            integrity="JnbsSLBmv2/R0fUmF2XYIcAEMPHEAO51Gitn9IjL4l89uFTIgtLF1+jqIqqd9FSk"
+            crossorigin="anonymous"></script>
 
     <script>
         function setDatePickerObj() {
@@ -118,8 +124,8 @@
             var $startTime = container.find('[name=start_date]');
             var $endDate = container.find('[name=end_date]');
             var $endTime = container.find('[name=end_date]');
-            $startDate.val(picker.startDate.format('YYYY') + '-' + picker.startDate.format('MM') + "-" + picker.startDate.format('DD') + ' ' +picker.startDate.format('HH') + ":" + picker.startDate.format('mm'))
-            $endDate.val(picker.endDate.format('YYYY') + '-' + picker.endDate.format('MM') + "-" + picker.endDate.format('DD') +' ' + picker.endDate.format('HH') + ":" + picker.endDate.format('mm'))
+            $startDate.val(picker.startDate.format('YYYY') + '-' + picker.startDate.format('MM') + "-" + picker.startDate.format('DD') + ' ' + picker.startDate.format('HH') + ":" + picker.startDate.format('mm'))
+            $endDate.val(picker.endDate.format('YYYY') + '-' + picker.endDate.format('MM') + "-" + picker.endDate.format('DD') + ' ' + picker.endDate.format('HH') + ":" + picker.endDate.format('mm'))
             container.parents('form').find('.refreshReport').trigger('click');
         })
 
@@ -132,7 +138,43 @@
         $('.nav-charts').find('a:first').trigger('click');
 
 
+        function getObjFromArray(objList, obj_key, key_value, failToFirst) {
+            failToFirst = typeof (failToFirst) !== 'undefined';
+            if (key_value !== '') {
+                for (let i = 0; i < objList.length; i++) {
+                    if (objList[i][obj_key] === key_value) {
+                        return objList[i];
+                    }
+                }
+            }
+            if (failToFirst && objList.length > 0) {
+                return objList[0]
+            }
+
+            return false;
+        }
+
+
         function DisplayChart($this) {
+            {#let data = value;#}
+            let data = {{ report_data|jsonify }};
+            let chart_id = $this.attr('data-report-default-chart') || '';
+            let chart = $('#highchartContainer');
+            let chartObject = getObjFromArray(data.chart_settings, 'id', chart_id, true);
+
+            try {
+                chartObject.highcharts().destroy()
+                existing_chart.highcharts().destroy()
+            } catch (e) {
+                console.warn(e)
+            }
+
+            chartObject = $.slick_reporting.highcharts.createChartObject(data, chartObject);
+            chart.highcharts(chartObject)
+
+        }
+
+        function _DisplayChartChartsJs($this) {
             var data = value;
             var $chart = $('canvas');
             let chartObject = $.slick_reporting.chartsjs.createChartObject(data, $this.attr('data-chart-id'), {});
