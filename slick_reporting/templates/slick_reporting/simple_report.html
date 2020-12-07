@@ -138,21 +138,6 @@
         $('.nav-charts').find('a:first').trigger('click');
 
 
-        function getObjFromArray(objList, obj_key, key_value, failToFirst) {
-            failToFirst = typeof (failToFirst) !== 'undefined';
-            if (key_value !== '') {
-                for (let i = 0; i < objList.length; i++) {
-                    if (objList[i][obj_key] === key_value) {
-                        return objList[i];
-                    }
-                }
-            }
-            if (failToFirst && objList.length > 0) {
-                return objList[0]
-            }
-
-            return false;
-        }
 
 
         function DisplayChart($this) {
@@ -160,16 +145,16 @@
             let data = {{ report_data|jsonify }};
             let chart_id = $this.attr('data-report-default-chart') || '';
             let chart = $('#highchartContainer');
-            let chartObject = getObjFromArray(data.chart_settings, 'id', chart_id, true);
+            {#let chartObject = getObjFromArray(data.chart_settings, 'id', chart_id, true)#}
 
             try {
-                chartObject.highcharts().destroy()
-                existing_chart.highcharts().destroy()
+                chart.highcharts().destroy()
+                {#existing_chart.highcharts().destroy()#}
             } catch (e) {
                 console.warn(e)
             }
 
-            chartObject = $.slick_reporting.highcharts.createChartObject(data, chartObject);
+            chartObject = $.slick_reporting.highcharts.createChartObject(data, $this.attr('data-chart-id'));
             chart.highcharts(chartObject)
 
         }

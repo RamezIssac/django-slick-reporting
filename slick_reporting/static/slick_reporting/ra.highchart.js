@@ -3,37 +3,37 @@
  */
 (function ($) {
 
-    function dataArrayToObject(data, key) {
-        // Turn a data array to an object
-        // Example:
-        // in: [
-        // {'key': key , 'value': 0},
-        // {'key': key , 'value': 1},
-        // {'key': key , 'value': 2},
-        // ]
-        // out: {'key':key , 'value':[0,1,2]}
-        var output = {};
-        for (var r = 0; r < data.length; r++) {
-            output[data[r][key]] = data[r];
+        function dataArrayToObject(data, key) {
+            // Turn a data array to an object
+            // Example:
+            // in: [
+            // {'key': key , 'value': 0},
+            // {'key': key , 'value': 1},
+            // {'key': key , 'value': 2},
+            // ]
+            // out: {'key':key , 'value':[0,1,2]}
+            var output = {};
+            for (var r = 0; r < data.length; r++) {
+                output[data[r][key]] = data[r];
+            }
+            return output
         }
-        return output
-    }
 
-    function getObjFromArray(objList, obj_key, key_value, failToFirst) {
-        failToFirst = typeof (failToFirst) !== 'undefined';
-        if (key_value !== '') {
-            for (let i = 0; i < objList.length; i++) {
-                if (objList[i][obj_key] === key_value) {
-                    return objList[i];
+        function getObjFromArray(objList, obj_key, key_value, failToFirst) {
+            failToFirst = typeof (failToFirst) !== 'undefined';
+            if (key_value !== '') {
+                for (let i = 0; i < objList.length; i++) {
+                    if (objList[i][obj_key] === key_value) {
+                        return objList[i];
+                    }
                 }
             }
-        }
-        if (failToFirst && objList.length > 0) {
-            return objList[0]
-        }
+            if (failToFirst && objList.length > 0) {
+                return objList[0]
+            }
 
-        return false;
-    }
+            return false;
+        }
 
         var ra_chart_settings = {
 
@@ -82,11 +82,12 @@
             }
         }
 
-        function createChartObject(response, chartOptions) {
+        function createChartObject(response, chart_id, extraOptions) {
             // Create the chart Object
             // First specifying the global default
             // second, Get the data from the serponse
             // Adjust the Chart Object accordingly
+            let chartOptions = getObjFromArray(response.chart_settings, 'id', chart_id, true)
 
             try {
 
@@ -354,7 +355,7 @@
                 Object.keys(data_sources).forEach(function (series_cols, index) {
                     all_column_to_be_summed = all_column_to_be_summed.concat(data_sources[series_cols]);
                 })
-                let totalValues = calculateTotalOnObjectArray(response.data, all_column_to_be_summed)
+                let totalValues = $.slick_reporting.calculateTotalOnObjectArray(response.data, all_column_to_be_summed)
 
                 Object.keys(data_sources).forEach(function (series_cols, index) {
                     let data = []
@@ -405,16 +406,13 @@
                 Object.keys(data_sources).forEach(function (series_cols, index) {
                     all_column_to_be_summed = all_column_to_be_summed.concat(data_sources[series_cols]);
                 })
-                let totalValues = calculateTotalOnObjectArray(response.data, all_column_to_be_summed)
+                let totalValues = $.slick_reporting.calculateTotalOnObjectArray(response.data, all_column_to_be_summed)
 
                 Object.keys(data_sources).forEach(function (series_cols, index) {
-                    let data = []
-
                     data_sources[series_cols].forEach(function (col, index) {
-                        data.push(totalValues[col])
                         series.push({
                             'name': col_dict[col].verbose_name,
-                            'data': data
+                            'data': [totalValues[col]]
                         })
 
                     })
