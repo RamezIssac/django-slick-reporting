@@ -102,7 +102,7 @@ class SlickReportViewBase(FormView):
                 'data': self.request.POST,
                 'files': self.request.FILES,
             })
-        elif self.request.method == 'GET' and self.request.GET:
+        elif self.request.method in ('GET', 'PUT'):
 
             # elif self.request.GET:
             kwargs.update({
@@ -115,6 +115,9 @@ class SlickReportViewBase(FormView):
         q_filters, kw_filters = self.form.get_filters()
         if self.crosstab_model:
             self.crosstab_ids = self.form.get_crosstab_ids()
+
+        crosstab_compute_reminder = self.form.get_crosstab_compute_reminder() if self.request.GET or self.request.POST \
+            else self.crosstab_compute_reminder
 
         return self.report_generator_class(self.report_model,
                                            start_date=self.form.cleaned_data['start_date'],
@@ -133,7 +136,7 @@ class SlickReportViewBase(FormView):
                                            crosstab_model=self.crosstab_model,
                                            crosstab_ids=self.crosstab_ids,
                                            crosstab_columns=self.crosstab_columns,
-                                           crosstab_compute_reminder=self.form.get_crosstab_compute_reminder(),
+                                           crosstab_compute_reminder=crosstab_compute_reminder,
 
                                            format_row_func=self.format_row
                                            )
@@ -234,6 +237,13 @@ class SlickReportViewBase(FormView):
             'start_date': SLICK_REPORTING_DEFAULT_START_DATE,
             'end_date': SLICK_REPORTING_DEFAULT_END_DATE
         }
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if not (self.request.POST or self.request.GET):
+            # initialize empty form with initials if the no data is in the get or the post
+            context['form'] = self.get_form_class()()
+        return context
 
 
 class SlickReportView(SlickReportViewBase):
