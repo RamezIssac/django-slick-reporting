@@ -135,7 +135,7 @@ def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=N
 
     if crosstab_model and display_compute_reminder:
         fields['crosstab_compute_reminder'] = forms.BooleanField(required=False,
-                                                                 label=_('display the crosstab reminder'),
+                                                                 label=_('Display the crosstab reminder'),
                                                                  initial=True)
 
     new_form = type('ReportForm', (BaseReportForm, forms.BaseForm,),

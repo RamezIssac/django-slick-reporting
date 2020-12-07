@@ -115,7 +115,6 @@ class SlickReportViewBase(FormView):
         q_filters, kw_filters = self.form.get_filters()
         if self.crosstab_model:
             self.crosstab_ids = self.form.get_crosstab_ids()
-            self.crosstab_compute_reminder = self.form.get_crosstab_compute_reminder()
 
         return self.report_generator_class(self.report_model,
                                            start_date=self.form.cleaned_data['start_date'],
@@ -134,7 +133,7 @@ class SlickReportViewBase(FormView):
                                            crosstab_model=self.crosstab_model,
                                            crosstab_ids=self.crosstab_ids,
                                            crosstab_columns=self.crosstab_columns,
-                                           crosstab_compute_reminder=self.crosstab_compute_reminder,
+                                           crosstab_compute_reminder=self.form.get_crosstab_compute_reminder(),
 
                                            format_row_func=self.format_row
                                            )
