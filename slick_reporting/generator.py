@@ -491,7 +491,7 @@ class ReportGenerator(object):
 
             try:
                 index = self.columns.index('__crosstab__')
-                columns[index] = crosstab_columns
+                columns[index:index] = crosstab_columns
             except ValueError:
                 columns += crosstab_columns
 
@@ -603,8 +603,8 @@ class ReportGenerator(object):
                     magic_field_class = col
 
                 output_cols.append({
-                    'name': f'{col}CT{id}',
-                    'original_name': col,
+                    'name': f'{magic_field_class.name}CT{id}',
+                    'original_name': magic_field_class.name,
                     'verbose_name': self.get_crosstab_field_verbose_name(magic_field_class, self.crosstab_model, id),
                     'ref': magic_field_class,
                     'id': id,

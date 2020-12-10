@@ -8,7 +8,7 @@ from django.utils.timezone import now
 
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.fields import SlickReportField, BalanceReportField
-from tests.report_generators import ClientTotalBalance
+from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2
 from .models import Client, Product, SimpleSales, OrderLine, UserJoined
 from slick_reporting.registry import field_registry
 from .views import SlickReportView
@@ -242,6 +242,19 @@ class TestView(BaseTestData, TestCase):
         self.assertEqual(response.status_code, 200)
         view_report_data = response.json()
         self.assertEqual(view_report_data['data'], data)
+
+    def test_crosstab_report_view_clumns_on_fly(self):
+        from .report_generators import ProductClientSalesMatrix
+        data = ProductClientSalesMatrix2(crosstab_compute_reminder=True,
+                                        crosstab_ids=[self.client1.pk, self.client2.pk]).get_report_data()
+
+        response = self.client.get(reverse('crosstab-columns-on-fly'), data={
+            'client_id': [self.client1.pk, self.client2.pk],
+            'crosstab_compute_reminder': True,
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data['data'], data, view_report_data)
 
     def test_chart_settings(self):
         response = self.client.get(reverse('product_crosstab_client'), data={
