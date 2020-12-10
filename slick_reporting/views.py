@@ -165,7 +165,7 @@ class SlickReportViewBase(FormView):
                 'verbose_name': col['verbose_name'],
                 'visible': col.get('visible', True),
                 'type': col.get('type', 'text'),
-                'is_summable': col.get('is_summable'),
+                'is_summable': col.get('is_summable', ''),
             })
         return data
 
@@ -199,7 +199,7 @@ class SlickReportViewBase(FormView):
             'time_series_pattern': self.time_series_pattern,
             'time_series_column_names': [x['name'] for x in time_series_columns],
             'time_series_column_verbose_names': [x['verbose_name'] for x in time_series_columns],
-            'crosstab_model': self.crosstab_model,
+            'crosstab_model': self.crosstab_model or '',
             'crosstab_column_names': [x['name'] for x in crosstab_columns],
             'crosstab_column_verbose_names': [x['verbose_name'] for x in crosstab_columns],
         }

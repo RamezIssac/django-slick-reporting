@@ -65,6 +65,7 @@ Neat huh ? Next step :ref:`usage`
 
    tour
    customization
+   view_response_structure
    report_generator
    computation_field
 
