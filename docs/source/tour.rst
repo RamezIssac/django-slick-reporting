@@ -179,6 +179,8 @@ To create a report we need to a dictionary to a ``chart_settings`` to the SlickR
 
 * type: what kind of chart it is: Possible options are bar, pie, line and others subject of the underlying charting engine.
   Hats off to : `Charts.js <https://www.chartjs.org/>`_.
+* engine_name: String, default to ``SLICK_REPORTING_DEFAULT_CHARTS_ENGINE``. Passed to front end in order to use the appropriate chart engine.
+  By default supports `highcharts` & `chartsjs`.
 * data_source: Field name containing the numbers we want to plot.
 * title_source: Field name containing labels of the data_source
 * title: the Chart title. Defaults to the `report_title`.

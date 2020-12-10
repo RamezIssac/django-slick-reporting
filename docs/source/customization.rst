@@ -70,3 +70,5 @@ Slick Reporting comes with only 2 settings that can manipulated from `settings.p
     )
 }
     You can change them to point to your local static or a you see fit and/or remove the unused chart bundle.
+
+4. ``SLICK_REPORTING_DEFAULT_CHARTS_ENGINE``: Controls the default chart engine used. supports 'chartsjs' and 'highcharts' by default

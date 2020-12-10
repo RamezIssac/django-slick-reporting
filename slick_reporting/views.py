@@ -7,7 +7,8 @@ from django.utils.encoding import force_text
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
-from .app_settings import SLICK_REPORTING_DEFAULT_END_DATE, SLICK_REPORTING_DEFAULT_START_DATE
+from .app_settings import SLICK_REPORTING_DEFAULT_END_DATE, SLICK_REPORTING_DEFAULT_START_DATE, \
+    SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .form_factory import report_form_factory
 from .generator import ReportGenerator
 
@@ -206,12 +207,15 @@ class SlickReportViewBase(FormView):
         return metadata
 
     def get_chart_settings(self):
-        """setting the chart id.. can be better """
+        """
+        Ensure the sane settings are passed to the front end.
+        """
         output = []
         for i, x in enumerate(self.chart_settings or []):
-            x['id'] = f"{x['type']}-{i}"
+            x['id'] = x.get('id', f"{x['type']}-{i}")
             if not x.get('title', False):
                 x['title'] = self.report_title
+            x['engine_name'] = x.get('engine_name', SLICK_REPORTING_DEFAULT_CHARTS_ENGINE)
             output.append(x)
         return output
 

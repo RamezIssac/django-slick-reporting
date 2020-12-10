@@ -27,6 +27,7 @@ Let's have a look
              'title': 'Pie Chart (Quantities)'
              },
             {'type': 'bar',
+             'engine_name': 'chartsjs',
              'data_source': ['value__sum'],
              'title_source': ['name'],
              'title': 'Column Chart (Values)'
@@ -79,16 +80,19 @@ Let's have a look
                      "crosstab_column_verbose_names": []
                      },
 
+
         # a mirror of the set charts_settings on the SlickReportView
-        # SlickReportView only populate the id if missing.
+        # SlickReportView populates the id if missing and fill the `engine_name' if not set
         "chart_settings": [
             {"type": "pie",
+            'engine_name': 'highcharts',
              "data_source": ["quantity__sum"],
              "title_source": ["name"],
              "title": "Pie Chart (Quantities)",
              "id": "pie-0"},
 
             {"type": "bar",
+            "engine_name": "chartsjs",
             "data_source": ["value__sum"],
             "title_source": ["name"],
             "title": "Column Chart (Values)",
