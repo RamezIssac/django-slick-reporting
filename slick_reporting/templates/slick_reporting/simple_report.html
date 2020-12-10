@@ -3,6 +3,7 @@
 
 
 {% block content %}
+
     <h4>Filters</h4>
     <form>
         {% crispy form form.get_crispy_helper %}
@@ -50,13 +51,11 @@
 
 {% endblock %}
 {% block js_script %}
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"
-            integrity="JnbsSLBmv2/R0fUmF2XYIcAEMPHEAO51Gitn9IjL4l89uFTIgtLF1+jqIqqd9FSk"
-            crossorigin="anonymous"></script>
+
 
     <script>
-        function setDatePickerObj() {
+    $(document).ready(function(){
+                function setDatePickerObj() {
             var range_start = new Date();
             var range_end = new Date();
             let container = $(document);
@@ -177,6 +176,8 @@
             ul.find('li[data-chart-id=' + $this.attr("data-chart-id") + ']').addClass('active');
 
         }
+
+    })
     </script>
 
 {% endblock %}
