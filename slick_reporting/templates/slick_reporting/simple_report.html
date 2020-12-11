@@ -4,12 +4,13 @@
 
 {% block content %}
 
+{% if form %}
     <h4>Filters</h4>
     <form>
         {% crispy form form.get_crispy_helper %}
         <input type="submit" value="Filter" class="btn btn-primary btn-lg btn-block refreshReport">
     </form>
-
+{% endif %}
     <h4 class="py-5">Results</h4>
     <div class="card" id="{{ report_data.report_slug }}">
         <div class="card-body">
