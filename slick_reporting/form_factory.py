@@ -8,10 +8,17 @@ from . import app_settings
 from .helpers import get_foreign_keys
 
 
-class BaseReportForm(object):
+class BaseReportForm:
     '''
     Holds basic function
     '''
+
+    @property
+    def media(self):
+        # media = super().media
+        from .app_settings import SLICK_REPORTING_FORM_MEDIA
+        # import pdb; pdb.set_trace()
+        return forms.Media(css=SLICK_REPORTING_FORM_MEDIA.get('css', {}), js=SLICK_REPORTING_FORM_MEDIA.get('js', []))
 
     def get_filters(self):
         """
@@ -135,7 +142,7 @@ def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=N
 
     if crosstab_model and display_compute_reminder:
         fields['crosstab_compute_reminder'] = forms.BooleanField(required=False,
-                                                                 label=_('display the crosstab reminder'),
+                                                                 label=_('Display the crosstab reminder'),
                                                                  initial=True)
 
     new_form = type('ReportForm', (BaseReportForm, forms.BaseForm,),

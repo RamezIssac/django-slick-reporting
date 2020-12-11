@@ -8,7 +8,7 @@ Responsible for preforming the calculation.
 
 
 ReportField Basic Structure:
-----------------------
+----------------------------
 
 Earlier in he docs you saw the computation fields ``'__total__quantity__'``
 Let's see how it's written in `slick_reporting.fields`
@@ -92,7 +92,7 @@ Two side calculation
 
 
 SlickReportField API
--------------------
+--------------------
 
 .. autoclass:: slick_reporting.fields.SlickReportField
 

@@ -2,8 +2,6 @@ from datetime import datetime
 
 import pytz
 from django.test import TestCase
-from django.utils.timezone import now
-
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import get_foreign_keys
 from .models import OrderLine
@@ -47,6 +45,13 @@ class MatrixTests(BaseTestData, TestCase):
 
 class GeneratorReportStructureTest(TestCase):
     def test_time_series_columns_inclusion(self):
+        x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client', columns=['name', '__time_series__'],
+                            time_series_columns=['__total_quantity__'], time_series_pattern='monthly',
+                            start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone('utc')),
+                            end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone('utc')))
+        self.assertEqual(len(x.get_list_display_columns()), 13)
+
+    def test_time_series_columns_placeholder(self):
         x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client', columns=['name'],
                             time_series_columns=['__total_quantity__'], time_series_pattern='monthly',
                             start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone('utc')),
@@ -68,6 +73,10 @@ class GeneratorReportStructureTest(TestCase):
         self.assertEqual(len(columns_data), 3)
 
         self.assertEqual(columns_data[0]['verbose_name'], 'get_data_verbose_name')
+        data = report.get_report_data()
+        # todo
+
+
 
     def test_improper_group_by(self):
         def load():

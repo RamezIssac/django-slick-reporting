@@ -1,11 +1,11 @@
 .. _usage:
 
-Usage
-=====
+Concept
+=======
 
 
-I recon that you already have a model where there are data stored, and you want to generate reports on it.
-Let's say we have a a data similar to this
+Given that you have a model where there are data stored which you want to generate reports on.
+Consider below SalesOrder model example.
 
 +------------+------------+-----------+----------+-------+-------+
 | order_date | product_id | client_id | quantity | price | value |
@@ -19,12 +19,38 @@ Let's say we have a a data similar to this
 | 2019-03-14 | 1          | 2         | 3        | 15    | 45    |
 +------------+------------+-----------+----------+-------+-------+
 
-Based on this data we can have several kind of reports, let's explore them one by one.
+Slick Reporting help us answer some questions, like:
+
+* To start: Wouldn't it be nice if we have a view page where we can filter the data based on date , client(s) and or product(s)
+* How much each product was sold or How much each Client bought? Filter by date range / client(s) / product(s)
+* How well each product sales is doing, monthly?
+* How client 1 compared with client 2,  compared with the rest of clients, on each product sales ?
+* How many orders were created a day ?
+
+To answer those question, We can identify basic kind of alteration / calculation on the data
+
 
 1. Basic filtering
 ------------------
 
-A report where it displays the data as is. however we can apply date and other filters
+Start small,
+A ReportView like the below
+
+.. code-block:: python
+
+    # in your urls.py
+    path('path-to-report', TransactionsReport.as_view())
+
+    # in your views.py
+    from slick_reporting.views import SlickReportView
+
+    class TransactionsReport(SlickReportView):
+        report_model = MySalesItem
+        columns = ['order_date', 'product__name' , 'client__name', 'quantity', 'price', 'value' ]
+
+
+will yield a Page with a nice filter form with
+A report where it displays the data as is but with filters however we can apply date and other filters
 
 +------------+---------------+-------------+----------+-------+-------+
 | order_date | Product Name  | Client Name | quantity | price | value |
@@ -37,23 +63,6 @@ A report where it displays the data as is. however we can apply date and other f
 +------------+---------------+-------------+----------+-------+-------+
 | 2019-03-14 | Product 1     | Client 2    | 3        | 15    | 45    |
 +------------+---------------+-------------+----------+-------+-------+
-
-This can be written like this
-
-.. code-block:: python
-
-    # in your views.py
-    from slick_reporting.views import SlickReportView
-
-    class TransactionsReport(SlickReportView):
-        report_model = MySalesItem
-        columns = ['order_date', 'product__name' , 'client__name', 'quantity', 'price', 'value]
-
-    # in your urls.py
-    path('to-report', TransactionsReport.as_view())
-
-Worth Noting here that the ``SlickReportView`` calls a form generator which return a form containing
-all foreign keys in the report_model + start and end date filter.
 
 2. Group By report
 -------------------
@@ -170,6 +179,8 @@ To create a report we need to a dictionary to a ``chart_settings`` to the SlickR
 
 * type: what kind of chart it is: Possible options are bar, pie, line and others subject of the underlying charting engine.
   Hats off to : `Charts.js <https://www.chartjs.org/>`_.
+* engine_name: String, default to ``SLICK_REPORTING_DEFAULT_CHARTS_ENGINE``. Passed to front end in order to use the appropriate chart engine.
+  By default supports `highcharts` & `chartsjs`.
 * data_source: Field name containing the numbers we want to plot.
 * title_source: Field name containing labels of the data_source
 * title: the Chart title. Defaults to the `report_title`.

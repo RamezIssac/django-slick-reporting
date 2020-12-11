@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2020-12-11
+
+- Created the demo site https://django-slick-reporting.com/
+- Add support to group by date field
+- Add `format_row` hook to SlickReportingView
+- Add support for several chart engine per same report 
+- Add `SLICK_REPORTING_FORM_MEDIA` &`SLICK_REPORTING_DEFAULT_CHARTS_ENGINE` setting.
+- Documenting SlickReportView response structure.
+- Fix issue with special column names `__time_series__` and `__crosstab__`
+_ Fix issue with Crosstab reminder option.
+  
+
 ## [0.4.2] - 2020-11-29
 
 - Properly initialize Datepicker (#12 @squio)

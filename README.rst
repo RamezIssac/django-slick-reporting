@@ -101,7 +101,7 @@ You can do a monthly time series :
 
         # Analogy for time series
         time_series_pattern = 'monthly'
-        time_series_columns = ['__total_quantity__']
+        time_series_columns = [SlickReportField.create(Sum, 'quantity', name='sum__quantity') ]
 
 
 This would return a table looking something like this:

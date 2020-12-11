@@ -7,7 +7,8 @@ from django.utils.encoding import force_text
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
-from .app_settings import SLICK_REPORTING_DEFAULT_END_DATE, SLICK_REPORTING_DEFAULT_START_DATE
+from .app_settings import SLICK_REPORTING_DEFAULT_END_DATE, SLICK_REPORTING_DEFAULT_START_DATE, \
+    SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .form_factory import report_form_factory
 from .generator import ReportGenerator
 
@@ -16,6 +17,7 @@ class SlickReportViewBase(FormView):
     group_by = None
     columns = None
 
+    report_title = ''
     time_series_pattern = ''
     time_series_columns = None
 
@@ -114,7 +116,9 @@ class SlickReportViewBase(FormView):
         q_filters, kw_filters = self.form.get_filters()
         if self.crosstab_model:
             self.crosstab_ids = self.form.get_crosstab_ids()
-            self.crosstab_compute_reminder = self.form.get_crosstab_compute_reminder()
+
+        crosstab_compute_reminder = self.form.get_crosstab_compute_reminder() if self.request.GET or self.request.POST \
+            else self.crosstab_compute_reminder
 
         return self.report_generator_class(self.report_model,
                                            start_date=self.form.cleaned_data['start_date'],
@@ -133,8 +137,18 @@ class SlickReportViewBase(FormView):
                                            crosstab_model=self.crosstab_model,
                                            crosstab_ids=self.crosstab_ids,
                                            crosstab_columns=self.crosstab_columns,
-                                           crosstab_compute_reminder=self.crosstab_compute_reminder
+                                           crosstab_compute_reminder=crosstab_compute_reminder,
+
+                                           format_row_func=self.format_row
                                            )
+
+    def format_row(self, row_obj):
+        """
+        A hook to format each row . This method gets called on each row in the results. <ust return the object
+        :param row_obj: a dict representing a single row in the results
+        :return: A dict representing a single row in the results
+        """
+        return row_obj
 
     def get_columns_data(self, columns):
         """
@@ -152,7 +166,7 @@ class SlickReportViewBase(FormView):
                 'verbose_name': col['verbose_name'],
                 'visible': col.get('visible', True),
                 'type': col.get('type', 'text'),
-                'is_summable': col.get('is_summable'),
+                'is_summable': col.get('is_summable', ''),
             })
         return data
 
@@ -186,19 +200,22 @@ class SlickReportViewBase(FormView):
             'time_series_pattern': self.time_series_pattern,
             'time_series_column_names': [x['name'] for x in time_series_columns],
             'time_series_column_verbose_names': [x['verbose_name'] for x in time_series_columns],
-            'crosstab_model': self.crosstab_model,
+            'crosstab_model': self.crosstab_model or '',
             'crosstab_column_names': [x['name'] for x in crosstab_columns],
             'crosstab_column_verbose_names': [x['verbose_name'] for x in crosstab_columns],
         }
         return metadata
 
     def get_chart_settings(self):
-        """setting the chart id.. can be better """
+        """
+        Ensure the sane settings are passed to the front end.
+        """
         output = []
         for i, x in enumerate(self.chart_settings or []):
-            x['id'] = f"{x['type']}-{i}"
+            x['id'] = x.get('id', f"{x['type']}-{i}")
             if not x.get('title', False):
                 x['title'] = self.report_title
+            x['engine_name'] = x.get('engine_name', SLICK_REPORTING_DEFAULT_CHARTS_ENGINE)
             output.append(x)
         return output
 
@@ -224,6 +241,13 @@ class SlickReportViewBase(FormView):
             'start_date': SLICK_REPORTING_DEFAULT_START_DATE,
             'end_date': SLICK_REPORTING_DEFAULT_END_DATE
         }
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if not (self.request.POST or self.request.GET):
+            # initialize empty form with initials if the no data is in the get or the post
+            context['form'] = self.get_form_class()()
+        return context
 
 
 class SlickReportView(SlickReportViewBase):

@@ -1,16 +1,15 @@
 import datetime
-from unittest import skip
-from urllib.parse import urljoin
 
 from django.contrib.auth import get_user_model
+from django.db.models import Count
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.fields import SlickReportField, BalanceReportField
-from tests.report_generators import ClientTotalBalance
-from .models import Client, Product, SimpleSales, OrderLine
+from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2
+from .models import Client, Product, SimpleSales, OrderLine, UserJoined
 from slick_reporting.registry import field_registry
 from .views import SlickReportView
 
@@ -244,6 +243,19 @@ class TestView(BaseTestData, TestCase):
         view_report_data = response.json()
         self.assertEqual(view_report_data['data'], data)
 
+    def test_crosstab_report_view_clumns_on_fly(self):
+        from .report_generators import ProductClientSalesMatrix
+        data = ProductClientSalesMatrix2(crosstab_compute_reminder=True,
+                                        crosstab_ids=[self.client1.pk, self.client2.pk]).get_report_data()
+
+        response = self.client.get(reverse('crosstab-columns-on-fly'), data={
+            'client_id': [self.client1.pk, self.client2.pk],
+            'crosstab_compute_reminder': True,
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data['data'], data, view_report_data)
+
     def test_chart_settings(self):
         response = self.client.get(reverse('product_crosstab_client'), data={
             'client_id': [self.client1.pk, self.client2.pk],
@@ -320,3 +332,29 @@ class TestReportFieldRegistry(TestCase):
         from django.db.models import Sum
         name = SlickReportField.create(Sum, 'value')
         self.assertNotIn(name, field_registry.get_all_report_fields_names())
+
+
+class TestGroupByDate(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        UserJoined.objects.create(username='adam', date_joined=datetime.date(2020, 1, 2))
+        UserJoined.objects.create(username='eve', date_joined=datetime.date(2020, 1, 3))
+        UserJoined.objects.create(username='steve', date_joined=datetime.date(2020, 1, 5))
+        UserJoined.objects.create(username='smiv', date_joined=datetime.date(2020, 1, 5))
+
+    def test_joined_per_day(self):
+        field_registry.register(SlickReportField.create(Count, 'id', 'count__id'))
+        report_generator = ReportGenerator(report_model=UserJoined,
+                                           date_field='date_joined',
+                                           group_by='date_joined',
+                                           start_date=datetime.date(2020, 1, 1),
+                                           end_date=datetime.date(2020, 1, 10),
+                                           columns=['date_joined', 'count__id'],
+                                           )
+
+        data = report_generator.get_report_data()
+        self.assertEqual(len(data), 3)
+        self.assertEqual(data[0]['count__id'], 1)
+        self.assertEqual(data[1]['count__id'], 1)
+        self.assertEqual(data[2]['count__id'], 2)

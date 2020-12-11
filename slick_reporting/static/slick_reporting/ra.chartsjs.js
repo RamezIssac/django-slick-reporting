@@ -15,7 +15,7 @@
     }
 
     function createChartObject(response, chartId, extraOptions) {
-        let chartOptions = getChartSettingsFromResponse(response, chartId);
+        let chartOptions = $.slick_reporting.getObjFromArray(response.chart_settings, 'id', chartId, true);
         let extractedData = extractDataFromResponse(response, chartOptions);
 
         let chartObject = {
@@ -66,34 +66,7 @@
         return chartObject
     }
 
-    function calculateTotalOnObjectArray(data, columns) {
-    // Compute totals in array of objects
-    // example :
-    // calculateTotalOnObjectArray ([{ value1:500, value2: 70} , {value:200, value2:15} ], ['value'])
-    // return {'value1': 700, value2:85}
 
-    let total_container = {};
-    for (let r = 0; r < data.length; r++) {
-
-        for (let i = 0; i < columns.length; i++) {
-            if (typeof total_container[columns[i]] == 'undefined') {
-                total_container[columns[i]] = 0;
-            }
-            let val = data[r][columns[i]];
-            if (val === '-') val = 0;
-
-            else if (typeof (val) == 'string') {
-                try {
-                    val = val.replace(/,/g, '');
-                } catch (err) {
-                    console.log(err, val, typeof (val));
-                }
-            }
-            total_container[columns[i]] += parseFloat(val);
-        }
-    }
-    return total_container;
-}
 
 
     function extractDataFromResponse(response, chartOptions) {
@@ -112,7 +85,7 @@
             let seriesColNames = getTimeSeriesColumnNames(response);
 
             if (chartOptions.plot_total) {
-                let results = calculateTotalOnObjectArray(response.data, seriesColNames);
+                let results = $.slick_reporting.calculateTotalOnObjectArray(response.data, seriesColNames);
                 for (let fieldIdx = 0; fieldIdx < seriesColNames.length; fieldIdx++) {
                     datasetData.push(results[seriesColNames[fieldIdx]])
                 }
@@ -173,10 +146,6 @@
         }
     }
 
-    function getChartSettingsFromResponse(response, chart_id) {
-        return getObjFromArray(response.chart_settings, 'id', chart_id, true)
-    }
-
     function getBackgroundColors(i) {
         if (typeof (i) !== 'undefined') {
             return COLORS[i]
@@ -184,21 +153,6 @@
         return COLORS
     }
 
-    function getObjFromArray(objList, obj_key, key_value, failToFirst) {
-        failToFirst = typeof (failToFirst) !== 'undefined';
-        if (key_value !== '') {
-            for (let i = 0; i < objList.length; i++) {
-                if (objList[i][obj_key] === key_value) {
-                    return objList[i];
-                }
-            }
-        }
-        if (failToFirst && objList.length > 0) {
-            return objList[0]
-        }
-
-        return false;
-    }
 
     if (typeof($.slick_reporting) === 'undefined') {
         $.slick_reporting = {}
