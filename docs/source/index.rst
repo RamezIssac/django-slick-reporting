@@ -14,6 +14,11 @@ To install django-slick-reporting:
 3. For the shipped in View, add ``'crispy_forms'`` to ``INSTALLED_APPS`` and add ``CRISPY_TEMPLATE_PACK = 'bootstrap4'``
    to your ``settings.py``
 
+Demo site
+----------
+
+https://django-slick-reporting.com is a quick walk-though with live code examples
+
 
 Quickstart
 ----------
@@ -52,11 +57,6 @@ You can start by using ``SlickReportView`` which is a subclass of ``django.views
          },
         ]
 
-
-Demo site
-----------
-
-https://django-slick=reporting.com is a live documentation, with live code and results
 
 Next step :ref:`structure`
 
