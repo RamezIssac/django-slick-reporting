@@ -52,21 +52,20 @@ You can start by using ``SlickReportView`` which is a subclass of ``django.views
          },
         ]
 
-The above simple code will result in a page similar to this
 
-.. image:: https://i.ibb.co/SvxTM23/Selection-294.png
-    :target: https://i.ibb.co/SvxTM23/Selection-294.png
-    :alt: Shipped in View Page
+Demo site
+----------
 
-Neat huh ? Next step :ref:`usage`
+https://django-slick=reporting.com is a live documentation, with live code and results
+
+Next step :ref:`structure`
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   tour
-   customization
-   view_response_structure
+   concept
+   the_view
    report_generator
    computation_field
 

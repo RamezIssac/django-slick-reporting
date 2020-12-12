@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add `SLICK_REPORTING_FORM_MEDIA` &`SLICK_REPORTING_DEFAULT_CHARTS_ENGINE` setting.
 - Documenting SlickReportView response structure.
 - Fix issue with special column names `__time_series__` and `__crosstab__`
-_ Fix issue with Crosstab reminder option.
+- Fix issue with Crosstab reminder option.
   
 
 ## [0.4.2] - 2020-11-29
