@@ -6,7 +6,7 @@ from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import get_foreign_keys
 from .models import OrderLine
 
-from .report_generators import GeneratorWithAttrAsColumn, CrosstabOnClient, GenericGenerator
+from .report_generators import GeneratorWithAttrAsColumn, CrosstabOnClient, GenericGenerator, GroupByCharField
 
 from .tests import BaseTestData
 from .models import SimpleSales
@@ -45,7 +45,8 @@ class MatrixTests(BaseTestData, TestCase):
 
 class GeneratorReportStructureTest(TestCase):
     def test_time_series_columns_inclusion(self):
-        x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client', columns=['name', '__time_series__'],
+        x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client',
+                            columns=['name', '__time_series__'],
                             time_series_columns=['__total_quantity__'], time_series_pattern='monthly',
                             start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone('utc')),
                             end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone('utc')))
@@ -58,12 +59,6 @@ class GeneratorReportStructureTest(TestCase):
                             end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone('utc')))
         self.assertEqual(len(x.get_list_display_columns()), 13)
 
-    def test_time_series(self):
-        pass
-
-    def test_cross_tab(self):
-        pass
-
     def test_time_series_and_cros_tab(self):
         pass
 
@@ -75,8 +70,6 @@ class GeneratorReportStructureTest(TestCase):
         self.assertEqual(columns_data[0]['verbose_name'], 'get_data_verbose_name')
         data = report.get_report_data()
         # todo
-
-
 
     def test_improper_group_by(self):
         def load():
@@ -103,6 +96,10 @@ class GeneratorReportStructureTest(TestCase):
         report = GenericGenerator()
         field_list = report.get_list_display_columns()
         self.assertEqual(field_list[0]['verbose_name'], 'Client Slug')
+
+    def test_group_by_char_field(self):
+        report = GroupByCharField()
+        self.assertEqual(len(report.get_list_display_columns()), 3)
 
 
 # test that columns are a straight forward list

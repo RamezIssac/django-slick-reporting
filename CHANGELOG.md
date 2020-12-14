@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 
+
+- Added tests for group by a flag field
+
+
+
 ## [0.5.0] - 2020-12-11
 
 - Created the demo site https://django-slick-reporting.com/

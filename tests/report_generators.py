@@ -3,7 +3,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from slick_reporting.fields import SlickReportField
 from slick_reporting.generator import ReportGenerator
-from .models import Client, SimpleSales, Product
+from .models import Client, SimpleSales, Product, SalesWithFlag
 from .models import OrderLine
 
 
@@ -46,6 +46,23 @@ class ClientTotalBalance(ReportGenerator):
     columns = ['slug', 'name', '__balance__', '__total__']
 
 
+class GroupByCharField(ReportGenerator):
+    report_model = SalesWithFlag
+    date_field = 'doc_date'
+    group_by = 'flag'
+    columns = ['flag', '__balance__', SlickReportField.create(Sum, 'quantity')]
+
+
+class GroupByCharFieldPlusTimeSeries(ReportGenerator):
+    report_model = SalesWithFlag
+    date_field = 'doc_date'
+    group_by = 'flag'
+    columns = ['flag', SlickReportField.create(Sum, 'quantity')]
+
+    time_series_pattern = 'monthly'
+    time_series_columns = [SlickReportField.create(Sum, 'quantity')]
+
+
 class ClientTotalBalancesOrdered(ClientTotalBalance):
     report_slug = None
     default_order_by = '__balance__'
@@ -85,11 +102,11 @@ class ProductClientSales(ReportGenerator):
 
     group_by = 'product'
     columns = ['slug', 'name', '__balance_quantity__', '__balance__', 'get_data']
+
     def get_data(self, obj):
         import pdb;
         pdb.set_trace()
         return ''
-
 
 
 class ProductSalesMonthlySeries(ReportGenerator):
@@ -186,6 +203,7 @@ class ProductClientSalesMatrix(ReportGenerator):
 
     crosstab_model = 'client'
     crosstab_columns = ['__total__']
+
 
 class ProductClientSalesMatrix2(ReportGenerator):
     report_model = SimpleSales
