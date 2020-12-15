@@ -229,14 +229,16 @@ class ReportGenerator(object):
 
             else:
                 self.main_queryset = self._apply_queryset_options(main_queryset)
-
                 if type(self.group_by_field) is ForeignKey:
                     ids = self.main_queryset.values_list(self.group_by_field.attname).distinct()
                     self.main_queryset = self.group_by_field.related_model.objects.filter(pk__in=ids).values()
                 else:
                     self.main_queryset = self.main_queryset.distinct().values(self.group_by_field.attname)
         else:
-            self.main_queryset = self._apply_queryset_options(main_queryset, self.get_database_columns())
+            if self.time_series_pattern:
+                self.main_queryset = [{}]
+            else:
+                self.main_queryset = self._apply_queryset_options(main_queryset, self.get_database_columns())
 
         self._prepare_report_dependencies()
 
@@ -341,7 +343,8 @@ class ReportGenerator(object):
 
                 name = col_data['name']
 
-                if col_data.get('source', '') == 'magic_field' and self.group_by:
+                if (col_data.get('source', '') == 'magic_field' and self.group_by) or (
+                        self.time_series_pattern and not self.group_by):
                     source = self._report_fields_dependencies[window].get(name, False)
                     if source:
                         computation_class = self.report_fields_classes[source]
@@ -506,7 +509,7 @@ class ReportGenerator(object):
         _values = []
 
         cols = self.time_series_columns or []
-        series = self._get_time_series_dates()
+        series = self._get_time_series_dates(self.time_series_pattern)
 
         for dt in series:
             for col in cols:
@@ -548,10 +551,13 @@ class ReportGenerator(object):
         """
         return []
 
-    def _get_time_series_dates(self):
+    def _get_time_series_dates(self, series=None, start_date=None, end_date=None):
         from dateutil.relativedelta import relativedelta
+        series = series or self.time_series_pattern
+        start_date = start_date or self.start_date
+        end_date = end_date or self.end_date
         _values = []
-        series = self.time_series_pattern
+
         if series:
             if series == 'daily':
                 time_delta = datetime.timedelta(days=1)
@@ -566,20 +572,19 @@ class ReportGenerator(object):
             elif series == 'semiannually':
                 time_delta = relativedelta(months=6)
             elif series == 'annually':
-                time_delta = relativedelta(year=1)
+                time_delta = relativedelta(years=1)
             elif series == 'custom':
                 return self.get_custom_time_series_dates()
             else:
                 raise NotImplementedError(f'"{series}" is not implemented for time_series_pattern')
 
             done = False
-            start_date = self.start_date
 
             while not done:
                 to_date = start_date + time_delta
                 _values.append((start_date, to_date))
                 start_date = to_date
-                if to_date >= self.end_date:
+                if to_date >= end_date:
                     done = True
         return _values
 

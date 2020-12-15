@@ -9,7 +9,7 @@ from django.utils.timezone import now
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.fields import SlickReportField, BalanceReportField
 from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2, GroupByCharField, \
-    GroupByCharFieldPlusTimeSeries
+    GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy
 from .models import Client, Product, SimpleSales, OrderLine, UserJoined, SalesWithFlag
 from . import report_generators
 
@@ -180,6 +180,10 @@ class ReportTest(BaseTestData, TestCase):
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
+    def test_timeseries_without_group(self):
+        report = TimeSeriesWithOutGroupBy()
+        data = report.get_report_data()
+        self.assertEqual(data[0]['__total__TS20200201'], 600)
 
 class TestView(BaseTestData, TestCase):
     def test_view(self):

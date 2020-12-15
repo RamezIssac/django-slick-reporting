@@ -221,7 +221,7 @@ class SlickReportField(object):
             debit = None
             if cached_debit is not None:
                 if not group_by:
-                    x = cached_debit.keys()[0]
+                    x = list(cached_debit.keys())[0]
                     debit_value = cached_debit[x]
                 else:
                     for i, x in enumerate(cached_debit):
@@ -235,7 +235,7 @@ class SlickReportField(object):
                 credit = None
                 if cached_credit is not None:
                     if not group_by:
-                        x = cached_credit.keys()[0]
+                        x = list(cached_credit.keys())[0]
                         credit_value = cached_credit[x]
                     else:
                         for i, x in enumerate(cached_credit):

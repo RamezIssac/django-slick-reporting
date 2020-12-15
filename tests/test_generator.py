@@ -52,6 +52,32 @@ class GeneratorReportStructureTest(TestCase):
                             end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone('utc')))
         self.assertEqual(len(x.get_list_display_columns()), 13)
 
+    def test_time_series_patterns(self):
+        report = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client',
+                                 columns=['name', '__time_series__'],
+                                 time_series_columns=['__total_quantity__'], time_series_pattern='monthly',
+                                 start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone('utc')),
+                                 end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone('utc')))
+        dates = report._get_time_series_dates()
+        self.assertEqual(len(dates), 12)
+
+        dates = report._get_time_series_dates('daily')
+        self.assertEqual(len(dates), 365, len(dates))
+
+        dates = report._get_time_series_dates('weekly')
+        self.assertEqual(len(dates), 53, len(dates))
+
+        dates = report._get_time_series_dates('semimonthly')
+        self.assertEqual(len(dates), 27, len(dates))
+
+        dates = report._get_time_series_dates('quarterly')
+        self.assertEqual(len(dates), 4, len(dates))
+
+        dates = report._get_time_series_dates('semiannually')
+        self.assertEqual(len(dates), 2, len(dates))
+        dates = report._get_time_series_dates('annually')
+        self.assertEqual(len(dates), 1, len(dates))
+
     def test_time_series_columns_placeholder(self):
         x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client', columns=['name'],
                             time_series_columns=['__total_quantity__'], time_series_pattern='monthly',

@@ -104,8 +104,6 @@ class ProductClientSales(ReportGenerator):
     columns = ['slug', 'name', '__balance_quantity__', '__balance__', 'get_data']
 
     def get_data(self, obj):
-        import pdb;
-        pdb.set_trace()
         return ''
 
 
@@ -113,14 +111,6 @@ class ProductSalesMonthlySeries(ReportGenerator):
     base_model = Product
     report_model = SimpleSales
     report_title = _('Product Sales Monthly')
-
-    form_settings = {
-        'group_by': 'product',
-        'group_columns': ['slug', 'name'],
-
-        'time_series_pattern': 'monthly',
-        'time_series_columns': ['__balance_quantity__', '__balance__'],
-    }
 
     group_by = 'product'
     columns = ['slug', 'name']
@@ -151,6 +141,16 @@ class ProductSalesMonthlySeries(ReportGenerator):
             }
         },
     ]
+
+
+class TimeSeriesWithOutGroupBy(ReportGenerator):
+    report_model = SimpleSales
+    report_title = _('Product Sales Monthly')
+    date_field = 'doc_date'
+    # group_by = 'product'
+    # columns = ['slug', 'name']
+    time_series_pattern = 'monthly'
+    time_series_columns = ['__total__']
 
 
 class ClientReportMixin:
