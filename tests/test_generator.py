@@ -6,7 +6,8 @@ from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import get_foreign_keys
 from .models import OrderLine
 
-from .report_generators import GeneratorWithAttrAsColumn, CrosstabOnClient, GenericGenerator, GroupByCharField
+from .report_generators import GeneratorWithAttrAsColumn, CrosstabOnClient, GenericGenerator, GroupByCharField, \
+    TimeSeriesCustomDates
 
 from .tests import BaseTestData
 from .models import SimpleSales
@@ -77,6 +78,17 @@ class GeneratorReportStructureTest(TestCase):
         self.assertEqual(len(dates), 2, len(dates))
         dates = report._get_time_series_dates('annually')
         self.assertEqual(len(dates), 1, len(dates))
+
+
+    def test_time_series_custom_pattern(self):
+        # report = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client',
+        #                          columns=['name', '__time_series__'],
+        #                          time_series_columns=['__total_quantity__'], time_series_pattern='monthly',
+        #                          start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone('utc')),
+        #                          end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone('utc')))
+        report = TimeSeriesCustomDates()
+        dates = report._get_time_series_dates()
+        self.assertEqual(len(dates), 3, dates)
 
     def test_time_series_columns_placeholder(self):
         x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client', columns=['name'],

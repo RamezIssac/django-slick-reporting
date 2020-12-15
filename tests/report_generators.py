@@ -1,3 +1,5 @@
+import datetime
+
 from django.db.models import Sum
 from django.utils.translation import ugettext_lazy as _
 
@@ -140,6 +142,21 @@ class ProductSalesMonthlySeries(ReportGenerator):
                 'series_names': [_('Avg. purchase price')],
             }
         },
+    ]
+
+
+class TimeSeriesCustomDates(ReportGenerator):
+    report_model = SimpleSales
+    report_title = _('Product Sales Monthly')
+    date_field = 'doc_date'
+    # group_by = 'product'
+    # columns = ['slug', 'name']
+    time_series_pattern = 'custom'
+    time_series_columns = ['__total__']
+    time_series_custom_dates = [
+        (datetime.date(2020, 1, 1), datetime.date(2020, 1, 17)),
+        (datetime.date(2020, 4, 17), datetime.date(2020, 5, 1)),
+        (datetime.date(2020, 8, 8), datetime.date(2020, 9, 9)),
     ]
 
 

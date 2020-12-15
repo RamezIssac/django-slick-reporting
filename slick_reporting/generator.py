@@ -73,6 +73,13 @@ class ReportGenerator(object):
      
     """
 
+    time_series_custom_dates = None
+    """
+    Used with `time_series_pattern` set to 'custom'
+    It's a list of tuple, each tuple represent start date & end date
+    Example: [ (start_date_1, end_date_1), (start_date_2, end_date_2), ....]
+    """
+
     crosstab_model = None
     """
     If set, a cross tab over this model selected ids (via `crosstab_ids`)  
@@ -108,7 +115,7 @@ class ReportGenerator(object):
     def __init__(self, report_model=None, main_queryset=None, start_date=None, end_date=None, date_field=None,
                  q_filters=None, kwargs_filters=None,
                  group_by=None, columns=None,
-                 time_series_pattern=None, time_series_columns=None,
+                 time_series_pattern=None, time_series_columns=None, time_series_custom_dates=None,
                  crosstab_model=None, crosstab_columns=None, crosstab_ids=None, crosstab_compute_reminder=None,
                  swap_sign=False, show_empty_records=None,
                  print_flag=False,
@@ -173,6 +180,7 @@ class ReportGenerator(object):
 
         self.time_series_pattern = self.time_series_pattern or time_series_pattern
         self.time_series_columns = self.time_series_columns or time_series_columns
+        self.time_series_custom_dates = self.time_series_custom_dates or time_series_custom_dates
 
         self._prepared_results = {}
         self.report_fields_classes = {}
@@ -549,7 +557,7 @@ class ReportGenerator(object):
         Hook to get custom , maybe separated date periods
         :return: [ (date1,date2) , (date3,date4), .... ]
         """
-        return []
+        return self.time_series_custom_dates or []
 
     def _get_time_series_dates(self, series=None, start_date=None, end_date=None):
         from dateutil.relativedelta import relativedelta

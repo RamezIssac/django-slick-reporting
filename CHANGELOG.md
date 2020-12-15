@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an issue if GenericForeignKey is on the report model
 - Allow for time series to operate on a non-group by report  
 - Fixed an issue with Time series annual pattern
+- Allow setting time series custom dates on ReportGenerator attr and init
 
 ## [0.5.0] - 2020-12-11
 
