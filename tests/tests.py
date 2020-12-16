@@ -185,9 +185,25 @@ class ReportTest(BaseTestData, TestCase):
         data = report.get_report_data()
         self.assertEqual(data[0]['__total__TS20200201'], 600)
 
+
 class TestView(BaseTestData, TestCase):
+
     def test_view(self):
         response = self.client.get(reverse('report1'))
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.context['report_data']['data']
+        report_generator = ReportGenerator(report_model=SimpleSales,
+                                           date_field='doc_date',
+                                           group_by='client',
+                                           columns=['slug', 'name'],
+                                           time_series_pattern='monthly',
+                                           time_series_columns=['__total__', '__balance__']
+                                           )
+        self.assertTrue(view_report_data)
+        self.assertEqual(view_report_data, report_generator.get_report_data())
+
+    def test_qs_only(self):
+        response = self.client.get(reverse('queryset-only'))
         self.assertEqual(response.status_code, 200)
         view_report_data = response.context['report_data']['data']
         report_generator = ReportGenerator(report_model=SimpleSales,

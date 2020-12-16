@@ -60,6 +60,10 @@ class SlickReportViewBase(FormView):
 
         return self.render_to_response(self.get_context_data())
 
+    @classmethod
+    def get_report_model(cls):
+        return cls.report_model or cls.queryset.model
+
     def ajax_render_to_response(self, report_data):
         return HttpResponse(self.serialize_to_json(report_data),
                             content_type="application/json")
@@ -86,7 +90,7 @@ class SlickReportViewBase(FormView):
         Automatically instantiate a form based on details provided
         :return:
         """
-        return self.form_class or report_form_factory(self.report_model, crosstab_model=self.crosstab_model,
+        return self.form_class or report_form_factory(self.get_report_model(), crosstab_model=self.crosstab_model,
                                                       display_compute_reminder=self.crosstab_compute_reminder)
 
     def get_form_kwargs(self):
@@ -120,7 +124,7 @@ class SlickReportViewBase(FormView):
         crosstab_compute_reminder = self.form.get_crosstab_compute_reminder() if self.request.GET or self.request.POST \
             else self.crosstab_compute_reminder
 
-        return self.report_generator_class(self.report_model,
+        return self.report_generator_class(self.get_report_model(),
                                            start_date=self.form.cleaned_data['start_date'],
                                            end_date=self.form.cleaned_data['end_date'],
                                            q_filters=q_filters,
@@ -258,7 +262,7 @@ class SlickReportView(SlickReportViewBase):
             raise TypeError(f'`date_field` is not set on {cls}')
 
         # sanity check, raises error if the columns or date fields is not mapped
-        cls.report_generator_class.check_columns([cls.date_field], False, cls.report_model)
-        cls.report_generator_class.check_columns(cls.columns, cls.group_by, cls.report_model)
+        cls.report_generator_class.check_columns([cls.date_field], False, cls.get_report_model())
+        cls.report_generator_class.check_columns(cls.columns, cls.group_by, cls.get_report_model())
 
         super().__init_subclass__()

@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Allow for time series to operate on a non-group by report  
 - Fixed an issue with Time series annual pattern
 - Allow setting time series custom dates on ReportGenerator attr and init
+- Fix a bug with setting the queryset (but not the report model) on SlickReportView
 
 ## [0.5.0] - 2020-12-11
 
