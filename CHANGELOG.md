@@ -4,12 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [0.5.1] -
 
-- Added tests for group by a flag field
-- Fixed an issue if GenericForeignKey is on the report model
-- Allow for time series to operate on a non-group by report  
-- Fixed an issue with Time series annual pattern
+- Allow for time series to operate on a non-group by report
 - Allow setting time series custom dates on ReportGenerator attr and init
 - Fix a bug with setting the queryset (but not the report model) on SlickReportView
+- Fixed an issue if GenericForeignKey is on the report model
+- Fixed an issue with Time series annual pattern
 
 ## [0.5.0] - 2020-12-11
 
