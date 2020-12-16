@@ -109,7 +109,7 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
     :param crosstab_model: crosstab model if any
     :param display_compute_reminder:  relevant only if crosstab_model is specified. Control if we show the check to
     display the rest.
-    :param fkeys_filter_func:  a receives the list of Foreign found on the model, return the list of ForeignKeys to be used
+    :param fkeys_filter_func:  a receives an OrderedDict of Foreign Keys names and their model field instances found on the model, return the OrderedDict that would be used
     :param foreign_key_widget_func: receives a Field class return the used widget like this {'form_class': forms.ModelMultipleChoiceField, 'required': False, }
     :return: 
     """
@@ -125,21 +125,16 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
 
     fields['start_date'] = forms.DateTimeField(required=False, label=_('From date'),
                                                initial=app_settings.SLICK_REPORTING_DEFAULT_START_DATE,
-                                               widget=forms.DateTimeInput(
-                                                   attrs={'autocomplete': "off"}),
-                                               )
+                                               widget=forms.DateTimeInput(attrs={'autocomplete': "off"}))
 
     fields['end_date'] = forms.DateTimeField(required=False, label=_('To  date'),
                                              initial=app_settings.SLICK_REPORTING_DEFAULT_END_DATE,
-                                             widget=forms.DateTimeInput(
-                                                 attrs={'autocomplete': "off"})
-                                             )
+                                             widget=forms.DateTimeInput(attrs={'autocomplete': "off"}))
 
     for name, f_field in fkeys_map.items():
         fkeys_list.append(name)
 
-        fields[name] = f_field.formfield(
-            **foreign_key_widget_func(f_field))
+        fields[name] = f_field.formfield(**foreign_key_widget_func(f_field))
 
     if crosstab_model and display_compute_reminder:
         fields['crosstab_compute_reminder'] = forms.BooleanField(required=False,

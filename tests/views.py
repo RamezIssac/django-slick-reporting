@@ -52,3 +52,13 @@ class CrossTabColumnOnFly(SlickReportView):
             'title_source': 'name',
         }
     ]
+
+
+class MonthlyProductSalesWQS(SlickReportView):
+    # report_model = SimpleSales
+    queryset = SimpleSales.objects.all()
+    date_field = 'doc_date'
+    group_by = 'client'
+    columns = ['slug', 'name']
+    time_series_pattern = 'monthly'
+    time_series_columns = ['__total__', '__balance__']
