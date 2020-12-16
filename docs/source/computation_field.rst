@@ -51,6 +51,16 @@ If you want AVG to the field `price` then the ReportField would look like this
         verbose name = 'Avg. Price'
 
 
+How it works ?
+--------------
+The ReportGenerator is initialized with the needed configuration,
+it generates a list of the needed fields to be displayed and computed.
+For each computation field, it's given the filters needed and
+asked to get all the results prepared. **The preparation is a duty of the ReportField anyway**,
+then for each report_model record, the ReportGenerator again asks each ComputationField to get the data it has for each record and map it where it belongs.
+
+
+
 Bundled Report Fields
 ---------------------
 

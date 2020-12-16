@@ -1,7 +1,12 @@
 .. _usage:
 
-Concept
-=======
+A walk through
+==============
+
+Update
+~~~~~~
+You can now go to https://django-slick-reporting for a better and practical guidance on the types of reports and what you can do.
+
 
 
 Given that you have a model where there are data stored which you want to generate reports on.
@@ -155,34 +160,4 @@ Which can be written like this
 
 
 
-
-Charts
--------
-
-To create a report we need to a dictionary to a ``chart_settings`` to the SlickReportView.
-
-.. code-block:: python
-
-    class MonthlySalesReport(SlickReportView):
-        # ....
-
-        charts_settings = [{
-                'type': 'bar',
-                'title_source': 'title',
-                'data_source': '__total_quantity__',
-                'title': _('Total Monthly Sales'),
-                'plot_total': True,
-            },
-            # ... another chart goes here
-        ]
-
-
-* type: what kind of chart it is: Possible options are bar, pie, line and others subject of the underlying charting engine.
-  Hats off to : `Charts.js <https://www.chartjs.org/>`_.
-* engine_name: String, default to ``SLICK_REPORTING_DEFAULT_CHARTS_ENGINE``. Passed to front end in order to use the appropriate chart engine.
-  By default supports `highcharts` & `chartsjs`.
-* data_source: Field name containing the numbers we want to plot.
-* title_source: Field name containing labels of the data_source
-* title: the Chart title. Defaults to the `report_title`.
-* plot_total if True the chart will plot the total of the columns. Useful with time series and crosstab reports
 

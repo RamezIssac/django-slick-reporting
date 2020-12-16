@@ -1,8 +1,7 @@
-
 Django Slick Reporting
 ======================
 
-**Django Slick Reporting** is a report engine that where you can create & display diverse analytics. Batteries like a ready to use View and Charts.js integration are included.
+**Django Slick Reporting** a report engine allowing you to create & display diverse analytics. Batteries like a ready to use View and Highcharts & Charts.js integration are included.
 
 
 Installation
@@ -10,10 +9,16 @@ Installation
 
 To install django-slick-reporting:
 
-1.  Install with pip: ``pip install django-slick-reporting``.
-2.  Add ``'slick_reporting'`` to ``INSTALLED_APPS``.
-3. For the shipped in View, add ``'crispy_forms'`` to ``INSTALLED_APPS``and add `CRISPY_TEMPLATE_PACK = 'bootstrap4'`
-   to your `settings.py`
+1.  Install with pip: `pip install django-slick-reporting`.
+2.  Add ``slick_reporting'`` to ``INSTALLED_APPS``.
+3. For the shipped in View, add ``'crispy_forms'`` to ``INSTALLED_APPS`` and add ``CRISPY_TEMPLATE_PACK = 'bootstrap4'``
+   to your ``settings.py``
+4. Execute `python manage.py collectstatic` so the JS helpers are collected and served.
+
+Demo site
+----------
+
+https://django-slick-reporting.com is a quick walk-though with live code examples
 
 
 Quickstart
@@ -40,32 +45,28 @@ You can start by using ``SlickReportView`` which is a subclass of ``django.views
         group_by = 'product'
 
         # The columns you want to display
-        columns = ['title', '__total_quantity__']
+        columns = ['title',
+                    SlickReportField.create(method=Sum, field='value', name='value__sum', verbose_name=_('Total sold $'))
+                    ]
 
         # Charts
         charts_settings = [
          {
             'type': 'bar',
-            'data_source': '__total_quantity__',
+            'data_source': 'value__sum',
             'title_source': 'title',
          },
         ]
 
-The above simple code will result in a page similar to this
 
-.. image:: https://i.ibb.co/SvxTM23/Selection-294.png
-    :target: https://i.ibb.co/SvxTM23/Selection-294.png
-    :alt: Shipped in View Page
-
-Neat huh ? Next step :ref:`usage`
+Next step :ref:`structure`
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   tour
-   customization
-   view_response_structure
+   concept
+   the_view
    report_generator
    computation_field
 

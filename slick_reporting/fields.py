@@ -59,7 +59,7 @@ class SlickReportField(object):
         """
         if not name:
             identifier = str(uuid.uuid4()).split('-')[-1]
-            name = name or f"{method.name}__{field}"
+            name = name or f"{method.name.lower()}__{field}"
             assert name not in cls._field_registry.get_all_report_fields_names()
 
         verbose_name = verbose_name or f'{method.name} {field}'
@@ -221,7 +221,7 @@ class SlickReportField(object):
             debit = None
             if cached_debit is not None:
                 if not group_by:
-                    x = cached_debit.keys()[0]
+                    x = list(cached_debit.keys())[0]
                     debit_value = cached_debit[x]
                 else:
                     for i, x in enumerate(cached_debit):
@@ -235,7 +235,7 @@ class SlickReportField(object):
                 credit = None
                 if cached_credit is not None:
                     if not group_by:
-                        x = cached_credit.keys()[0]
+                        x = list(cached_credit.keys())[0]
                         credit_value = cached_credit[x]
                     else:
                         for i, x in enumerate(cached_credit):

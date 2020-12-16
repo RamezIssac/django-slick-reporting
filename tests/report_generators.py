@@ -1,9 +1,11 @@
+import datetime
+
 from django.db.models import Sum
 from django.utils.translation import ugettext_lazy as _
 
 from slick_reporting.fields import SlickReportField
 from slick_reporting.generator import ReportGenerator
-from .models import Client, SimpleSales, Product
+from .models import Client, SimpleSales, Product, SalesWithFlag
 from .models import OrderLine
 
 
@@ -46,6 +48,23 @@ class ClientTotalBalance(ReportGenerator):
     columns = ['slug', 'name', '__balance__', '__total__']
 
 
+class GroupByCharField(ReportGenerator):
+    report_model = SalesWithFlag
+    date_field = 'doc_date'
+    group_by = 'flag'
+    columns = ['flag', '__balance__', SlickReportField.create(Sum, 'quantity')]
+
+
+class GroupByCharFieldPlusTimeSeries(ReportGenerator):
+    report_model = SalesWithFlag
+    date_field = 'doc_date'
+    group_by = 'flag'
+    columns = ['flag', SlickReportField.create(Sum, 'quantity')]
+
+    time_series_pattern = 'monthly'
+    time_series_columns = [SlickReportField.create(Sum, 'quantity')]
+
+
 class ClientTotalBalancesOrdered(ClientTotalBalance):
     report_slug = None
     default_order_by = '__balance__'
@@ -85,25 +104,15 @@ class ProductClientSales(ReportGenerator):
 
     group_by = 'product'
     columns = ['slug', 'name', '__balance_quantity__', '__balance__', 'get_data']
-    def get_data(self, obj):
-        import pdb;
-        pdb.set_trace()
-        return ''
 
+    def get_data(self, obj):
+        return ''
 
 
 class ProductSalesMonthlySeries(ReportGenerator):
     base_model = Product
     report_model = SimpleSales
     report_title = _('Product Sales Monthly')
-
-    form_settings = {
-        'group_by': 'product',
-        'group_columns': ['slug', 'name'],
-
-        'time_series_pattern': 'monthly',
-        'time_series_columns': ['__balance_quantity__', '__balance__'],
-    }
 
     group_by = 'product'
     columns = ['slug', 'name']
@@ -134,6 +143,31 @@ class ProductSalesMonthlySeries(ReportGenerator):
             }
         },
     ]
+
+
+class TimeSeriesCustomDates(ReportGenerator):
+    report_model = SimpleSales
+    report_title = _('Product Sales Monthly')
+    date_field = 'doc_date'
+    # group_by = 'product'
+    # columns = ['slug', 'name']
+    time_series_pattern = 'custom'
+    time_series_columns = ['__total__']
+    time_series_custom_dates = [
+        (datetime.date(2020, 1, 1), datetime.date(2020, 1, 17)),
+        (datetime.date(2020, 4, 17), datetime.date(2020, 5, 1)),
+        (datetime.date(2020, 8, 8), datetime.date(2020, 9, 9)),
+    ]
+
+
+class TimeSeriesWithOutGroupBy(ReportGenerator):
+    report_model = SimpleSales
+    report_title = _('Product Sales Monthly')
+    date_field = 'doc_date'
+    # group_by = 'product'
+    # columns = ['slug', 'name']
+    time_series_pattern = 'monthly'
+    time_series_columns = ['__total__']
 
 
 class ClientReportMixin:
@@ -186,6 +220,7 @@ class ProductClientSalesMatrix(ReportGenerator):
 
     crosstab_model = 'client'
     crosstab_columns = ['__total__']
+
 
 class ProductClientSalesMatrix2(ReportGenerator):
     report_model = SimpleSales

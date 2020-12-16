@@ -1,5 +1,7 @@
 from collections import OrderedDict
 
+from django.contrib.contenttypes.fields import GenericForeignKey
+
 
 def get_calculation_annotation(calculation_field, calculation_method):
     """
@@ -23,7 +25,9 @@ def get_foreign_keys(model):
     fkeys = OrderedDict()
     for f in fields:
         if f.is_relation and type(f) is not models.OneToOneRel \
-                and type(f) is not models.ManyToOneRel and type(f) is not models.ManyToManyRel:
+                and type(f) is not models.ManyToOneRel \
+                and type(f) is not models.ManyToManyRel \
+                and type(f) is not GenericForeignKey:
             fkeys[f.attname] = f
     return fkeys
 

@@ -95,21 +95,22 @@ class BaseReportForm:
 
 
 def _default_foreign_key_widget(f_field):
-    return {'form_class': forms.ModelMultipleChoiceField,
-            'required': False, }
+    return {'form_class': forms.ModelMultipleChoiceField, 'required': False, }
 
 
-def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=None, crosstab_model=None,
-                        display_compute_reminder=True, **kwargs):
+def report_form_factory(model, crosstab_model=None, display_compute_reminder=True, fkeys_filter_func=None,
+                        foreign_key_widget_func=None, ):
     """
-    Create a Reprot Form based on the report_model passed
+    Create a Report Form based on the report_model passed by
+    1. adding a start_date and end_date fields
+    2. extract all ForeignKeys on the report_model
     
-    :param model: 
-    :param fkeys_filter_func: 
-    :param foreign_key_widget_func: 
-    :param crosstab_model: 
-    :param display_compute_reminder: 
-    :param kwargs: 
+    :param model: the report_model
+    :param crosstab_model: crosstab model if any
+    :param display_compute_reminder:  relevant only if crosstab_model is specified. Control if we show the check to
+    display the rest.
+    :param fkeys_filter_func:  a receives an OrderedDict of Foreign Keys names and their model field instances found on the model, return the OrderedDict that would be used
+    :param foreign_key_widget_func: receives a Field class return the used widget like this {'form_class': forms.ModelMultipleChoiceField, 'required': False, }
     :return: 
     """
     foreign_key_widget_func = foreign_key_widget_func or _default_foreign_key_widget
@@ -124,21 +125,16 @@ def report_form_factory(model, fkeys_filter_func=None, foreign_key_widget_func=N
 
     fields['start_date'] = forms.DateTimeField(required=False, label=_('From date'),
                                                initial=app_settings.SLICK_REPORTING_DEFAULT_START_DATE,
-                                               widget=forms.DateTimeInput(
-                                                   attrs={'autocomplete': "off"}),
-                                               )
+                                               widget=forms.DateTimeInput(attrs={'autocomplete': "off"}))
 
     fields['end_date'] = forms.DateTimeField(required=False, label=_('To  date'),
                                              initial=app_settings.SLICK_REPORTING_DEFAULT_END_DATE,
-                                             widget=forms.DateTimeInput(
-                                                 attrs={'autocomplete': "off"})
-                                             )
+                                             widget=forms.DateTimeInput(attrs={'autocomplete': "off"}))
 
     for name, f_field in fkeys_map.items():
         fkeys_list.append(name)
 
-        fields[name] = f_field.formfield(
-            **foreign_key_widget_func(f_field))
+        fields[name] = f_field.formfield(**foreign_key_widget_func(f_field))
 
     if crosstab_model and display_compute_reminder:
         fields['crosstab_compute_reminder'] = forms.BooleanField(required=False,

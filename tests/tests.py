@@ -8,20 +8,17 @@ from django.utils.timezone import now
 
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.fields import SlickReportField, BalanceReportField
-from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2
-from .models import Client, Product, SimpleSales, OrderLine, UserJoined
+from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2, GroupByCharField, \
+    GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy
+from .models import Client, Product, SimpleSales, OrderLine, UserJoined, SalesWithFlag
+from . import report_generators
+
 from slick_reporting.registry import field_registry
 from .views import SlickReportView
 
 User = get_user_model()
 SUPER_LOGIN = dict(username='superlogin', password='password')
 year = now().year
-
-from . import report_generators
-
-
-class ReportRegistryTest(SimpleTestCase):
-    pass
 
 
 class BaseTestData:
@@ -183,10 +180,30 @@ class ReportTest(BaseTestData, TestCase):
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
+    def test_timeseries_without_group(self):
+        report = TimeSeriesWithOutGroupBy()
+        data = report.get_report_data()
+        self.assertEqual(data[0]['__total__TS20200201'], 600)
+
 
 class TestView(BaseTestData, TestCase):
+
     def test_view(self):
         response = self.client.get(reverse('report1'))
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.context['report_data']['data']
+        report_generator = ReportGenerator(report_model=SimpleSales,
+                                           date_field='doc_date',
+                                           group_by='client',
+                                           columns=['slug', 'name'],
+                                           time_series_pattern='monthly',
+                                           time_series_columns=['__total__', '__balance__']
+                                           )
+        self.assertTrue(view_report_data)
+        self.assertEqual(view_report_data, report_generator.get_report_data())
+
+    def test_qs_only(self):
+        response = self.client.get(reverse('queryset-only'))
         self.assertEqual(response.status_code, 200)
         view_report_data = response.context['report_data']['data']
         report_generator = ReportGenerator(report_model=SimpleSales,
@@ -246,7 +263,7 @@ class TestView(BaseTestData, TestCase):
     def test_crosstab_report_view_clumns_on_fly(self):
         from .report_generators import ProductClientSalesMatrix
         data = ProductClientSalesMatrix2(crosstab_compute_reminder=True,
-                                        crosstab_ids=[self.client1.pk, self.client2.pk]).get_report_data()
+                                         crosstab_ids=[self.client1.pk, self.client2.pk]).get_report_data()
 
         response = self.client.get(reverse('crosstab-columns-on-fly'), data={
             'client_id': [self.client1.pk, self.client2.pk],
@@ -358,3 +375,78 @@ class TestGroupByDate(TestCase):
         self.assertEqual(data[0]['count__id'], 1)
         self.assertEqual(data[1]['count__id'], 1)
         self.assertEqual(data[2]['count__id'], 2)
+
+
+class TestGroupByFlag(TestCase):
+    databases = '__all__'
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+
+        User.objects.create_superuser('super', None, 'secret')
+
+        user = User.objects.create(is_superuser=True, is_staff=True, **SUPER_LOGIN)
+        limited_user = User.objects.create_user(is_superuser=False, is_staff=True, username='limited',
+                                                password='password')
+        cls.user = user
+        cls.limited_user = limited_user
+        cls.client1 = Client.objects.create(name='Client 1')
+        cls.client2 = Client.objects.create(name='Client 2')
+        cls.client3 = Client.objects.create(name='Client 3')
+        cls.clientIdle = Client.objects.create(name='Client Idle')
+
+        cls.product1 = Product.objects.create(name='Product 1')
+        cls.product2 = Product.objects.create(name='Product 2')
+        cls.product3 = Product.objects.create(name='Product 3')
+
+        SalesWithFlag.objects.create(
+            doc_date=datetime.datetime(year, 1, 2), client=cls.client1,
+            product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 1, 5))
+        SalesWithFlag.objects.create(
+            doc_date=datetime.datetime(year, 2, 2), client=cls.client1,
+            product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 2, 3))
+
+        SalesWithFlag.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client1,
+            product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 3, 3))
+
+        # client 2
+        SalesWithFlag.objects.create(
+            doc_date=datetime.datetime(year, 1, 2), client=cls.client2,
+            product=cls.product1, quantity=20, price=10)
+        SalesWithFlag.objects.create(
+            doc_date=datetime.datetime(year, 2, 2), client=cls.client2,
+            product=cls.product1, quantity=20, price=10)
+
+        SalesWithFlag.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client2,
+            product=cls.product1, quantity=20, price=10)
+
+        # client 3
+        SalesWithFlag.objects.create(
+            doc_date=datetime.datetime(year, 1, 2), client=cls.client3,
+            product=cls.product1, quantity=30, price=10)
+        SalesWithFlag.objects.create(
+            doc_date=datetime.datetime(year, 2, 2), client=cls.client3,
+            product=cls.product1, quantity=30, price=10)
+
+        SalesWithFlag.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
+            product=cls.product1, quantity=30, price=10)
+        SalesWithFlag.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
+            product=cls.product1, quantity=25, price=10, flag='sales-return')
+
+    def test_group_by_flag(self):
+        report = GroupByCharField()
+        data = report.get_report_data()
+        self.assertEqual(data[0]['sum__quantity'], 180)
+        self.assertEqual(data[1]['sum__quantity'], 25)
+
+    def test_group_by_flag_time_series(self):
+        report = GroupByCharFieldPlusTimeSeries()
+        data = report.get_report_data()
+        self.assertEqual(len(data), 2)
+        self.assertEqual(data[1]['sum__quantity'], 25)
+        self.assertEqual(data[1]['sum__quantityTS20200401'], 25)

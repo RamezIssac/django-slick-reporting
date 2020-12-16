@@ -1,5 +1,6 @@
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.urls import reverse_lazy
 
 from django.utils.translation import ugettext_lazy as _
 
@@ -36,7 +37,33 @@ class SimpleSales(models.Model):
     price = models.DecimalField(_('price'), max_digits=19, decimal_places=2, default=0)
     value = models.DecimalField(_('value'), max_digits=19, decimal_places=2, default=0)
     created_at = models.DateTimeField(null=True, verbose_name=_('Created at'))
+    flag = models.CharField(max_length=50, default='sales')
 
+    content_type = models.ForeignKey(ContentType, on_delete=models.DO_NOTHING, null=True)
+    object_id = models.PositiveIntegerField(null=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        self.value = self.quantity * self.price
+        super().save(force_insert, force_update, using, update_fields)
+
+    class Meta:
+        verbose_name = _('Sale')
+        verbose_name_plural = _('Sales')
+        ordering = ['-created_at']
+
+
+class SalesWithFlag(models.Model):
+    slug = models.SlugField()
+    doc_date = models.DateTimeField(_('date'), db_index=True)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.DecimalField(_('quantity'), max_digits=19, decimal_places=2, default=0)
+    price = models.DecimalField(_('price'), max_digits=19, decimal_places=2, default=0)
+    value = models.DecimalField(_('value'), max_digits=19, decimal_places=2, default=0)
+    created_at = models.DateTimeField(null=True, verbose_name=_('Created at'))
+    flag = models.CharField(max_length=50, default='sales')
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.value = self.quantity * self.price
@@ -51,6 +78,8 @@ class SimpleSales(models.Model):
 class UserJoined(models.Model):
     username = models.CharField(max_length=255)
     date_joined = models.DateField()
+
+
 #
 # class Invoice(BaseMovementInfo):
 #     client = models.ForeignKey(Client, on_delete=models.CASCADE)
