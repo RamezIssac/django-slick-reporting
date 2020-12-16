@@ -519,7 +519,7 @@ class ReportGenerator(object):
         cols = self.time_series_columns or []
         series = self._get_time_series_dates(self.time_series_pattern)
 
-        for dt in series:
+        for index, dt in enumerate(series):
             for col in cols:
                 magic_field_class = None
 
@@ -531,7 +531,7 @@ class ReportGenerator(object):
                 _values.append({
                     'name': magic_field_class.name + 'TS' + dt[1].strftime('%Y%m%d'),
                     'original_name': magic_field_class.name,
-                    'verbose_name': self.get_time_series_field_verbose_name(magic_field_class, dt),
+                    'verbose_name': self.get_time_series_field_verbose_name(magic_field_class, dt, index, series),
                     'ref': magic_field_class,
                     'start_date': dt[0],
                     'end_date': dt[1],
@@ -540,7 +540,7 @@ class ReportGenerator(object):
                 })
         return _values
 
-    def get_time_series_field_verbose_name(self, computation_class, date_period):
+    def get_time_series_field_verbose_name(self, computation_class, date_period, index, series):
         """
         Sent the column data to construct a verbose name.
         Default implementation is delegated to the ReportField.get_time_series_field_verbose_name
@@ -550,7 +550,8 @@ class ReportGenerator(object):
         :param date_period: a tuple of (start_date, end_date)
         :return: a verbose string
         """
-        return computation_class.get_time_series_field_verbose_name(date_period)
+        return computation_class.get_time_series_field_verbose_name(date_period, index, series,
+                                                                    self.time_series_pattern)
 
     def get_custom_time_series_dates(self):
         """
