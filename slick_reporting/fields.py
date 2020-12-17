@@ -1,9 +1,9 @@
 import uuid
 
 from django.db.models import Sum
+from django.template.defaultfilters import date as date_filter
 from django.utils.translation import ugettext_lazy as _
 
-from .decorators import report_field_register
 from .helpers import get_calculation_annotation
 from .registry import field_registry
 
@@ -284,15 +284,28 @@ class SlickReportField(object):
         return f'{cls.verbose_name} {model} {id}'
 
     @classmethod
-    def get_time_series_field_verbose_name(cls, date_period):
+    def get_time_series_field_verbose_name(cls, date_period, index, dates, pattern):
         """
-        Sent the column data to construct a verbose name.
-        Default implemenetation is column name + the end date %Y%m%d
-        :param column_name: the computation field_name
+        Get the name of the verbose name of a computaion field that's in a time_series.
+        should be a mix of the date period if the column an it's verbose name.
         :param date_period: a tuple of (start_date, end_date)
+        :param index: the index of the current field in the whole dates to be calculated
+        :param dates a list of tuples representing the start and the end date
         :return: a verbose string
         """
         dt_format = '%Y/%m/%d'
+
+        if pattern == 'monthly':
+            month_name = date_filter(date_period[0], 'F Y')
+            return f'{cls.verbose_name} {month_name}'
+        elif pattern == 'daily':
+            return f'{cls.verbose_name} {date_period[0].strftime(dt_format)}'
+        elif pattern == 'weekly':
+            return f' {cls.verbose_name} {_("Week")} {index} {date_period[0].strftime(dt_format)}'
+        elif pattern == 'yearly':
+            year = date_filter(date_period[0], 'Y')
+            return f'{cls.verbose_name} {year}'
+
         return f'{cls.verbose_name} {date_period[0].strftime(dt_format)} - {date_period[1].strftime(dt_format)}'
 
 
