@@ -360,16 +360,17 @@
                 Object.keys(data_sources).forEach(function (series_cols, index) {
                     let data = []
                     data_sources[series_cols].forEach(function (col, index) {
-                        data.push(totalValues[col])
+
+                        series.push({
+                            'name': response.metadata.time_series_column_verbose_names[index],
+                            data: [totalValues[col]]
+                        })
                     })
-                    series.push({
-                        'name': 'Total', //todo
-                        'data': data
-                    })
+
                 })
             }
             return {
-                // 'categories': response.metadata.time_series_column_verbose_names,
+                'categories': response.metadata.time_series_column_verbose_names,
                 'titles': response.metadata.time_series_column_verbose_names,
                 'series': series,
             }

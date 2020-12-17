@@ -2,7 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.5.1] -
+## [0.5.2]
+
+- Enhanced Time Series Plot total HighChart by accenting the categories
+- Enhanced the default verbose names of time series.
+- Expanding test coverage
+
+
+## [0.5.1]
 
 - Allow for time series to operate on a non-group by report
 - Allow setting time series custom dates on ReportGenerator attr and init

@@ -126,33 +126,6 @@ class ReportTest(BaseTestData, TestCase):
         self.assertEqual(data[0]['__total__CT%s' % self.client2.pk], 600)
         self.assertEqual(data[0]['__total__CT----'], 900)
 
-    def _test_default_order_by(self):
-        self.client.login(username='super', password='secret')
-        response = self.client.get(reverse('ra_admin:report', args=('client', 'clienttotalbalancesordered')),
-                                   HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        previous_balance = 0
-        self.assertTrue(len(data['data']) > 1)
-        for i, line in enumerate(data['data']):
-            if i == 0:
-                previous_balance = line['__balance__']
-            else:
-                self.assertTrue(line['__balance__'] > previous_balance)
-
-    def _test_default_order_by_reversed(self):
-        self.client.login(username='super', password='secret')
-        response = self.client.get(reverse('ra_admin:report', args=('client', 'ClientTotalBalancesOrderedDESC')),
-                                   HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        previous_balance = 0
-        self.assertTrue(len(data['data']) > 1)
-        for i, line in enumerate(data['data']):
-            if i == 0:
-                previous_balance = line['__balance__']
-            else:
-                self.assertTrue(line['__balance__'] < previous_balance)
 
     def test_show_empty_records(self):
         report = report_generators.ClientTotalBalance()
@@ -252,6 +225,8 @@ class TestView(BaseTestData, TestCase):
         data = ProductClientSalesMatrix(crosstab_compute_reminder=True,
                                         crosstab_ids=[self.client1.pk, self.client2.pk]).get_report_data()
 
+        response = self.client.get(reverse('product_crosstab_client'))
+        self.assertEqual(response.status_code, 200)
         response = self.client.get(reverse('product_crosstab_client'), data={
             'client_id': [self.client1.pk, self.client2.pk],
             'crosstab_compute_reminder': True,
@@ -282,10 +257,6 @@ class TestView(BaseTestData, TestCase):
         data = response.json()
         self.assertTrue('pie' in data['chart_settings'][0]['id'])
         self.assertTrue(data['chart_settings'][0]['title'], 'awesome report title')
-
-    def _test_column_names_are_always_strings(self):
-        # todo
-        pass
 
     def test_error_on_missing_date_field(self):
         def test_function():
@@ -333,12 +304,10 @@ class TestReportFieldRegistry(TestCase):
 
     def test_get_non_existent_field(self):
         def register():
-            field = field_registry.get_field_by_name('__a_weird_name__')
-            return field
+            return field_registry.get_field_by_name('__a_weird_name__')
 
         with self.assertRaises(Exception):
-            field = register()
-            self.assertIsNone(field)
+            register()
 
     def test_creating_a_report_field_on_the_fly(self):
         from django.db.models import Sum

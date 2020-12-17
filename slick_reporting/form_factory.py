@@ -15,9 +15,7 @@ class BaseReportForm:
 
     @property
     def media(self):
-        # media = super().media
         from .app_settings import SLICK_REPORTING_FORM_MEDIA
-        # import pdb; pdb.set_trace()
         return forms.Media(css=SLICK_REPORTING_FORM_MEDIA.get('css', {}), js=SLICK_REPORTING_FORM_MEDIA.get('js', []))
 
     def get_filters(self):
