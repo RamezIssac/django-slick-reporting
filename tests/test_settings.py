@@ -12,6 +12,7 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
         'TEST': {
             'NAME': 'tst_db.sqlite3',
+            'MIGRATE': False
         },
     },
 }
