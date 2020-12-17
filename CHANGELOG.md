@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 - Enhanced Time Series Plot total HighChart by accenting the categories
 - Enhanced the default verbose names of time series.
+- Expanding test coverage
 
 
 ## [0.5.1]

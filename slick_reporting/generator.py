@@ -230,7 +230,6 @@ class ReportGenerator(object):
                 # group_by_filter = self.kwargs_filters.get(self.group_by, '')
                 # qs = self.group_by_field.related_model.objects
                 # if group_by_filter:
-                #     import pdb; pdb.set_trace()
                 #     lookup = 'pk__in' if isinstance(group_by_filter, Iterable) else 'pk'
                 #     qs = qs.filter(**{lookup: group_by_filter})
                 # self.main_queryset = qs.values()
@@ -300,11 +299,8 @@ class ReportGenerator(object):
                     fields_on_report = [x for x in window_cols if x['ref'] in dependencies_names]
                     for field in fields_on_report:
                         self._report_fields_dependencies[window][field['name']] = col_data['name']
-            # import pdb; pdb.set_trace()
             for col_data in window_cols:
                 klass = col_data['ref']
-                # if getattr(klass, 'name', '') not in klasses_names:
-                #     continue
                 name = col_data['name']
 
                 # if column has a dependency then skip it
@@ -540,7 +536,7 @@ class ReportGenerator(object):
                 })
         return _values
 
-    def get_time_series_field_verbose_name(self, computation_class, date_period, index, series):
+    def get_time_series_field_verbose_name(self, computation_class, date_period, index, series, pattern=None):
         """
         Sent the column data to construct a verbose name.
         Default implementation is delegated to the ReportField.get_time_series_field_verbose_name
@@ -550,8 +546,9 @@ class ReportGenerator(object):
         :param date_period: a tuple of (start_date, end_date)
         :return: a verbose string
         """
+        pattern = pattern or self.time_series_pattern
         return computation_class.get_time_series_field_verbose_name(date_period, index, series,
-                                                                    self.time_series_pattern)
+                                                                    pattern)
 
     def get_custom_time_series_dates(self):
         """

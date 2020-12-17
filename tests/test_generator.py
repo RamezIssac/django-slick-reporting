@@ -54,22 +54,30 @@ class GeneratorReportStructureTest(TestCase):
         self.assertEqual(len(x.get_list_display_columns()), 13)
 
     def test_time_series_patterns(self):
+        from slick_reporting.fields import TotalReportField
         report = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client',
                                  columns=['name', '__time_series__'],
                                  time_series_columns=['__total_quantity__'], time_series_pattern='monthly',
                                  start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone('utc')),
                                  end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone('utc')))
+
+        report_field_class = TotalReportField
         dates = report._get_time_series_dates()
         self.assertEqual(len(dates), 12)
+        self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates))
 
         dates = report._get_time_series_dates('daily')
         self.assertEqual(len(dates), 365, len(dates))
+        self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates, 'daily'))
 
         dates = report._get_time_series_dates('weekly')
         self.assertEqual(len(dates), 53, len(dates))
+        self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates, 'weekly'))
 
         dates = report._get_time_series_dates('semimonthly')
         self.assertEqual(len(dates), 27, len(dates))
+        self.assertIsNotNone(
+            report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates, 'semimonthly'))
 
         dates = report._get_time_series_dates('quarterly')
         self.assertEqual(len(dates), 4, len(dates))
@@ -78,7 +86,7 @@ class GeneratorReportStructureTest(TestCase):
         self.assertEqual(len(dates), 2, len(dates))
         dates = report._get_time_series_dates('annually')
         self.assertEqual(len(dates), 1, len(dates))
-
+        self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates))
 
     def test_time_series_custom_pattern(self):
         # report = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client',
