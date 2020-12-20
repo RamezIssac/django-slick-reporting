@@ -322,8 +322,7 @@ class ReportGenerator(object):
                 if window == 'crosstab':
                     q_filters = self._construct_crosstab_filter(col_data)
 
-                # print(f'preparing {report_class} for {window}')
-                report_class.prepare(q_filters, date_filter)
+                report_class.init_preparation(q_filters, date_filter)
                 self.report_fields_classes[name] = report_class
 
     def _get_record_data(self, obj, columns):
@@ -359,7 +358,7 @@ class ReportGenerator(object):
                             computation_class = self.report_fields_classes[name]
                         except KeyError:
                             continue
-                        value = computation_class.resolve(group_by_val)
+                        value = computation_class.resolve(group_by_val, data)
                     if self.swap_sign: value = -value
                     data[name] = value
 

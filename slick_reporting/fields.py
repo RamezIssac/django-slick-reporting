@@ -110,6 +110,21 @@ class SlickReportField(object):
             queryset = queryset.aggregate(annotation)
         return queryset
 
+    def init_preparation(self, q_filters=None, kwargs_filters=None, **kwargs):
+        """
+        Called by the generator to preparet he calculation of this field + it's requirements
+        :param q_filters:
+        :param kwargs_filters:
+        :param kwargs:
+        :return:
+        """
+        kwargs_filters = kwargs_filters or {}
+
+        dep_values = self._prepare_dependencies(q_filters, kwargs_filters.copy())
+
+        debit_results, credit_results = self.prepare(q_filters, kwargs_filters, **kwargs)
+        self._cache = debit_results, credit_results, dep_values
+
     def prepare(self, q_filters=None, kwargs_filters=None, **kwargs):
         """
         This is the first hook where you can customize the calculation away from the Django Query aggregation method
@@ -122,10 +137,6 @@ class SlickReportField(object):
         :param kwargs:
         :return:
         """
-        kwargs_filters = kwargs_filters or {}
-
-        dep_values = self._prepare_dependencies(q_filters, kwargs_filters.copy())
-
         queryset = self.get_queryset()
         if q_filters:
             queryset = queryset.filter(*q_filters)
@@ -148,8 +159,7 @@ class SlickReportField(object):
 
             credit_results = self.apply_aggregation(queryset, self.group_by)
 
-        self._cache = debit_results, credit_results, dep_values
-        return debit_results, credit_results, dep_values
+        return debit_results, credit_results
 
     def get_queryset(self):
         queryset = self.report_model.objects
@@ -171,11 +181,12 @@ class SlickReportField(object):
                                 'instance': dep}
         return values
 
-    def resolve(self, current_obj):
+    def resolve(self, current_obj, current_row=None):
         '''
         Reponsible for getting the exact data from the prepared value
         :param cached: the returned data from prepare
-        :param current_obj:
+        :param current_obj: he value of group by id
+        :param current_row: the row in iteration
         :return: a solid number or value
         '''
         cached = self._cache
