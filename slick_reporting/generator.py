@@ -193,14 +193,18 @@ class ReportGenerator(object):
         # todo validate columns is not empty (if no time series / cross tab)
 
         if self.group_by:
+            search_field = self.group_by.split('__')[0]
             try:
-                self.group_by_field = [x for x in self.report_model._meta.fields if x.name == self.group_by][0]
+                self.group_by_field = [x for x in self.report_model._meta.fields if x.name == search_field][0]
+
             except IndexError:
                 raise ImproperlyConfigured(
                     f'Can not find group_by field:{self.group_by} in report_model {self.report_model} ')
-
-            self.focus_field_as_key = self.group_by
-            self.group_by_field_attname = self.group_by_field.attname
+            self.focus_field_as_key = self.group_by_field
+            if '__' not in self.group_by:
+                self.group_by_field_attname = self.group_by_field.attname
+            else:
+                self.group_by_field_attname = self.group_by
         else:
             self.focus_field_as_key = None
             self.group_by_field_attname = None
@@ -237,10 +241,10 @@ class ReportGenerator(object):
             else:
                 self.main_queryset = self._apply_queryset_options(main_queryset)
                 if type(self.group_by_field) is ForeignKey:
-                    ids = self.main_queryset.values_list(self.group_by_field.attname).distinct()
+                    ids = self.main_queryset.values_list(self.group_by_field_attname).distinct()
                     self.main_queryset = self.group_by_field.related_model.objects.filter(pk__in=ids).values()
                 else:
-                    self.main_queryset = self.main_queryset.distinct().values(self.group_by_field.attname)
+                    self.main_queryset = self.main_queryset.distinct().values(self.group_by_field_attname)
         else:
             if self.time_series_pattern:
                 self.main_queryset = [{}]
@@ -401,7 +405,7 @@ class ReportGenerator(object):
         """
         group_by_model = None
         if group_by:
-            group_by_field = [x for x in report_model._meta.fields if x.name == group_by][0]
+            group_by_field = [x for x in report_model._meta.fields if x.name == group_by.split('__')[0]][0]
             if group_by_field.is_relation:
                 group_by_model = group_by_field.related_model
             else:

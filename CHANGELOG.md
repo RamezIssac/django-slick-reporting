@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.3]
+
+- Enhanced Field prepare flow
+- Add traversing for group_by 
+
+
 ## [0.5.2]
 
 - Enhanced Time Series Plot total HighChart by accenting the categories

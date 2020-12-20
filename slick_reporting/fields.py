@@ -177,7 +177,7 @@ class SlickReportField(object):
         for dep_class in self._require_classes:
             dep = dep_class(self.plus_side_q, self.minus_side_q, self.report_model,
                             date_field=self.date_field, group_by=self.group_by)
-            values[dep.name] = {'results': dep.prepare(q_filters, extra_filters),
+            values[dep.name] = {'results': dep.init_preparation(q_filters, extra_filters),
                                 'instance': dep}
         return values
 

@@ -138,6 +138,16 @@ class GeneratorReportStructureTest(TestCase):
 
         self.assertTrue(report._report_fields_dependencies)
 
+    def test_group_by_traverse(self):
+        report = ReportGenerator(report_model=SimpleSales, group_by='client__slug',
+                                 columns=['slug', 'name'],
+                                 time_series_pattern='monthly',
+                                 date_field='doc_date',
+                                 time_series_columns=['__debit__', '__credit__', '__balance__', '__total__']
+                                 )
+
+        self.assertTrue(report._report_fields_dependencies)
+
     def test_db_field_column_verbose_name(self):
         report = GenericGenerator()
         field_list = report.get_list_display_columns()
