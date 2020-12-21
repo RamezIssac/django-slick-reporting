@@ -45,6 +45,9 @@
 <script src="{% static 'slick_reporting/main.js' %}"></script>
 <script src="{% static 'slick_reporting/ra.chartsjs.js' %}"></script>
 <script src="{% static 'slick_reporting/ra.highchart.js' %}"></script>
+<script>$(document).ready(function () {
+    $('select').select2();
+})</script>
 {% block js_script %}
 {% endblock %}
 </body>
