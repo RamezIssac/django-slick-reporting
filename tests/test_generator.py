@@ -1,7 +1,10 @@
 from datetime import datetime
 
 import pytz
+from django.db.models import Sum
 from django.test import TestCase
+
+from slick_reporting.fields import SlickReportField
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import get_foreign_keys
 from .models import OrderLine
@@ -9,7 +12,7 @@ from .models import OrderLine
 from .report_generators import GeneratorWithAttrAsColumn, CrosstabOnClient, GenericGenerator, GroupByCharField, \
     TimeSeriesCustomDates
 
-from .tests import BaseTestData
+from .tests import BaseTestData, year
 from .models import SimpleSales
 
 
@@ -44,7 +47,16 @@ class MatrixTests(BaseTestData, TestCase):
             self.assertTrue('is_summable' in col.keys(), col)
 
 
-class GeneratorReportStructureTest(TestCase):
+class GeneratorReportStructureTest(BaseTestData, TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        SimpleSales.objects.create(
+            doc_date=datetime(year, 3, 2), client=cls.client3,
+            product=cls.product3, quantity=30, price=10)
+
+
     def test_time_series_columns_inclusion(self):
         x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client',
                             columns=['name', '__time_series__'],
@@ -115,6 +127,7 @@ class GeneratorReportStructureTest(TestCase):
 
         self.assertEqual(columns_data[0]['verbose_name'], 'get_data_verbose_name')
         data = report.get_report_data()
+        self.assertIsNot(data, [])
         # todo
 
     def test_improper_group_by(self):
@@ -139,14 +152,20 @@ class GeneratorReportStructureTest(TestCase):
         self.assertTrue(report._report_fields_dependencies)
 
     def test_group_by_traverse(self):
-        report = ReportGenerator(report_model=SimpleSales, group_by='client__slug',
-                                 columns=['slug', 'name'],
-                                 time_series_pattern='monthly',
+        report = ReportGenerator(report_model=SimpleSales, group_by='product__category',
+                                 columns=['product__category', SlickReportField.create(Sum, 'value'), '__total__'],
+                                 # time_series_pattern='monthly',
                                  date_field='doc_date',
-                                 time_series_columns=['__debit__', '__credit__', '__balance__', '__total__']
+                                 # time_series_columns=['__debit__', '__credit__', '__balance__', '__total__']
                                  )
 
         self.assertTrue(report._report_fields_dependencies)
+        data = report.get_report_data()
+        # import pdb;
+        # pdb.set_trace()
+        self.assertNotEqual(data, [])
+        self.assertEqual(data[0]['product__category'], 'small')
+        self.assertEqual(data[1]['product__category'], 'big')
 
     def test_db_field_column_verbose_name(self):
         report = GenericGenerator()

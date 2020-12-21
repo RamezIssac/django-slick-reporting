@@ -40,9 +40,9 @@ class BaseTestData:
         cls.client3 = Client.objects.create(name='Client 3')
         cls.clientIdle = Client.objects.create(name='Client Idle')
 
-        cls.product1 = Product.objects.create(name='Product 1')
-        cls.product2 = Product.objects.create(name='Product 2')
-        cls.product3 = Product.objects.create(name='Product 3')
+        cls.product1 = Product.objects.create(name='Product 1', category='small')
+        cls.product2 = Product.objects.create(name='Product 2', category='medium')
+        cls.product3 = Product.objects.create(name='Product 3', category='big')
 
         SimpleSales.objects.create(
             doc_date=datetime.datetime(year, 1, 2), client=cls.client1,
@@ -125,7 +125,6 @@ class ReportTest(BaseTestData, TestCase):
         self.assertEqual(data[0]['__total__CT%s' % self.client1.pk], 300)
         self.assertEqual(data[0]['__total__CT%s' % self.client2.pk], 600)
         self.assertEqual(data[0]['__total__CT----'], 900)
-
 
     def test_show_empty_records(self):
         report = report_generators.ClientTotalBalance()

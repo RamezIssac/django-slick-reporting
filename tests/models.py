@@ -6,9 +6,16 @@ from django.utils.translation import ugettext_lazy as _
 
 
 class Product(models.Model):
+    CATEGORY_CHOICES = (
+        ('tiny', 'tiny'),
+        ('small', 'small'),
+        ('medium', 'medium'),
+        ('big', 'big'),
+    )
     slug = models.CharField(max_length=200, verbose_name=_('Slug'))
     name = models.CharField(max_length=200, verbose_name=_('Name'))
     sku = models.CharField(max_length=200, default='', blank=True)
+    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
     notes = models.TextField()
 
     class Meta:
