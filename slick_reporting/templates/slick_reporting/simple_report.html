@@ -1,5 +1,5 @@
 {% extends 'slick_reporting/base.html' %}
-{% load crispy_forms_tags i18n slick_reporting_tags %}
+{% load crispy_forms_tags i18n slick_reporting_tags static %}
 
 
 {% block content %}
@@ -53,6 +53,9 @@
 
 {% endblock %}
 {% block js_script %}
+    <script src="{% static 'slick_reporting/main.js' %}"></script>
+    <script src="{% static 'slick_reporting/ra.chartsjs.js' %}"></script>
+    <script src="{% static 'slick_reporting/ra.highchart.js' %}"></script>
 
 
     <script>
@@ -167,7 +170,6 @@
 
             }
 
-            $('select').select2();
             $('table').DataTable();
             $('.nav-charts').find('a:first').trigger('click');
 

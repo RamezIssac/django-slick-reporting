@@ -193,14 +193,20 @@ class ReportGenerator(object):
         # todo validate columns is not empty (if no time series / cross tab)
 
         if self.group_by:
+            group_by_split = self.group_by.split('__')
+            search_field = group_by_split[0]
             try:
-                self.group_by_field = [x for x in self.report_model._meta.fields if x.name == self.group_by][0]
+                self.group_by_field = [x for x in self.report_model._meta.fields if x.name == search_field][0]
+
             except IndexError:
                 raise ImproperlyConfigured(
                     f'Can not find group_by field:{self.group_by} in report_model {self.report_model} ')
+            self.focus_field_as_key = self.group_by_field
+            if '__' not in self.group_by:
+                self.group_by_field_attname = self.group_by_field.attname
+            else:
+                self.group_by_field_attname = self.group_by
 
-            self.focus_field_as_key = self.group_by
-            self.group_by_field_attname = self.group_by_field.attname
         else:
             self.focus_field_as_key = None
             self.group_by_field_attname = None
@@ -236,17 +242,16 @@ class ReportGenerator(object):
 
             else:
                 self.main_queryset = self._apply_queryset_options(main_queryset)
-                if type(self.group_by_field) is ForeignKey:
-                    ids = self.main_queryset.values_list(self.group_by_field.attname).distinct()
+                if type(self.group_by_field) is ForeignKey and '__' not in self.group_by:
+                    ids = self.main_queryset.values_list(self.group_by_field_attname).distinct()
                     self.main_queryset = self.group_by_field.related_model.objects.filter(pk__in=ids).values()
                 else:
-                    self.main_queryset = self.main_queryset.distinct().values(self.group_by_field.attname)
+                    self.main_queryset = self.main_queryset.distinct().values(self.group_by_field_attname)
         else:
             if self.time_series_pattern:
                 self.main_queryset = [{}]
             else:
                 self.main_queryset = self._apply_queryset_options(main_queryset, self.get_database_columns())
-
         self._prepare_report_dependencies()
 
     def _apply_queryset_options(self, query, fields=None):
@@ -322,8 +327,7 @@ class ReportGenerator(object):
                 if window == 'crosstab':
                     q_filters = self._construct_crosstab_filter(col_data)
 
-                # print(f'preparing {report_class} for {window}')
-                report_class.prepare(q_filters, date_filter)
+                report_class.init_preparation(q_filters, date_filter)
                 self.report_fields_classes[name] = report_class
 
     def _get_record_data(self, obj, columns):
@@ -359,7 +363,7 @@ class ReportGenerator(object):
                             computation_class = self.report_fields_classes[name]
                         except KeyError:
                             continue
-                        value = computation_class.resolve(group_by_val)
+                        value = computation_class.resolve(group_by_val, data)
                     if self.swap_sign: value = -value
                     data[name] = value
 
@@ -402,7 +406,7 @@ class ReportGenerator(object):
         """
         group_by_model = None
         if group_by:
-            group_by_field = [x for x in report_model._meta.fields if x.name == group_by][0]
+            group_by_field = [x for x in report_model._meta.fields if x.name == group_by.split('__')[0]][0]
             if group_by_field.is_relation:
                 group_by_model = group_by_field.related_model
             else:
@@ -450,7 +454,7 @@ class ReportGenerator(object):
                             }
             else:
                 # A database field
-                model_to_use = group_by_model if group_by else report_model
+                model_to_use = group_by_model if group_by and '__' not in group_by else report_model
                 try:
                     if '__' in col:
                         # A traversing link order__client__email
