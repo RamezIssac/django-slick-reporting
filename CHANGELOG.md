@@ -6,7 +6,8 @@ All notable changes to this project will be documented in this file.
 
 - Enhanced Field prepare flow
 - Add traversing for group_by 
-
+- Allowed tests to run specific tests instead of the whole suit
+- Enhanced templates structure for easier override/customization
 
 ## [0.5.2]
 
