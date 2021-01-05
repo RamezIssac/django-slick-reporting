@@ -155,7 +155,7 @@ class ReportTest(BaseTestData, TestCase):
     def test_timeseries_without_group(self):
         report = TimeSeriesWithOutGroupBy()
         data = report.get_report_data()
-        self.assertEqual(data[0]['__total__TS20200201'], 600)
+        self.assertEqual(data[0][f'__total__TS{year}0201'], 600)
 
 
 class TestView(BaseTestData, TestCase):
@@ -417,4 +417,4 @@ class TestGroupByFlag(TestCase):
         data = report.get_report_data()
         self.assertEqual(len(data), 2)
         self.assertEqual(data[1]['sum__quantity'], 25)
-        self.assertEqual(data[1]['sum__quantityTS20200401'], 25)
+        self.assertEqual(data[1][f'sum__quantityTS{year}0401'], 25)
