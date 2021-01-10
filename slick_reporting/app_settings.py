@@ -17,11 +17,12 @@ def get_end_of_this_year():
 
 def get_start_date():
     start_date = getattr(settings, 'SLICK_REPORTING_DEFAULT_START_DATE', False)
-    return start_date or get_start_date()
+    return start_date or get_first_of_this_year()
+
 
 def get_end_date():
     start_date = getattr(settings, 'SLICK_REPORTING_DEFAULT_END_DATE', False)
-    return start_date or get_start_date()
+    return start_date or get_end_of_this_year()
 
 
 SLICK_REPORTING_DEFAULT_START_DATE = lazy(get_start_date, datetime.datetime)()
