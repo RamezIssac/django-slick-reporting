@@ -15,8 +15,18 @@ def get_end_of_this_year():
     return datetime.datetime(d.year + 1, 1, 1, 0, 0)
 
 
-SLICK_REPORTING_DEFAULT_START_DATE = getattr(settings, '', lazy(get_first_of_this_year, datetime.datetime)())
-SLICK_REPORTING_DEFAULT_END_DATE = getattr(settings, '', lazy(get_end_of_this_year, datetime.datetime)())
+def get_start_date():
+    start_date = getattr(settings, 'SLICK_REPORTING_DEFAULT_START_DATE', False)
+    return start_date or get_first_of_this_year()
+
+
+def get_end_date():
+    start_date = getattr(settings, 'SLICK_REPORTING_DEFAULT_END_DATE', False)
+    return start_date or get_end_of_this_year()
+
+
+SLICK_REPORTING_DEFAULT_START_DATE = lazy(get_start_date, datetime.datetime)()
+SLICK_REPORTING_DEFAULT_END_DATE = lazy(get_end_date, datetime.datetime)()
 
 SLICK_REPORTING_FORM_MEDIA_DEFAULT = {
     'css': {
