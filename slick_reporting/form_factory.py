@@ -97,7 +97,7 @@ def _default_foreign_key_widget(f_field):
 
 
 def report_form_factory(model, crosstab_model=None, display_compute_reminder=True, fkeys_filter_func=None,
-                        foreign_key_widget_func=None, ):
+                        foreign_key_widget_func=None, excluded_fields=[]):
     """
     Create a Report Form based on the report_model passed by
     1. adding a start_date and end_date fields
@@ -116,6 +116,9 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
 
     # gather foreign keys
     fkeys_map = get_foreign_keys(model)
+    for excluded in excluded_fields:
+        del fkeys_map[excluded]
+    
     fkeys_map = fkeys_filter_func(fkeys_map)
 
     fkeys_list = []

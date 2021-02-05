@@ -40,7 +40,7 @@ class SlickReportViewBase(FormView):
     crosstab_ids = None
     crosstab_columns = None
     crosstab_compute_reminder = True
-
+    excluded_fields = []
     """
     A list of chart settings objects instructing front end on how to plot the data.
     
@@ -91,7 +91,7 @@ class SlickReportViewBase(FormView):
         :return:
         """
         return self.form_class or report_form_factory(self.get_report_model(), crosstab_model=self.crosstab_model,
-                                                      display_compute_reminder=self.crosstab_compute_reminder)
+                                                      display_compute_reminder=self.crosstab_compute_reminder, excluded_fields=self.excluded_fields)
 
     def get_form_kwargs(self):
         """
