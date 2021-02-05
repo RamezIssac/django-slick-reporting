@@ -10,7 +10,7 @@ from slick_reporting.generator import ReportGenerator
 from slick_reporting.fields import SlickReportField, BalanceReportField
 from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2, GroupByCharField, \
     GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy
-from .models import Client, Product, SimpleSales, OrderLine, UserJoined, SalesWithFlag
+from .models import Client, Product, SimpleSales, OrderLine, UserJoined, SalesWithFlag, ComplexSales, TaxCode
 from . import report_generators
 
 from slick_reporting.registry import field_registry
@@ -79,6 +79,28 @@ class BaseTestData:
             doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
             product=cls.product1, quantity=30, price=10)
 
+        cls.tax1 = TaxCode.objects.create(name='State', tax=8) #Added three times
+        cls.tax2 = TaxCode.objects.create(name='Vat reduced', tax=5) #Added two times
+        cls.tax3 = TaxCode.objects.create(name='Vat full', tax=20) #Added one time
+
+        sale1 = ComplexSales.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
+            product=cls.product1, quantity=30, price=10)
+        sale2 = ComplexSales.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
+            product=cls.product1, quantity=30, price=10)        
+        sale3 = ComplexSales.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
+            product=cls.product1, quantity=30, price=10)
+        sale4= ComplexSales.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
+            product=cls.product1, quantity=30, price=10)
+        sale1.tax.add(cls.tax1)
+        sale1.tax.add(cls.tax2)
+        sale2.tax.add(cls.tax1)
+        sale2.tax.add(cls.tax3)
+        sale3.tax.add(cls.tax1)
+        sale4.tax.add(cls.tax2)
 
 # @override_settings(ROOT_URLCONF='reporting_tests.urls', RA_CACHE_REPORTS=False, USE_TZ=False)
 class ReportTest(BaseTestData, TestCase):
@@ -156,6 +178,23 @@ class ReportTest(BaseTestData, TestCase):
         report = TimeSeriesWithOutGroupBy()
         data = report.get_report_data()
         self.assertEqual(data[0][f'__total__TS{year}0201'], 600)
+
+    def test_many_to_many_group_by(self):
+        field_registry.register(SlickReportField.create(Count, 'tax__name', 'tax__count'))
+
+        report_generator = ReportGenerator(report_model=ComplexSales,
+                                           date_field='doc_date',
+                                           group_by='tax__name',
+                                           columns=['tax__name', 'tax__count'],
+                                           )
+        data = report_generator.get_report_data()
+        self.assertEqual(len(data), 3)
+        self.assertEqual(data[0]['tax__name'], 'State')
+        self.assertEqual(data[0]['tax__count'], 3)
+        self.assertEqual(data[1]['tax__name'], 'Vat reduced')
+        self.assertEqual(data[1]['tax__count'], 2)
+        self.assertEqual(data[2]['tax__name'], 'Vat full')
+        self.assertEqual(data[2]['tax__count'], 1)
 
 
 class TestView(BaseTestData, TestCase):

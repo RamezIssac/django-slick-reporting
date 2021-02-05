@@ -196,7 +196,7 @@ class ReportGenerator(object):
             group_by_split = self.group_by.split('__')
             search_field = group_by_split[0]
             try:
-                self.group_by_field = [x for x in self.report_model._meta.fields if x.name == search_field][0]
+                self.group_by_field = [x for x in self.report_model._meta.get_fields() if x.name == search_field][0]
 
             except IndexError:
                 raise ImproperlyConfigured(
@@ -406,7 +406,7 @@ class ReportGenerator(object):
         """
         group_by_model = None
         if group_by:
-            group_by_field = [x for x in report_model._meta.fields if x.name == group_by.split('__')[0]][0]
+            group_by_field = [x for x in report_model._meta.get_fields() if x.name == group_by.split('__')[0]][0]
             if group_by_field.is_relation:
                 group_by_model = group_by_field.related_model
             else:
