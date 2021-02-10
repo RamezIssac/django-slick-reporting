@@ -2,10 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.5]
+
+- Add datepicker initialization function call (@squio)
+- Fixed an issue with default dates not being functional.
+
+
 ## [0.5.4]
 
 - Added missing prefix on integrity hash (@squio)
-
 
 ## [0.5.3]
 

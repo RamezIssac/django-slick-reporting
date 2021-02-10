@@ -116,6 +116,12 @@ class ReportTest(BaseTestData, TestCase):
         data = report.get_report_data()
         self.assertEqual(data[0]['__balance__'], 1800)
 
+    @override_settings(SLICK_REPORTING_DEFAULT_START_DATE=datetime.datetime(2020, 1, 1), SLICK_REPORTING_DEFAULT_END_DATE = datetime.datetime(2021, 1, 1))
+    def test_product_total_sales_with_changed_dated(self):
+        report = report_generators.ProductTotalSales()
+        data = report.get_report_data()
+        self.assertEqual(len(data), 0)
+
     def test_client_client_sales_monthly(self):
         report = report_generators.ClientSalesMonthlySeries()
 
