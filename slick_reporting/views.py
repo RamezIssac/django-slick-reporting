@@ -40,7 +40,7 @@ class SlickReportViewBase(FormView):
     crosstab_ids = None
     crosstab_columns = None
     crosstab_compute_reminder = True
-    excluded_fields = []
+    excluded_fields = None
     """
     A list of chart settings objects instructing front end on how to plot the data.
     

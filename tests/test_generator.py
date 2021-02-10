@@ -26,6 +26,17 @@ class MatrixTests(BaseTestData, TestCase):
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 4, columns)
 
+    def test_matrix_column_position(self):
+        report = CrosstabOnClient(columns=['__crosstab__', 'name', '__total_quantity__'],
+                                  crosstab_ids=[self.client1.pk], crosstab_compute_reminder=False)
+        columns = report.get_list_display_columns()
+        self.assertEqual(len(columns), 3, columns)
+        self.assertEqual(columns[0]['name'], 'value__sumCT1')
+
+        report = CrosstabOnClient(crosstab_ids=[self.client1.pk], crosstab_compute_reminder=True)
+        columns = report.get_list_display_columns()
+        self.assertEqual(len(columns), 4, columns)
+
     def test_get_crosstab_columns(self):
         report = CrosstabOnClient(crosstab_ids=[self.client1.pk])
         columns = report.get_list_display_columns()
@@ -55,7 +66,6 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         SimpleSales.objects.create(
             doc_date=datetime(year, 3, 2), client=cls.client3,
             product=cls.product3, quantity=30, price=10)
-
 
     def test_time_series_columns_inclusion(self):
         x = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client',
@@ -100,6 +110,12 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         self.assertEqual(len(dates), 1, len(dates))
         self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates))
 
+        def not_known_pattern():
+            dates = report._get_time_series_dates('each_spring')
+
+        self.assertRaises(Exception, not_known_pattern)
+
+
     def test_time_series_custom_pattern(self):
         # report = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client',
         #                          columns=['name', '__time_series__'],
@@ -133,6 +149,31 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
     def test_improper_group_by(self):
         def load():
             ReportGenerator(OrderLine, group_by='no_field', date_field='order__date_placed')
+
+        self.assertRaises(Exception, load)
+
+    def test_missing_report_model(self):
+        def load():
+            ReportGenerator(report_model=None, group_by='product', date_field='order__date_placed')
+
+        self.assertRaises(Exception, load)
+
+    def test_missing_date_field(self):
+        def load():
+            ReportGenerator(report_model=OrderLine, group_by='product', date_field='')
+
+        self.assertRaises(Exception, load)
+
+    def test_wrong_date_field(self):
+        def load():
+            ReportGenerator(report_model=OrderLine, group_by='product', date_field='not_here')
+
+        self.assertRaises(Exception, load)
+
+    def test_unknown_column(self):
+        def load():
+            ReportGenerator(report_model=OrderLine, group_by='product', date_field='order__date_placed',
+                            columns=['product', 'not_here'])
 
         self.assertRaises(Exception, load)
 

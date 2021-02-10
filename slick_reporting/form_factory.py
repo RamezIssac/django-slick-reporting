@@ -97,7 +97,7 @@ def _default_foreign_key_widget(f_field):
 
 
 def report_form_factory(model, crosstab_model=None, display_compute_reminder=True, fkeys_filter_func=None,
-                        foreign_key_widget_func=None, excluded_fields=[]):
+                        foreign_key_widget_func=None, excluded_fields=None):
     """
     Create a Report Form based on the report_model passed by
     1. adding a start_date and end_date fields
@@ -109,16 +109,18 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
     display the rest.
     :param fkeys_filter_func:  a receives an OrderedDict of Foreign Keys names and their model field instances found on the model, return the OrderedDict that would be used
     :param foreign_key_widget_func: receives a Field class return the used widget like this {'form_class': forms.ModelMultipleChoiceField, 'required': False, }
-    :return: 
+    :param excluded_fields: a list of fields to be excluded from the report form
+    :return:
     """
     foreign_key_widget_func = foreign_key_widget_func or _default_foreign_key_widget
     fkeys_filter_func = fkeys_filter_func or (lambda x: x)
 
     # gather foreign keys
     fkeys_map = get_foreign_keys(model)
+    excluded_fields = excluded_fields or []
     for excluded in excluded_fields:
         del fkeys_map[excluded]
-    
+
     fkeys_map = fkeys_filter_func(fkeys_map)
 
     fkeys_list = []
