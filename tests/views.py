@@ -1,7 +1,7 @@
 from slick_reporting.views import SlickReportView
 from slick_reporting.fields import SlickReportField
-from django.db.models import Sum
-from .models import SimpleSales
+from django.db.models import Sum, Count
+from .models import SimpleSales, ComplexSales
 from django.utils.translation import ugettext_lazy as _
 
 
@@ -62,3 +62,18 @@ class MonthlyProductSalesWQS(SlickReportView):
     columns = ['slug', 'name']
     time_series_pattern = 'monthly'
     time_series_columns = ['__total__', '__balance__']
+
+
+class TaxSales(SlickReportView):
+    # report_model = SimpleSales
+    queryset = ComplexSales.objects.all()
+    date_field = 'doc_date'
+    group_by = 'tax__name'
+    columns = ['tax__name', SlickReportField.create(Count, 'tax', name='tax__count', verbose_name=_('Sales'))]
+    chart_settings = [
+        {
+            'type': 'pie',
+            'date_source': 'tax__count',
+            'title_source': 'tax__name',
+        }
+    ]
