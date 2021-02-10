@@ -175,8 +175,8 @@ class ReportGenerator(object):
         main_queryset = main_queryset or self.report_model.objects
         main_queryset = main_queryset.order_by()
 
-        self.columns = self.columns or columns or []
-        self.group_by = self.group_by or group_by
+        self.columns = columns or self.columns or []
+        self.group_by = group_by or self.group_by
 
         self.time_series_pattern = self.time_series_pattern or time_series_pattern
         self.time_series_columns = self.time_series_columns or time_series_columns
@@ -196,7 +196,7 @@ class ReportGenerator(object):
             group_by_split = self.group_by.split('__')
             search_field = group_by_split[0]
             try:
-                self.group_by_field = [x for x in self.report_model._meta.fields if x.name == search_field][0]
+                self.group_by_field = [x for x in self.report_model._meta.get_fields() if x.name == search_field][0]
 
             except IndexError:
                 raise ImproperlyConfigured(
@@ -406,7 +406,7 @@ class ReportGenerator(object):
         """
         group_by_model = None
         if group_by:
-            group_by_field = [x for x in report_model._meta.fields if x.name == group_by.split('__')[0]][0]
+            group_by_field = [x for x in report_model._meta.get_fields() if x.name == group_by.split('__')[0]][0]
             if group_by_field.is_relation:
                 group_by_model = group_by_field.related_model
             else:
@@ -441,10 +441,6 @@ class ReportGenerator(object):
                             }
             elif magic_field_class:
                 # a magic field
-                if col in ['__time_series__', '__crosstab__']:
-                    #     These are placeholder not real computation field
-                    continue
-
                 col_data = {'name': magic_field_class.name,
                             'verbose_name': magic_field_class.verbose_name,
                             'source': 'magic_field',
@@ -484,8 +480,8 @@ class ReportGenerator(object):
     def get_database_columns(self):
         return [col['name'] for col in self.parsed_columns if col['source'] == 'database']
 
-    def get_method_columns(self):
-        return [col['name'] for col in self.parsed_columns if col['type'] == 'method']
+    # def get_method_columns(self):
+    #     return [col['name'] for col in self.parsed_columns if col['type'] == 'method']
 
     def get_list_display_columns(self):
         columns = self.parsed_columns
