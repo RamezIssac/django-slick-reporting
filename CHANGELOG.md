@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.6]
+
+- Add exclude_field to report_form_factory (@gr4n0t4)
+- Added support for group by Many To Many field (@gr4n0t4) 
+
 ## [0.5.5]
 
 - Add datepicker initialization function call (@squio)
