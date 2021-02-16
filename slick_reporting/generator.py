@@ -114,7 +114,7 @@ class ReportGenerator(object):
 
     def __init__(self, report_model=None, main_queryset=None, start_date=None, end_date=None, date_field=None,
                  q_filters=None, kwargs_filters=None,
-                 group_by=None, columns=None,
+                 group_by=None, columns=None, hidden_columns=None,
                  time_series_pattern=None, time_series_columns=None, time_series_custom_dates=None,
                  crosstab_model=None, crosstab_columns=None, crosstab_ids=None, crosstab_compute_reminder=None,
                  swap_sign=False, show_empty_records=None,
@@ -176,6 +176,7 @@ class ReportGenerator(object):
         main_queryset = main_queryset.order_by()
 
         self.columns = columns or self.columns or []
+        self.hidden_columns = hidden_columns or self.hidden_columns or []        
         self.group_by = group_by or self.group_by
 
         self.time_series_pattern = self.time_series_pattern or time_series_pattern
