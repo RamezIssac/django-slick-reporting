@@ -16,6 +16,7 @@ from .generator import ReportGenerator
 class SlickReportViewBase(FormView):
     group_by = None
     columns = None
+    hidden_columns = None
 
     report_title = ''
     time_series_pattern = ''
@@ -134,6 +135,7 @@ class SlickReportViewBase(FormView):
                                            print_flag=for_print,
                                            limit_records=self.limit_records, swap_sign=self.swap_sign,
                                            columns=self.columns,
+                                           hidden_columns=self.hidden_columns,
                                            group_by=self.group_by,
                                            time_series_pattern=self.time_series_pattern,
                                            time_series_columns=self.time_series_columns,
@@ -168,10 +170,11 @@ class SlickReportViewBase(FormView):
                 'name': col['name'],
                 'computation_field': col.get('original_name', ''),
                 'verbose_name': col['verbose_name'],
-                'visible': col.get('visible', True),
+                'visible': col.get('visible', col['name'] not in self.hidden_columns),
                 'type': col.get('type', 'text'),
                 'is_summable': col.get('is_summable', ''),
             })
+            
         return data
 
     def get_report_results(self, for_print=False):
