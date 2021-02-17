@@ -164,13 +164,14 @@ class SlickReportViewBase(FormView):
         """
         # columns = report_generator.get_list_display_columns()
         data = []
+        hidden = self.hidden_columns or []
 
         for col in columns:
             data.append({
                 'name': col['name'],
                 'computation_field': col.get('original_name', ''),
                 'verbose_name': col['verbose_name'],
-                'visible': col.get('visible', col['name'] not in self.hidden_columns),
+                'visible': col.get('visible', col['name'] not in hidden),
                 'type': col.get('type', 'text'),
                 'is_summable': col.get('is_summable', ''),
             })
