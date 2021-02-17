@@ -58,14 +58,14 @@ class ReportGenerator(object):
        Same is true with __crosstab__ 
      """
      
-     hidden_columns = None
-     """
-     A list of columns that are hidden on the table view
+    hidden_columns = None
+    """
+    A list of columns that are hidden on the table view
      
-     This is useful when you need a column's data to format another, but don't need to show that to the user, or to merge column data into one
+    This is useful when you need a column's data to format another, but don't need to show that to the user, or to merge column data into one
      
-     Example: columns = ['product_id']
-     """
+    Example: columns = ['product_id']
+    """
 
     time_series_pattern = ''
     """
