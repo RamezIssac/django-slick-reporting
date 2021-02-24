@@ -30,6 +30,7 @@ You can start by using ``SlickReportView`` which is a subclass of ``django.views
 
     # in views.py
     from slick_reporting.views import SlickReportView
+    from slick_reporting.fields import SlickReportField
     from .models import MySalesItems
 
     class MonthlyProductSales(SlickReportView):

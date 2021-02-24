@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.7]
+
+- Add ability to refer to related fields in a group by report(@jrutila)
+
 ## [0.5.6]
 
 - Add exclude_field to report_form_factory (@gr4n0t4)
