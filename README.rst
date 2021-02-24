@@ -56,6 +56,7 @@ You can simply use a code like this
     # in views.py
     from django.db.models import Sum
     from slick_reporting.views import SlickReportView
+    from slick_reporting.fields import SlickReportField
     from .models import MySalesItems
 
     class TotalProductSales(SlickReportView):
@@ -91,6 +92,7 @@ You can do a monthly time series :
 
     # in views.py
     from slick_reporting.views import SlickReportView
+    from slick_reporting.fields import SlickReportField
     from .models import MySalesItems
 
     class MonthlyProductSales(SlickReportView):
