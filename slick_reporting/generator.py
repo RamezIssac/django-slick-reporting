@@ -244,7 +244,11 @@ class ReportGenerator(object):
                 self.main_queryset = self._apply_queryset_options(main_queryset)
                 if type(self.group_by_field) is ForeignKey and '__' not in self.group_by:
                     ids = self.main_queryset.values_list(self.group_by_field_attname).distinct()
-                    self.main_queryset = self.group_by_field.related_model.objects.filter(pk__in=ids).values()
+                    # uses the same logic that is in Django's query.py when fields is empty in values() call
+                    concrete_fields = [f.name for f in self.group_by_field.related_model._meta.concrete_fields]
+                    # add database columns that are not already in concrete_fields
+                    final_fields = concrete_fields + list(set(self.get_database_columns()) - set(concrete_fields))
+                    self.main_queryset = self.group_by_field.related_model.objects.filter(pk__in=ids).values(*final_fields)
                 else:
                     self.main_queryset = self.main_queryset.distinct().values(self.group_by_field_attname)
         else:
@@ -478,7 +482,7 @@ class ReportGenerator(object):
         self._crosstab_parsed_columns = self.get_crosstab_parsed_columns()
 
     def get_database_columns(self):
-        return [col['name'] for col in self.parsed_columns if col['source'] == 'database']
+        return [col['name'] for col in self.parsed_columns if 'source' in col and col['source'] == 'database']
 
     # def get_method_columns(self):
     #     return [col['name'] for col in self.parsed_columns if col['type'] == 'method']

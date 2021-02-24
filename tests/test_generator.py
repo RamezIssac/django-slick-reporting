@@ -13,7 +13,7 @@ from .report_generators import GeneratorWithAttrAsColumn, CrosstabOnClient, Gene
     TimeSeriesCustomDates
 
 from .tests import BaseTestData, year
-from .models import SimpleSales
+from .models import SimpleSales, Client
 
 
 class MatrixTests(BaseTestData, TestCase):
@@ -207,6 +207,35 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         self.assertNotEqual(data, [])
         self.assertEqual(data[0]['product__category'], 'small')
         self.assertEqual(data[1]['product__category'], 'big')
+
+    def test_group_by_and_foreign_key_field(self):
+        report = ReportGenerator(report_model=SimpleSales, group_by='client',
+                                 columns=['name', 'contact_id', 'contact__address', SlickReportField.create(Sum, 'value'), '__total__'],
+                                 # time_series_pattern='monthly',
+                                 date_field='doc_date',
+                                 # time_series_columns=['__debit__', '__credit__', '__balance__', '__total__']
+                                 )
+
+        self.assertTrue(report._report_fields_dependencies)
+        data = report.get_report_data()
+        # import pdb;
+        # pdb.set_trace()
+        self.assertNotEqual(data, [])
+        self.assertEqual(data[0]['name'], 'Client 1')
+        self.assertEqual(data[1]['name'], 'Client 2')
+        self.assertEqual(data[2]['name'], 'Client 3')
+
+        self.assertEqual(data[0]['contact_id'], 1)
+        self.assertEqual(data[1]['contact_id'], 2)
+        self.assertEqual(data[2]['contact_id'], 3)
+
+        self.assertEqual(data[0]['sum__value'], 300)
+
+        self.assertEqual(Client.objects.get(pk=1).contact.address, 'Street 1')
+        self.assertEqual(data[0]['contact__address'], 'Street 1')
+        self.assertEqual(data[1]['contact__address'], 'Street 2')
+        self.assertEqual(data[2]['contact__address'], 'Street 3')
+
 
     def test_db_field_column_verbose_name(self):
         report = GenericGenerator()
