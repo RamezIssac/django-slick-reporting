@@ -10,7 +10,7 @@ from slick_reporting.generator import ReportGenerator
 from slick_reporting.fields import SlickReportField, BalanceReportField
 from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2, GroupByCharField, \
     GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy
-from .models import Client, Product, SimpleSales, OrderLine, UserJoined, SalesWithFlag, ComplexSales, TaxCode
+from .models import Client, Contact, Product, SimpleSales, OrderLine, UserJoined, SalesWithFlag, ComplexSales, TaxCode
 from . import report_generators
 
 from slick_reporting.registry import field_registry
@@ -36,8 +36,14 @@ class BaseTestData:
         cls.user = user
         cls.limited_user = limited_user
         cls.client1 = Client.objects.create(name='Client 1')
+        cls.client1.contact = Contact.objects.create(address='Street 1')
+        cls.client1.save()
         cls.client2 = Client.objects.create(name='Client 2')
+        cls.client2.contact = Contact.objects.create(address='Street 2')
+        cls.client2.save()
         cls.client3 = Client.objects.create(name='Client 3')
+        cls.client3.contact = Contact.objects.create(address='Street 3')
+        cls.client3.save()
         cls.clientIdle = Client.objects.create(name='Client Idle')
 
         cls.product1 = Product.objects.create(name='Product 1', category='small')
