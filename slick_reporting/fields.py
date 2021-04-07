@@ -2,7 +2,7 @@ import uuid
 
 from django.db.models import Sum
 from django.template.defaultfilters import date as date_filter
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from .helpers import get_calculation_annotation
 from .registry import field_registry
