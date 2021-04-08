@@ -6,9 +6,9 @@ python:
   - "3.8"
 
 env:
-  - DJANGO=django==2.2.17
-  - DJANGO=django==3.0.11
-  - DJANGO=django==3.1.4
+  - DJANGO=django==2.2.20
+  - DJANGO=django==3.1.8
+  - DJANGO=django==3.2
 
 
 # command to install dependencies

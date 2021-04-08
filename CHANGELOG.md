@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.8]
+
+- Fix compatibility with Django 3.2 
+
 ## [0.5.7]
 
 - Add ability to refer to related fields in a group by report(@jrutila)
