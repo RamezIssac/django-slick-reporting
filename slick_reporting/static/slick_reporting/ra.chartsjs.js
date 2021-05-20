@@ -107,7 +107,7 @@
                         rowData.push(response.data[i][seriesColNames[field]])
                     }
                     datasets.push({
-                        label: $(row[titleFieldName]).text(),
+                        label: $($.parseHTML(row[titleFieldName])).text(),
                         data: rowData,
                         backgroundColor: getBackgroundColors(i),
                         borderColor: getBackgroundColors(i),
