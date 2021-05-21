@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0]
+
+- Moved the collecting of total report data to the report generator to make easier low level usage. 
+  Breaking ONLY if you have overridden ReportView.get_report_results()
+
 ## [0.5.8]
 
 - Fix compatibility with Django 3.2 

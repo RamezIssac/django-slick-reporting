@@ -7,6 +7,7 @@ from inspect import isclass
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
 from django.db.models import Q, ForeignKey
 
+from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import SlickReportField
 from .helpers import get_field_from_query_text
 from .registry import field_registry
@@ -640,3 +641,67 @@ class ReportGenerator(object):
         :return: a verbose string
         """
         return computation_class.get_crosstab_field_verbose_name(model, id)
+
+    def get_metadata(self):
+        """
+                A hook to send data about the report for front end which can later be used in charting
+                :return:
+                """
+        time_series_columns = self.get_time_series_parsed_columns()
+        crosstab_columns = self.get_crosstab_parsed_columns()
+        metadata = {
+            'time_series_pattern': self.time_series_pattern,
+            'time_series_column_names': [x['name'] for x in time_series_columns],
+            'time_series_column_verbose_names': [x['verbose_name'] for x in time_series_columns],
+            'crosstab_model': self.crosstab_model or '',
+            'crosstab_column_names': [x['name'] for x in crosstab_columns],
+            'crosstab_column_verbose_names': [x['verbose_name'] for x in crosstab_columns],
+        }
+        return metadata
+
+    def get_columns_data(self):
+        """
+        Hook to get the columns information to front end
+        :param columns:
+        :return:
+        """
+        columns = self.get_list_display_columns()
+        data = []
+
+        for col in columns:
+            data.append({
+                'name': col['name'],
+                'computation_field': col.get('original_name', ''),
+                'verbose_name': col['verbose_name'],
+                'visible': col.get('visible', True),
+                'type': col.get('type', 'text'),
+                'is_summable': col.get('is_summable', ''),
+            })
+        return data
+
+    def get_full_response(self, data=None, report_slug=None, chart_settings=None, default_chart_title=None):
+        data = data or self.get_report_data()
+        data = {
+            'report_slug': report_slug or self.__class__.__name__,
+            'data': data,
+            'columns': self.get_columns_data(),
+            'metadata': self.get_metadata(),
+            'chart_settings': self.get_chart_settings(chart_settings, default_chart_title=default_chart_title)
+        }
+        return data
+
+    def get_chart_settings(self, chart_settings=None, default_chart_title=None):
+        """
+        Ensure the sane settings are passed to the front end.
+        """
+        output = []
+        chart_settings = chart_settings or []
+        report_title = default_chart_title or ''
+        for i, x in enumerate(chart_settings):
+            x['id'] = x.get('id', f"{x['type']}-{i}")
+            if not x.get('title', False):
+                x['title'] = report_title
+            x['engine_name'] = x.get('engine_name', SLICK_REPORTING_DEFAULT_CHARTS_ENGINE)
+            output.append(x)
+        return output
+
