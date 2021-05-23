@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 - Moved the collecting of total report data to the report generator to make easier low level usage. 
   Breaking ONLY if you have overridden ReportView.get_report_results()
+- Fixed an issue with Charts.js get row data 
+- Added option 'time_series_support' for chart.js and highcharts
+
 
 ## [0.5.8]
 
