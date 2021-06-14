@@ -63,7 +63,7 @@ class SlickReportField(object):
             assert name not in cls._field_registry.get_all_report_fields_names()
 
         verbose_name = verbose_name or f'{method.name} {field}'
-        report_klass = type(f'ReportField_{name}', (SlickReportField,), {
+        report_klass = type(f'ReportField_{name}', (cls,), {
             'name': name,
             'verbose_name': verbose_name,
             'calculation_field': field,
