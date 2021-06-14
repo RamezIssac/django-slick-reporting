@@ -6,7 +6,8 @@
 
     var COLORS = ['#7cb5ec', '#f7a35c', '#90ee7e', '#7798BF', '#aaeeee', '#ff0066', '#eeaaee', '#55BF3B', '#DF5353', '#7798BF', '#aaeeee'];
 
-    function is_time_series(response) {
+    function is_time_series(response, chartOptions) {
+        if (chartOptions.time_series_support === false) return false;
         return response['metadata']['time_series_pattern'] !== ""
     }
 
@@ -72,7 +73,7 @@
     function extractDataFromResponse(response, chartOptions) {
         let dataFieldName = chartOptions['data_source'];
         let titleFieldName = chartOptions['title_source'];
-        let isTimeSeries = is_time_series(response);
+        let isTimeSeries = is_time_series(response, chartOptions);
         let datasets = [];
         let legendResults = [];
         let datasetData = [];
