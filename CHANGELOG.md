@@ -4,10 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [0.6.0]
 
-- Moved the collecting of total report data to the report generator to make easier low level usage. 
-  Breaking ONLY if you have overridden ReportView.get_report_results()
-- Fixed an issue with Charts.js get row data 
-- Added option 'time_series_support' for chart.js and highcharts
+- Breaking [ONLY] if you have overridden ReportView.get_report_results()
+- Moved the collecting of total report data to the report generator to make easier low level usage.
+- Fixed an issue with Charts.js `get_row_data` 
+- Added ChartsOption 'time_series_support',in both chart.js and highcharts
+- Fixed SlickReportField.create to use the issuing class not the vanilla one. 
 
 
 ## [0.5.8]
