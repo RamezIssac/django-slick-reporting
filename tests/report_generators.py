@@ -1,7 +1,7 @@
 import datetime
 
 from django.db.models import Sum
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import SlickReportField
 from slick_reporting.generator import ReportGenerator
