@@ -28,7 +28,7 @@ Features
 - Effortlessly create Simple, Grouped, Time series and Crosstab reports in a handful of code lines.
 - Create your Custom Calculation easily, which will be integrated with the above reports types
 - Optimized for speed.
-- Batteries included! Charts.js , DataTable.net & a Bootstrap form.
+- Batteries included! Chart.js , DataTable.net & a Bootstrap form.
 
 Installation
 ------------
@@ -148,7 +148,7 @@ Batteries Included
 Slick Reporting comes with
 
 * A Bootstrap Filter Form
-* Charting support `Charts.js <https://www.chartjs.org/>`_
+* Charting support `Chart.js <https://www.chartjs.org/>`_
 * Powerful tables `datatables.net <https://datatables.net/>`_
 
 A Preview:
