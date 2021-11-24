@@ -2,7 +2,7 @@ from slick_reporting.views import SlickReportView
 from slick_reporting.fields import SlickReportField
 from django.db.models import Sum, Count
 from .models import SimpleSales, ComplexSales
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 
 class MonthlyProductSales(SlickReportView):

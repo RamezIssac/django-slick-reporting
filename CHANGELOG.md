@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1]
+
+- Fix Django 4 compatibility (@squio)
+
 ## [0.6.0]
 
 - Breaking [ONLY] if you have overridden ReportView.get_report_results()

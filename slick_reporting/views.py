@@ -3,7 +3,7 @@ import datetime
 import simplejson as json
 from django.conf import settings
 from django.http import HttpResponse
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
@@ -77,7 +77,7 @@ class SlickReportViewBase(FormView):
             elif hasattr(obj, 'isoformat'):
                 return obj.isoformat()
             elif isinstance(obj, Promise):
-                return force_text(obj)
+                return force_str(obj)
 
         indent = None
         if settings.DEBUG:
