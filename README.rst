@@ -158,6 +158,11 @@ A Preview:
     :alt: Shipped in View Page
 
 
+Demo site
+---------
+
+Available on `Django Slick Reporting <https://django-slick-reporting.com/>`_
+
 Documentation
 -------------
 

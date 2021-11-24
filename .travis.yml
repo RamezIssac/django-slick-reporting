@@ -9,6 +9,7 @@ env:
   - DJANGO=django==2.2.20
   - DJANGO=django==3.1.8
   - DJANGO=django==3.2
+  - DJANGO=django==4.0
 
 
 # command to install dependencies
