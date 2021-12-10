@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.2]
+
+- Fix an issue with time series calculating first day of the month to be of the previous month #46
+
 ## [0.6.1]
 
 - Fix Django 4 compatibility (@squio)

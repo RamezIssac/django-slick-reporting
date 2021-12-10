@@ -420,41 +420,41 @@ class TestGroupByFlag(TestCase):
         cls.product3 = Product.objects.create(name='Product 3')
 
         SalesWithFlag.objects.create(
-            doc_date=datetime.datetime(year, 1, 2), client=cls.client1,
+            doc_date=datetime.datetime(year, 1, 1), client=cls.client1,
             product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 1, 5))
         SalesWithFlag.objects.create(
-            doc_date=datetime.datetime(year, 2, 2), client=cls.client1,
+            doc_date=datetime.datetime(year, 2, 1), client=cls.client1,
             product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 2, 3))
 
         SalesWithFlag.objects.create(
-            doc_date=datetime.datetime(year, 3, 2), client=cls.client1,
+            doc_date=datetime.datetime(year, 3, 1), client=cls.client1,
             product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 3, 3))
 
         # client 2
         SalesWithFlag.objects.create(
-            doc_date=datetime.datetime(year, 1, 2), client=cls.client2,
+            doc_date=datetime.datetime(year, 1, 1), client=cls.client2,
             product=cls.product1, quantity=20, price=10)
         SalesWithFlag.objects.create(
-            doc_date=datetime.datetime(year, 2, 2), client=cls.client2,
+            doc_date=datetime.datetime(year, 2, 1), client=cls.client2,
             product=cls.product1, quantity=20, price=10)
 
         SalesWithFlag.objects.create(
-            doc_date=datetime.datetime(year, 3, 2), client=cls.client2,
+            doc_date=datetime.datetime(year, 3, 1), client=cls.client2,
             product=cls.product1, quantity=20, price=10)
 
         # client 3
         SalesWithFlag.objects.create(
-            doc_date=datetime.datetime(year, 1, 2), client=cls.client3,
+            doc_date=datetime.datetime(year, 1, 1), client=cls.client3,
             product=cls.product1, quantity=30, price=10)
         SalesWithFlag.objects.create(
-            doc_date=datetime.datetime(year, 2, 2), client=cls.client3,
+            doc_date=datetime.datetime(year, 2, 1), client=cls.client3,
             product=cls.product1, quantity=30, price=10)
 
         SalesWithFlag.objects.create(
-            doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
+            doc_date=datetime.datetime(year, 3, 1), client=cls.client3,
             product=cls.product1, quantity=30, price=10)
         SalesWithFlag.objects.create(
-            doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
+            doc_date=datetime.datetime(year, 3, 1), client=cls.client3,
             product=cls.product1, quantity=25, price=10, flag='sales-return')
 
     def test_group_by_flag(self):
