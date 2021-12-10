@@ -327,9 +327,9 @@ class FirstBalanceField(SlickReportField):
     def prepare(self, q_filters=None, extra_filters=None, **kwargs):
         extra_filters = extra_filters or {}
 
-        from_date_value = extra_filters.get(f'{self.date_field}__gt')
-        extra_filters.pop(f'{self.date_field}__gt', None)
-        extra_filters[f'{self.date_field}__lte'] = from_date_value
+        from_date_value = extra_filters.get(f'{self.date_field}__gte')
+        extra_filters.pop(f'{self.date_field}__gte', None)
+        extra_filters[f'{self.date_field}__lt'] = from_date_value
         return super(FirstBalanceField, self).prepare(q_filters, extra_filters)
 
 

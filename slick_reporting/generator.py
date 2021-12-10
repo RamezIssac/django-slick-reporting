@@ -325,8 +325,8 @@ class ReportGenerator(object):
 
                 q_filters = None
                 date_filter = {
-                    f'{self.date_field}__gt': col_data.get('start_date', self.start_date),
-                    f'{self.date_field}__lte': col_data.get('end_date', self.end_date),
+                    f'{self.date_field}__gte': col_data.get('start_date', self.start_date),
+                    f'{self.date_field}__lt': col_data.get('end_date', self.end_date),
                 }
                 date_filter.update(self.kwargs_filters)
                 if window == 'crosstab':
