@@ -7,8 +7,8 @@
 .. image:: https://img.shields.io/readthedocs/django-slick-reporting
     :target: https://django-slick-reporting.readthedocs.io/
 
-.. image:: https://api.travis-ci.org/ra-systems/django-slick-reporting.svg?branch=master
-    :target: https://travis-ci.org/ra-systems/django-slick-reporting
+.. image:: https://api.travis-ci.com/ra-systems/django-slick-reporting.svg?branch=master
+    :target: https://app.travis-ci.com/github/ra-systems/django-slick-reporting
 
 .. image:: https://img.shields.io/codecov/c/github/ra-systems/django-slick-reporting
     :target: https://codecov.io/gh/ra-systems/django-slick-reporting
@@ -176,7 +176,6 @@ This project is young and can use your support.
 Some of the ideas / features that ought be added
 
 * Support Other backends like SQL Alchemy & Pandas
-* Support Grouping by non foreign key fields
 * Support Time Series and Crosstab at the same time
 
 
