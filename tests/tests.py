@@ -85,20 +85,20 @@ class BaseTestData:
             doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
             product=cls.product1, quantity=30, price=10)
 
-        cls.tax1 = TaxCode.objects.create(name='State', tax=8) #Added three times
-        cls.tax2 = TaxCode.objects.create(name='Vat reduced', tax=5) #Added two times
-        cls.tax3 = TaxCode.objects.create(name='Vat full', tax=20) #Added one time
+        cls.tax1 = TaxCode.objects.create(name='State', tax=8)  # Added three times
+        cls.tax2 = TaxCode.objects.create(name='Vat reduced', tax=5)  # Added two times
+        cls.tax3 = TaxCode.objects.create(name='Vat full', tax=20)  # Added one time
 
         sale1 = ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
             product=cls.product1, quantity=30, price=10)
         sale2 = ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
-            product=cls.product1, quantity=30, price=10)        
+            product=cls.product1, quantity=30, price=10)
         sale3 = ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
             product=cls.product1, quantity=30, price=10)
-        sale4= ComplexSales.objects.create(
+        sale4 = ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
             product=cls.product1, quantity=30, price=10)
         sale1.tax.add(cls.tax1)
@@ -107,6 +107,7 @@ class BaseTestData:
         sale2.tax.add(cls.tax3)
         sale3.tax.add(cls.tax1)
         sale4.tax.add(cls.tax2)
+
 
 # @override_settings(ROOT_URLCONF='reporting_tests.urls', RA_CACHE_REPORTS=False, USE_TZ=False)
 class ReportTest(BaseTestData, TestCase):
@@ -122,7 +123,8 @@ class ReportTest(BaseTestData, TestCase):
         data = report.get_report_data()
         self.assertEqual(data[0]['__balance__'], 1800)
 
-    @override_settings(SLICK_REPORTING_DEFAULT_START_DATE=datetime.datetime(2020, 1, 1), SLICK_REPORTING_DEFAULT_END_DATE = datetime.datetime(2021, 1, 1))
+    @override_settings(SLICK_REPORTING_DEFAULT_START_DATE=datetime.datetime(2020, 1, 1),
+                       SLICK_REPORTING_DEFAULT_END_DATE=datetime.datetime(2021, 1, 1))
     def test_product_total_sales_with_changed_dated(self):
         report = report_generators.ProductTotalSales()
         data = report.get_report_data()

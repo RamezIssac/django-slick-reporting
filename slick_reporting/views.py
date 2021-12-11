@@ -53,7 +53,7 @@ class SlickReportViewBase(FormView):
         self.form = self.get_form(form_class)
         if self.form.is_valid():
             report_data = self.get_report_results()
-            if request.is_ajax():
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return self.ajax_render_to_response(report_data)
 
             return self.render_to_response(self.get_context_data(report_data=report_data))
