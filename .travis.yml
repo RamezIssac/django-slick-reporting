@@ -15,7 +15,7 @@ matrix:
   exclude:
     # Django doesn't support following combinations
     - python: 3.7
-      env: DJANGO=4.0
+      env: DJANGO=django==4.0
 
 
 # command to install dependencies
