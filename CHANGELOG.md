@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.3]
+
+- Change the deprecated in Django 4 `request.is_ajax` . 
+
 ## [0.6.2]
 
 - Fix an issue with time series calculating first day of the month to be of the previous month #46
