@@ -26,11 +26,13 @@ class BaseReportForm:
         _values = {}
         if self.is_valid():
             for key, field in self.foreign_keys.items():
+                related_field_name = field.to_fields[0]
                 if key in self.cleaned_data and not key == self.crosstab_key_name:
                     val = self.cleaned_data[key]
                     if val:
-                        val = [x for x in val.values_list('pk', flat=True)]
+                        val = [x for x in val.values_list(related_field_name, flat=True)]
                         _values['%s__in' % key] = val
+
             return None, _values
 
     @cached_property

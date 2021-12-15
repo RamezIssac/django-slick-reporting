@@ -64,7 +64,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
     def setUpTestData(cls):
         super().setUpTestData()
         SimpleSales.objects.create(
-            doc_date=datetime(year, 3, 2), client=cls.client3,
+            doc_date=datetime(year, 3, 1), client=cls.client3,
             product=cls.product3, quantity=30, price=10)
 
     def test_time_series_columns_inclusion(self):
@@ -202,8 +202,6 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
 
         self.assertTrue(report._report_fields_dependencies)
         data = report.get_report_data()
-        # import pdb;
-        # pdb.set_trace()
         self.assertNotEqual(data, [])
         self.assertEqual(data[0]['product__category'], 'small')
         self.assertEqual(data[1]['product__category'], 'big')

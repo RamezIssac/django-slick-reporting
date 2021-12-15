@@ -9,8 +9,9 @@ from django.utils.timezone import now
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.fields import SlickReportField, BalanceReportField
 from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2, GroupByCharField, \
-    GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy
-from .models import Client, Contact, Product, SimpleSales, OrderLine, UserJoined, SalesWithFlag, ComplexSales, TaxCode
+    GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy, ProductClientSalesMatrixwSimpleSales2
+from .models import Client, Contact, Product, SimpleSales, OrderLine, UserJoined, SalesWithFlag, ComplexSales, TaxCode, \
+    SimpleSales2
 from . import report_generators
 
 from slick_reporting.registry import field_registry
@@ -84,6 +85,40 @@ class BaseTestData:
         SimpleSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
             product=cls.product1, quantity=30, price=10)
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 1, 2), client=cls.client1,
+            product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 1, 5))
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 2, 2), client=cls.client1,
+            product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 2, 3))
+
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client1,
+            product=cls.product1, quantity=10, price=10, created_at=datetime.datetime(year, 3, 3))
+
+        # client 2
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 1, 2), client=cls.client2,
+            product=cls.product1, quantity=20, price=10)
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 2, 2), client=cls.client2,
+            product=cls.product1, quantity=20, price=10)
+
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client2,
+            product=cls.product1, quantity=20, price=10)
+
+        # client 3
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 1, 2), client=cls.client3,
+            product=cls.product1, quantity=30, price=10)
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 2, 2), client=cls.client3,
+            product=cls.product1, quantity=30, price=10)
+
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client3,
+            product=cls.product1, quantity=30, price=10)
 
         cls.tax1 = TaxCode.objects.create(name='State', tax=8)  # Added three times
         cls.tax2 = TaxCode.objects.create(name='Vat reduced', tax=5)  # Added two times
@@ -116,7 +151,7 @@ class ReportTest(BaseTestData, TestCase):
         report = report_generators.ClientTotalBalance()
         data = report.get_report_data()
 
-        self.assertEqual(data[0].get('__balance__'), 300, data[0])
+        self.assertEqual(data[0].get('__balance__'), 300, data)
 
     def test_product_total_sales(self):
         report = report_generators.ProductTotalSales()
@@ -158,7 +193,7 @@ class ReportTest(BaseTestData, TestCase):
     def test_productclientsalesmatrix(self):
         report = report_generators.ProductClientSalesMatrix(crosstab_ids=[self.client1.pk, self.client2.pk])
         data = report.get_report_data()
-        self.assertEqual(data[0]['__total__CT%s' % self.client1.pk], 300)
+        self.assertEqual(data[0]['__total__CT%s' % self.client1.pk], 300, data[0])
         self.assertEqual(data[0]['__total__CT%s' % self.client2.pk], 600)
         self.assertEqual(data[0]['__total__CT----'], 900)
 
@@ -258,6 +293,23 @@ class TestView(BaseTestData, TestCase):
         self.assertTrue(len(data), 2)
         # self.assertEqual(view_report_data['data'], data)
 
+    def test_view_filter_to_field_set(self):
+        report_generator = ReportGenerator(report_model=SimpleSales2,
+                                           date_field='doc_date',
+                                           group_by='client',
+                                           columns=['slug', 'name'],
+                                           time_series_pattern='monthly',
+                                           time_series_columns=['__total__', '__balance__']
+                                           )
+        data = report_generator.get_report_data()
+        response = self.client.get(reverse('report1'), data={
+            'client_id': [self.client2.name, self.client1.name],
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertTrue(len(data), 2)
+        # self.assertEqual(view_report_data['data'], data)
+
     def test_ajax(self):
         report_generator = ReportGenerator(report_model=SimpleSales,
                                            date_field='doc_date',
@@ -294,6 +346,19 @@ class TestView(BaseTestData, TestCase):
 
         response = self.client.get(reverse('crosstab-columns-on-fly'), data={
             'client_id': [self.client1.pk, self.client2.pk],
+            'crosstab_compute_reminder': True,
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data['data'], data, view_report_data)
+
+    def test_crosstab_report_view_clumns_on_fly_to_field_set(self):
+        data = ProductClientSalesMatrixwSimpleSales2(crosstab_compute_reminder=True,
+                                                     crosstab_ids=[self.client1.name,
+                                                                   self.client2.name]).get_report_data()
+
+        response = self.client.get(reverse('crosstab-columns-on-fly'), data={
+            'client_id': [self.client1.name, self.client2.name],
             'crosstab_compute_reminder': True,
         }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(response.status_code, 200)

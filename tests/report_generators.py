@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import SlickReportField
 from slick_reporting.generator import ReportGenerator
-from .models import Client, SimpleSales, Product, SalesWithFlag
+from .models import Client, SimpleSales, Product, SalesWithFlag, SimpleSales2
 from .models import OrderLine
 
 
@@ -13,7 +13,7 @@ class GenericGenerator(ReportGenerator):
     report_model = OrderLine
     date_field = 'order__date_placed'
 
-    # here is the meat and potatos of the report,
+    # here is the meat and potatoes of the report,
     # we group the sales per client , we display columns slug and title (of the `base_model` defied above
     # and we add the magic field `__balance__` we compute the client balance.
     group_by = 'client'
@@ -43,6 +43,13 @@ class CrosstabOnClient(GenericGenerator):
 
 class ClientTotalBalance(ReportGenerator):
     report_model = SimpleSales
+    date_field = 'doc_date'
+    group_by = 'client'
+    columns = ['slug', 'name', '__balance__', '__total__']
+
+
+class ClientTotalBalance2(ReportGenerator):
+    report_model = SimpleSales2
     date_field = 'doc_date'
     group_by = 'client'
     columns = ['slug', 'name', '__balance__', '__total__']
@@ -224,6 +231,17 @@ class ProductClientSalesMatrix(ReportGenerator):
 
 class ProductClientSalesMatrix2(ReportGenerator):
     report_model = SimpleSales
+    date_field = 'doc_date'
+
+    group_by = 'product'
+    columns = ['slug', 'name']
+
+    crosstab_model = 'client'
+    crosstab_columns = [SlickReportField.create(Sum, 'value', name='value__sum', verbose_name=_('Sales'))]
+
+
+class ProductClientSalesMatrixwSimpleSales2(ReportGenerator):
+    report_model = SimpleSales2
     date_field = 'doc_date'
 
     group_by = 'product'

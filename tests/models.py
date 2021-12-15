@@ -22,13 +22,15 @@ class Product(models.Model):
         verbose_name = _('Product')
         verbose_name_plural = _('Products')
 
+
 class Contact(models.Model):
     address = models.CharField(max_length=200, verbose_name=_('Name'))
+
 
 class Client(models.Model):
     slug = models.CharField(max_length=200, verbose_name=_('Client Slug'))
 
-    name = models.CharField(max_length=200, verbose_name=_('Name'))
+    name = models.CharField(max_length=200, verbose_name=_('Name'), unique=True)
     email = models.EmailField(blank=True)
     notes = models.TextField()
     contact = models.ForeignKey(Contact, on_delete=models.CASCADE, null=True)
@@ -41,7 +43,7 @@ class Client(models.Model):
 class SimpleSales(models.Model):
     slug = models.SlugField()
     doc_date = models.DateTimeField(_('date'), db_index=True)
-    client = models.ForeignKey(Client, on_delete=models.CASCADE)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE) #, to_field='name')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.DecimalField(_('quantity'), max_digits=19, decimal_places=2, default=0)
     price = models.DecimalField(_('price'), max_digits=19, decimal_places=2, default=0)
@@ -53,6 +55,30 @@ class SimpleSales(models.Model):
     object_id = models.PositiveIntegerField(null=True)
     content_object = GenericForeignKey('content_type', 'object_id')
 
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        self.value = self.quantity * self.price
+        super().save(force_insert, force_update, using, update_fields)
+
+    class Meta:
+        verbose_name = _('Sale')
+        verbose_name_plural = _('Sales')
+        ordering = ['-created_at']
+
+
+class SimpleSales2(models.Model):
+    slug = models.SlugField()
+    doc_date = models.DateTimeField(_('date'), db_index=True)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, to_field='name')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.DecimalField(_('quantity'), max_digits=19, decimal_places=2, default=0)
+    price = models.DecimalField(_('price'), max_digits=19, decimal_places=2, default=0)
+    value = models.DecimalField(_('value'), max_digits=19, decimal_places=2, default=0)
+    created_at = models.DateTimeField(null=True, verbose_name=_('Created at'))
+    flag = models.CharField(max_length=50, default='sales')
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.DO_NOTHING, null=True)
+    object_id = models.PositiveIntegerField(null=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.value = self.quantity * self.price
@@ -89,9 +115,11 @@ class UserJoined(models.Model):
     username = models.CharField(max_length=255)
     date_joined = models.DateField()
 
+
 class TaxCode(models.Model):
     name = models.CharField(max_length=255)
     tax = models.DecimalField(_('tax'), max_digits=19, decimal_places=2, default=0)
+
 
 class ComplexSales(models.Model):
     tax = models.ManyToManyField(TaxCode)
@@ -108,7 +136,6 @@ class ComplexSales(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.DO_NOTHING, null=True)
     object_id = models.PositiveIntegerField(null=True)
     content_object = GenericForeignKey('content_type', 'object_id')
-
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.value = self.quantity * self.price
