@@ -9,7 +9,7 @@ from django.utils.timezone import now
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.fields import SlickReportField, BalanceReportField
 from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2, GroupByCharField, \
-    GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy, ProductClientSalesMatrixwSimpleSales2
+    GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy, ProductClientSalesMatrixwSimpleSales2, ClientTotalBalance2
 from .models import Client, Contact, Product, SimpleSales, OrderLine, UserJoined, SalesWithFlag, ComplexSales, TaxCode, \
     SimpleSales2
 from . import report_generators
@@ -197,6 +197,14 @@ class ReportTest(BaseTestData, TestCase):
         self.assertEqual(data[0]['__total__CT%s' % self.client2.pk], 600)
         self.assertEqual(data[0]['__total__CT----'], 900)
 
+    def test_productclientsalesmatrix_to_field_set(self):
+        report = report_generators.ProductClientSalesMatrixToFieldSet(
+            crosstab_ids=[self.client1.name, self.client2.name])
+        data = report.get_report_data()
+        self.assertEqual(data[0]['__total__CT%s' % self.client1.name], 300, data[0])
+        self.assertEqual(data[0]['__total__CT%s' % self.client2.name], 600)
+        self.assertEqual(data[0]['__total__CT----'], 900)
+
     def test_show_empty_records(self):
         report = report_generators.ClientTotalBalance()
         data = report.get_report_data()
@@ -211,6 +219,15 @@ class ReportTest(BaseTestData, TestCase):
         self.assertEqual(len(data), 1, data)
 
         report = ClientTotalBalance(kwargs_filters={'client': self.client1.pk}, show_empty_records=False)
+        data = report.get_report_data()
+        self.assertEqual(len(data), 1, data)
+
+    def test_filters_to_field_set(self):
+        report = ClientTotalBalance2(kwargs_filters={'client': self.client1.name}, show_empty_records=True)
+        data = report.get_report_data()
+        self.assertEqual(len(data), 1, data)
+
+        report = ClientTotalBalance2(kwargs_filters={'client': self.client1.name}, show_empty_records=False)
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
@@ -302,10 +319,11 @@ class TestView(BaseTestData, TestCase):
                                            time_series_columns=['__total__', '__balance__']
                                            )
         data = report_generator.get_report_data()
-        response = self.client.get(reverse('report1'), data={
+        response = self.client.get(reverse('report-to-field-set'), data={
             'client_id': [self.client2.name, self.client1.name],
         }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(response.status_code, 200)
+
         view_report_data = response.json()
         self.assertTrue(len(data), 2)
         # self.assertEqual(view_report_data['data'], data)
@@ -339,6 +357,21 @@ class TestView(BaseTestData, TestCase):
         view_report_data = response.json()
         self.assertEqual(view_report_data['data'], data)
 
+    def test_crosstab_report_view_to_field_set(self):
+        from .report_generators import ProductClientSalesMatrixToFieldSet
+        data = ProductClientSalesMatrixToFieldSet(crosstab_compute_reminder=True,
+                                                  crosstab_ids=[self.client1.name, self.client2.name]).get_report_data()
+
+        response = self.client.get(reverse('product_crosstab_client_to_field_set'))
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get(reverse('product_crosstab_client_to_field_set'), data={
+            'client_id': [self.client1.name, self.client2.name],
+            'crosstab_compute_reminder': True,
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data['data'], data)
+
     def test_crosstab_report_view_clumns_on_fly(self):
         from .report_generators import ProductClientSalesMatrix
         data = ProductClientSalesMatrix2(crosstab_compute_reminder=True,
@@ -357,7 +390,7 @@ class TestView(BaseTestData, TestCase):
                                                      crosstab_ids=[self.client1.name,
                                                                    self.client2.name]).get_report_data()
 
-        response = self.client.get(reverse('crosstab-columns-on-fly'), data={
+        response = self.client.get(reverse('crosstab-columns-on-fly-to-field-set'), data={
             'client_id': [self.client1.name, self.client2.name],
             'crosstab_compute_reminder': True,
         }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')

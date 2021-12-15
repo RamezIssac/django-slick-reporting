@@ -51,7 +51,7 @@ class BaseReportForm:
         """
         if self.crosstab_model:
             qs = self.cleaned_data.get(self.crosstab_key_name)
-            return [x for x in qs.values_list('pk', flat=True)]
+            return [x for x in qs.values_list(self.crosstab_field_related_name, flat=True)]
         return []
 
     def get_crosstab_compute_reminder(self):
@@ -114,6 +114,7 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
     :param excluded_fields: a list of fields to be excluded from the report form
     :return:
     """
+    crosstab_field_related_name = ''
     foreign_key_widget_func = foreign_key_widget_func or _default_foreign_key_widget
     fkeys_filter_func = fkeys_filter_func or (lambda x: x)
 
@@ -145,6 +146,8 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
         fields['crosstab_compute_reminder'] = forms.BooleanField(required=False,
                                                                  label=_('Display the crosstab reminder'),
                                                                  initial=True)
+        crosstab_field = [x for x in model._meta.get_fields() if x.name == crosstab_model]
+        crosstab_field_related_name = crosstab_field[0].to_fields[0]
 
     new_form = type('ReportForm', (BaseReportForm, forms.BaseForm,),
                     {"base_fields": fields,
@@ -152,5 +155,6 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
                      'foreign_keys': fkeys_map,
                      'crosstab_model': crosstab_model,
                      'crosstab_display_compute_reminder': display_compute_reminder,
+                     'crosstab_field_related_name': crosstab_field_related_name
                      })
     return new_form

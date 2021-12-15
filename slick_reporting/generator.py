@@ -194,6 +194,8 @@ class ReportGenerator(object):
         # todo validate columns is not empty (if no time series / cross tab)
         if self.crosstab_model:
             # first it is a relation .. nothing else is supported now
+
+            # todo duplicated again in report_form_factory
             self.crosstab_field = [x for x in self.report_model._meta.get_fields() if x.name == self.crosstab_model]
             self.crosstab_field_related_name = self.crosstab_field[0].to_fields[0]
 
@@ -301,7 +303,6 @@ class ReportGenerator(object):
         else:
             # filters = [Q(**{f"{col_data['model']}_id": col_data['id']})]
             filters = [Q(**{f"{col_data['model']}__{self.crosstab_field_related_name}": col_data['id']})]
-        print(filters)
         return filters
 
     def _prepare_report_dependencies(self):
