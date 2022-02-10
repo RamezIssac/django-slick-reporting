@@ -1,7 +1,7 @@
 Django Slick Reporting
 ======================
 
-**Django Slick Reporting** a report engine allowing you to create & display diverse analytics. Batteries like a ready to use View and Highcharts & Charts.js integration are included.
+**Django Slick Reporting** is a report engine allowing you to create & display diverse analytics. Batteries like a ready to use View and Highcharts & Charts.js integration are included.
 
 
 Installation
