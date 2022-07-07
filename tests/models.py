@@ -22,8 +22,10 @@ class Product(models.Model):
         verbose_name = _('Product')
         verbose_name_plural = _('Products')
 
+
 class Contact(models.Model):
     address = models.CharField(max_length=200, verbose_name=_('Name'))
+
 
 class Client(models.Model):
     slug = models.CharField(max_length=200, verbose_name=_('Client Slug'))
@@ -52,7 +54,6 @@ class SimpleSales(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.DO_NOTHING, null=True)
     object_id = models.PositiveIntegerField(null=True)
     content_object = GenericForeignKey('content_type', 'object_id')
-
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.value = self.quantity * self.price
@@ -89,9 +90,11 @@ class UserJoined(models.Model):
     username = models.CharField(max_length=255)
     date_joined = models.DateField()
 
+
 class TaxCode(models.Model):
     name = models.CharField(max_length=255)
     tax = models.DecimalField(_('tax'), max_digits=19, decimal_places=2, default=0)
+
 
 class ComplexSales(models.Model):
     tax = models.ManyToManyField(TaxCode)
@@ -108,7 +111,6 @@ class ComplexSales(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.DO_NOTHING, null=True)
     object_id = models.PositiveIntegerField(null=True)
     content_object = GenericForeignKey('content_type', 'object_id')
-
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.value = self.quantity * self.price
@@ -176,3 +178,19 @@ class OrderLine(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=0)
     client = models.ForeignKey(Client, null=True, on_delete=models.CASCADE)
+
+
+class Architect(models.Model):
+    """ A lookup table for CX Enterprise Architects, used mostly for reporting purposes. Associated with Initiatives and Features. """
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=60, verbose_name="Lead Architect", null=False, unique=True, blank=False,
+                            db_index=True)
+
+
+class Initiative(models.Model):
+    id = models.AutoField(primary_key=True, null=True)
+    # cx_pem = models.ForeignKey(ProjectEngineeringManager, on_delete=models.DO_NOTHING,
+    #                            verbose_name="CX PEM:", null=True,
+    #                            blank=True)
+    architect = models.ForeignKey(Architect, on_delete=models.DO_NOTHING, verbose_name="CX Architect:", null=True,
+                                  blank=True, to_field="name")
