@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
 - Moved the collecting of total report data to the report generator to make easier low level usage.
 - Fixed an issue with Charts.js `get_row_data` 
 - Added ChartsOption 'time_series_support',in both chart.js and highcharts
-- Fixed SlickReportField.create to use the issuing class not the vanilla one. 
+- Fixed `SlickReportField.create` to use the issuing class not the vanilla one. 
 
 
 ## [0.5.8]

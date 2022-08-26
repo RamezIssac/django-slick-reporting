@@ -1,5 +1,5 @@
 .. image:: https://img.shields.io/pypi/v/django-slick-reporting.svg
-    :target: https://pypi.org/project/django-slick-reproting
+    :target: https://pypi.org/project/django-slick-reporting
 
 .. image:: https://img.shields.io/pypi/pyversions/django-slick-reporting.svg
     :target: https://pypi.org/project/django-slick-reporting
