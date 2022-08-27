@@ -408,6 +408,7 @@ class BalanceQTYReportField(SlickReportField):
     verbose_name = _('Cumulative QTY')
     calculation_field = 'quantity'
     requires = ['__fb_quan__']
+    is_summable = False
 
     def final_calculation(self, debit, credit, dep_dict):
         # Use `get` so it fails loud if its not there

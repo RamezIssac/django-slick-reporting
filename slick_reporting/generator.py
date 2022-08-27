@@ -2,10 +2,9 @@ from __future__ import unicode_literals
 
 import datetime
 import logging
-from inspect import isclass
-
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
 from django.db.models import Q, ForeignKey
+from inspect import isclass
 
 from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import SlickReportField
@@ -57,6 +56,11 @@ class ReportGenerator(object):
        Example:
        columns = ['product_id', '__time_series__', 'col_b']
        Same is true with __crosstab__ 
+    
+    You can customize aspects of the column by adding it as a tuple like this 
+        ('field_name', dict(verbose_name=_('My Enhanced Verbose_name'))
+        
+         
      """
 
     time_series_pattern = ''
@@ -249,7 +253,8 @@ class ReportGenerator(object):
                     concrete_fields = [f.name for f in self.group_by_field.related_model._meta.concrete_fields]
                     # add database columns that are not already in concrete_fields
                     final_fields = concrete_fields + list(set(self.get_database_columns()) - set(concrete_fields))
-                    self.main_queryset = self.group_by_field.related_model.objects.filter(pk__in=ids).values(*final_fields)
+                    self.main_queryset = self.group_by_field.related_model.objects.filter(pk__in=ids).values(
+                        *final_fields)
                 else:
                     self.main_queryset = self.main_queryset.distinct().values(self.group_by_field_attname)
         else:
@@ -411,7 +416,10 @@ class ReportGenerator(object):
         """
         group_by_model = None
         if group_by:
-            group_by_field = [x for x in report_model._meta.get_fields() if x.name == group_by.split('__')[0]][0]
+            try:
+                group_by_field = [x for x in report_model._meta.get_fields() if x.name == group_by.split('__')[0]][0]
+            except IndexError:
+                raise ImproperlyConfigured(f"Could not find {group_by} in {report_model}")
             if group_by_field.is_relation:
                 group_by_model = group_by_field.related_model
             else:
@@ -419,15 +427,19 @@ class ReportGenerator(object):
 
         parsed_columns = []
         for col in columns:
+            options = {}
+            if type(col) is tuple:
+                col, options = col
+
             if col in ['__time_series__', '__crosstab__']:
                 #     These are placeholder not real computation field
                 continue
 
             magic_field_class = None
-            attr = None
+            attribute_field = None
 
             if type(col) is str:
-                attr = getattr(cls, col, None)
+                attribute_field = getattr(cls, col, None)
             elif issubclass(col, SlickReportField):
                 magic_field_class = col
 
@@ -436,12 +448,12 @@ class ReportGenerator(object):
             except KeyError:
                 magic_field_class = None
 
-            if attr:
+            if attribute_field:
                 # todo Add testing here
                 col_data = {'name': col,
-                            'verbose_name': getattr(attr, 'verbose_name', col),
+                            'verbose_name': getattr(attribute_field, 'verbose_name', col),
                             # 'type': 'method',
-                            'ref': attr,
+                            'ref': attribute_field,
                             'type': 'text'
                             }
             elif magic_field_class:
@@ -473,6 +485,7 @@ class ReportGenerator(object):
                             'ref': field,
                             'type': field.get_internal_type()
                             }
+            col_data.update(options)
             parsed_columns.append(col_data)
         return parsed_columns
 
@@ -704,4 +717,3 @@ class ReportGenerator(object):
             x['engine_name'] = x.get('engine_name', SLICK_REPORTING_DEFAULT_CHARTS_ENGINE)
             output.append(x)
         return output
-
