@@ -441,7 +441,7 @@
         function displayChart(data, $elem, chart_id) {
             chart_id = chart_id || $elem.attr('data-report-default-chart') || '';
             let chart = $elem;
-            let chartObject = getObjFromArray(data.chart_settings, 'id', chart_id, true);
+            // let chartObject = getObjFromArray(data.chart_settings, 'id', chart_id, true);
 
             try {
                 let existing_chart = _chart_cache[data.report_slug];
@@ -452,7 +452,7 @@
                 console.error(e)
             }
 
-            chartObject = $.slick_reporting.highcharts.createChartObject(data, chartObject);
+            chartObject = $.slick_reporting.highcharts.createChartObject(data, chart_id);
             _chart_cache[data.report_slug] = chart.highcharts(chartObject);
 
         }

@@ -236,3 +236,8 @@ class SlickReportView(SlickReportViewBase):
         cls.report_generator_class.check_columns(cls.columns, cls.group_by, cls.get_report_model())
 
         super().__init_subclass__()
+
+    @staticmethod
+    def check_chart_settings(chart_settings=None):
+        #todo check on chart settings
+        return
