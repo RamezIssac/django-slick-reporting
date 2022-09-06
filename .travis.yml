@@ -1,16 +1,14 @@
 language: python
 
 python:
-  - "3.7"
   - "3.8"
   - "3.9"
+  - "3.10"
 
 env:
-  - DJANGO=django==2.2.20
-  - DJANGO=django==3.1.8
-  - DJANGO=django==3.2
-  - DJANGO=django==4.0
-  - DJANGO=django==4.1
+  - DJANGO=django==3.2.15
+  - DJANGO=django==4.0.7
+  - DJANGO=django==4.1.1
 
 matrix:
   exclude:
