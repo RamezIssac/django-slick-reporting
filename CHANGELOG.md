@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.4]
+- Fix highchart cache to target the specific chart
+- Added initial and required to report_form_factory
+
 ## [0.6.3]
 
 - Change the deprecated in Django 4 `request.is_ajax` . 

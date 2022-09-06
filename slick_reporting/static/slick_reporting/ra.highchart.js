@@ -442,9 +442,9 @@
             chart_id = chart_id || $elem.attr('data-report-default-chart') || '';
             let chart = $elem;
             // let chartObject = getObjFromArray(data.chart_settings, 'id', chart_id, true);
-
+            let cache_key = data.report_slug + ':' + chart_id
             try {
-                let existing_chart = _chart_cache[data.report_slug];
+                let existing_chart = _chart_cache[cache_key];
                 if (typeof (existing_chart) !== 'undefined') {
                     existing_chart.highcharts().destroy()
                 }
@@ -453,7 +453,7 @@
             }
 
             chartObject = $.slick_reporting.highcharts.createChartObject(data, chart_id);
-            _chart_cache[data.report_slug] = chart.highcharts(chartObject);
+            _chart_cache[cache_key] = chart.highcharts(chartObject);
 
         }
 

@@ -188,7 +188,7 @@ class Architect(models.Model):
 
 
 class Initiative(models.Model):
-    id = models.AutoField(primary_key=True, null=True)
+    id = models.AutoField(primary_key=True)
     # cx_pem = models.ForeignKey(ProjectEngineeringManager, on_delete=models.DO_NOTHING,
     #                            verbose_name="CX PEM:", null=True,
     #                            blank=True)
