@@ -3,7 +3,7 @@ import datetime
 from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 
-from slick_reporting.fields import SlickReportField
+from slick_reporting.fields import SlickReportField, PercentageToBalance
 from slick_reporting.generator import ReportGenerator
 from .models import Client, SimpleSales, Product, SalesWithFlag
 from .models import OrderLine
@@ -82,6 +82,15 @@ class ProductTotalSales(ReportGenerator):
     columns = ['slug', 'name', '__balance__', '__balance_quantity__']
 
 
+class ProductTotalSalesWithPercentage(ReportGenerator):
+    report_model = SimpleSales
+    date_field = 'doc_date'
+    group_by = 'client'
+    columns = ['slug', 'name',
+               '__balance__',
+               '__balance_quantity__', PercentageToBalance]
+
+
 class ClientList(ReportGenerator):
     report_title = _('Our Clients')
 
@@ -94,7 +103,6 @@ class ClientList(ReportGenerator):
 
 
 class ProductClientSales(ReportGenerator):
-    base_model = Client
     report_model = SimpleSales
 
     report_slug = 'client_sales_of_products'

@@ -2,18 +2,17 @@ import datetime
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 
-from slick_reporting.generator import ReportGenerator
 from slick_reporting.fields import SlickReportField, BalanceReportField
+from slick_reporting.generator import ReportGenerator
+from slick_reporting.registry import field_registry
 from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2, GroupByCharField, \
     GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy
-from .models import Client, Contact, Product, SimpleSales, OrderLine, UserJoined, SalesWithFlag, ComplexSales, TaxCode
 from . import report_generators
-
-from slick_reporting.registry import field_registry
+from .models import Client, Contact, Product, SimpleSales, UserJoined, SalesWithFlag, ComplexSales, TaxCode
 from .views import SlickReportView
 
 User = get_user_model()
@@ -122,6 +121,11 @@ class ReportTest(BaseTestData, TestCase):
         report = report_generators.ProductTotalSales()
         data = report.get_report_data()
         self.assertEqual(data[0]['__balance__'], 1800)
+
+    def test_product_total_sales_with_percentage(self):
+        report = report_generators.ProductTotalSalesWithPercentage()
+        data = report.get_report_data()
+        self.assertEqual(data[2]['PercentageToBalance'], 50)
 
     @override_settings(SLICK_REPORTING_DEFAULT_START_DATE=datetime.datetime(2020, 1, 1),
                        SLICK_REPORTING_DEFAULT_END_DATE=datetime.datetime(2021, 1, 1))
@@ -288,7 +292,6 @@ class TestView(BaseTestData, TestCase):
         self.assertEqual(view_report_data['data'], data)
 
     def test_crosstab_report_view_clumns_on_fly(self):
-        from .report_generators import ProductClientSalesMatrix
         data = ProductClientSalesMatrix2(crosstab_compute_reminder=True,
                                          crosstab_ids=[self.client1.pk, self.client2.pk]).get_report_data()
 
