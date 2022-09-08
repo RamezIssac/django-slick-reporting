@@ -43,6 +43,9 @@ class SlickReportField(object):
     plus_side_q = None
     minus_side_q = None
 
+    base_kwargs_filters = None
+    base_q_filters = None
+
     _require_classes = None
     _debit_and_credit = True
 
@@ -126,6 +129,7 @@ class SlickReportField(object):
         self._cache = debit_results, credit_results, dep_values
 
     def prepare(self, q_filters=None, kwargs_filters=None, **kwargs):
+        # super(SlickReportField, self).prepare(q_filters, kwargs_filters, **kwargs)
         """
         This is the first hook where you can customize the calculation away from the Django Query aggregation method
         This method et called with all available parameters , so you can prepare the results for the whole set and save
@@ -163,6 +167,10 @@ class SlickReportField(object):
 
     def get_queryset(self):
         queryset = self.report_model.objects
+        if self.base_q_filters:
+            queryset = queryset.filter(*self.base_q_filters)
+        if self.base_kwargs_filters:
+            queryset = queryset.filter(**self.base_kwargs_filters)
         return queryset.order_by()
 
     def get_annotation_name(self):

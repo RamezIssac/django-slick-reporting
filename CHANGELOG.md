@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [0.6.4]
 - Fix highchart cache to target the specific chart
 - Added initial and required to report_form_factory
+- Added base_q_filters and base_kwargs_filters to SlickReportField to control the base queryset 
 
 ## [0.6.3]
 
