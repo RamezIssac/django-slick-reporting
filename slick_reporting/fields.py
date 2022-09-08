@@ -53,6 +53,14 @@ class SlickReportField(object):
     """Will prevent group by calculation for this specific field, serves when you want to compute overall results"""
 
     @classmethod
+    def get_name(cls):
+        return cls.name or cls.__name__.lower()
+
+    @classmethod
+    def get_verbose_name(cls):
+        return cls.verbose_name or cls.__name__
+
+    @classmethod
     def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
         """
         Creates a ReportField class on the fly

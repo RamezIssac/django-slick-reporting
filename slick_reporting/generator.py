@@ -2,9 +2,11 @@ from __future__ import unicode_literals
 
 import datetime
 import logging
+from inspect import isclass
+
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
 from django.db.models import Q, ForeignKey
-from inspect import isclass
+from django.utils.translation import gettext_lazy as _
 
 from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import SlickReportField
@@ -117,6 +119,8 @@ class ReportGenerator(object):
     """
     swap_sign = False
 
+    custom_rows = None
+
     def __init__(self, report_model=None, main_queryset=None, start_date=None, end_date=None, date_field=None,
                  q_filters=None, kwargs_filters=None,
                  group_by=None, columns=None,
@@ -190,7 +194,7 @@ class ReportGenerator(object):
         self._prepared_results = {}
         self.report_fields_classes = {}
 
-        self._report_fields_dependencies = {'time_series': {}, 'crosstab': {}, 'normal': {}}
+        self._report_fields_dependencies = {'time_series': {}, 'crosstab': {}, 'normal': {}, 'custom_rows': {}}
         self.existing_dependencies = {'series': [], 'matrix': [], 'normal': []}
 
         self.print_flag = print_flag or self.print_flag
@@ -302,6 +306,7 @@ class ReportGenerator(object):
             ('normal', self._parsed_columns),
             ('time_series', self._time_series_parsed_columns),
             ('crosstab', self._crosstab_parsed_columns),
+            ('custom_rows', self.get_custom_rows_as_rows())
         )
         for window, window_cols in all_columns:
             for col_data in window_cols:
@@ -348,8 +353,6 @@ class ReportGenerator(object):
         :return: a dict object containing all needed data
         """
 
-        # todo , if columns are empty for whatever reason this will throw an error
-        display_link = self.list_display_links or columns[0]
         data = {}
         group_by_val = None
         if self.group_by:
@@ -358,10 +361,20 @@ class ReportGenerator(object):
 
         for window, window_cols in columns:
             for col_data in window_cols:
-
                 name = col_data['name']
+                if col_data.get('name', '') == '__custom_row_id__':
+                    data[name] = obj['name']
 
-                if (col_data.get('source', '') == 'magic_field' and self.group_by) or (
+                elif col_data.get('name', '') == '__custom_row_value__':
+                    computation_class = self.report_fields_classes[obj['name']]
+                    value = computation_class.resolve(group_by_val, data)
+                    if self.swap_sign: value = -value
+                    data[name] = value
+                elif col_data.get('name', '') == '__custom_row_name__':
+                    data['__custom_row_name__'] = obj['verbose_name']
+
+
+                elif (col_data.get('source', '') == 'magic_field' and self.group_by) or (
                         self.time_series_pattern and not self.group_by):
                     source = self._report_fields_dependencies[window].get(name, False)
                     if source:
@@ -379,17 +392,19 @@ class ReportGenerator(object):
 
                 else:
                     data[name] = obj.get(name, '')
-                # if self.group_by and name in display_link:
-                #     data[name] = make_linkable_field(self.group_by_field.related_model, group_by_val, data[name])
         return data
 
     def get_report_data(self):
         main_queryset = self.main_queryset[:self.limit_records] if self.limit_records else self.main_queryset
 
+        if self.custom_rows is not None:
+            main_queryset = self.get_custom_rows_as_rows()
+
         all_columns = (
             ('normal', self._parsed_columns),
             ('time_series', self._time_series_parsed_columns),
             ('crosstab', self._crosstab_parsed_columns),
+            ('t_row', self._t_row_parsed_columns),
         )
 
         get_record_data = self._get_record_data
@@ -431,7 +446,7 @@ class ReportGenerator(object):
             if type(col) is tuple:
                 col, options = col
 
-            if col in ['__time_series__', '__crosstab__']:
+            if col in ['__time_series__', '__crosstab__', ]:
                 #     These are placeholder not real computation field
                 continue
 
@@ -458,13 +473,7 @@ class ReportGenerator(object):
                             }
             elif magic_field_class:
                 # a magic field
-                col_data = {'name': magic_field_class.name,
-                            'verbose_name': magic_field_class.verbose_name,
-                            'source': 'magic_field',
-                            'ref': magic_field_class,
-                            'type': magic_field_class.type,
-                            'is_summable': magic_field_class.is_summable
-                            }
+                col_data = cls._get_report_field_data(magic_field_class)
             else:
                 # A database field
                 model_to_use = group_by_model if group_by and '__' not in group_by else report_model
@@ -494,6 +503,7 @@ class ReportGenerator(object):
         self._parsed_columns = list(self.parsed_columns)
         self._time_series_parsed_columns = self.get_time_series_parsed_columns()
         self._crosstab_parsed_columns = self.get_crosstab_parsed_columns()
+        self._t_row_parsed_columns = self.get_custom_row_parsed_column()
 
     def get_database_columns(self):
         return [col['name'] for col in self.parsed_columns if 'source' in col and col['source'] == 'database']
@@ -519,6 +529,14 @@ class ReportGenerator(object):
                 columns[index:index] = crosstab_columns
             except ValueError:
                 columns += crosstab_columns
+        if self.custom_rows:
+            t_row_columns = self.get_custom_row_parsed_column()
+
+            try:
+                index = self.columns.index('__t_row__')
+                columns[index:index] = t_row_columns
+            except ValueError:
+                columns += t_row_columns
 
         return columns
 
@@ -717,3 +735,55 @@ class ReportGenerator(object):
             x['engine_name'] = x.get('engine_name', SLICK_REPORTING_DEFAULT_CHARTS_ENGINE)
             output.append(x)
         return output
+
+    def get_custom_row_parsed_column(self):
+
+        output_cols = []
+        if self.custom_rows:
+            id_name, name_name, value_name = self.get_custom_row_verbose_names()
+            output_cols.append({
+                'name': f'__custom_row_id__',
+                'original_name': '__custom_row_id__',
+                'verbose_name': id_name,
+                'ref': 'text',
+                'source': '',
+                'is_summable': False,
+            })
+
+            output_cols.append({
+                'name': f'__custom_row_name__',
+                'original_name': '__custom_row_name__',
+                'verbose_name': name_name,
+                'ref': 'text',
+                'source': '',
+                'is_summable': False,
+            })
+            output_cols.append({
+                'name': f'__custom_row_value__',
+                'original_name': '__custom_row_value__',
+                'verbose_name': value_name,
+                'ref': 'text',
+                'source': '',
+                'is_summable': True,
+            })
+
+        return output_cols
+
+    def get_custom_row_verbose_names(self):
+        return _('ID'), _('Name'), _('Value')
+
+    @classmethod
+    def _get_report_field_data(cls, magic_field_class):
+        return {'name': magic_field_class.get_name(),
+                'verbose_name': magic_field_class.get_verbose_name(),
+                'source': 'magic_field',
+                'ref': magic_field_class,
+                'type': magic_field_class.type,
+                'is_summable': magic_field_class.is_summable
+                }
+
+    def get_custom_rows_as_rows(self):
+        data = []
+        for report_field in self.custom_rows or []:
+            data.append(self._get_report_field_data(magic_field_class=report_field))
+        return data

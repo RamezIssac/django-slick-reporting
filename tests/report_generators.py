@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from slick_reporting.fields import SlickReportField, PercentageToBalance
 from slick_reporting.generator import ReportGenerator
 from .models import Client, SimpleSales, Product, SalesWithFlag
-from .models import OrderLine
+from .models import OrderLine, GeneralLedger
 
 
 class GenericGenerator(ReportGenerator):
@@ -249,3 +249,18 @@ class ClientTotalBalancesWithShowEmptyFalse(ClientTotalBalance):
     report_slug = None
     default_order_by = '-__balance__'
     show_empty_records = False
+
+
+class TotalDebit(SlickReportField):
+    pass
+
+
+class TotalCredit(SlickReportField):
+    pass
+
+
+class TRowsGenerator(ReportGenerator):
+    custom_rows = [TotalDebit, TotalCredit]
+    report_model = GeneralLedger
+    date_field = 'doc_date'
+    # t_row_columns = ['__trow__name__', '__trow_verbose_name__', '__trow_value__']

@@ -10,9 +10,10 @@ from slick_reporting.fields import SlickReportField, BalanceReportField
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.registry import field_registry
 from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2, GroupByCharField, \
-    GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy
+    GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy, TRowsGenerator
 from . import report_generators
-from .models import Client, Contact, Product, SimpleSales, UserJoined, SalesWithFlag, ComplexSales, TaxCode
+from .models import Client, Contact, Product, SimpleSales, UserJoined, SalesWithFlag, ComplexSales, TaxCode, \
+    GeneralLedger
 from .views import SlickReportView
 
 User = get_user_model()
@@ -474,3 +475,26 @@ class TestGroupByFlag(TestCase):
         self.assertEqual(len(data), 2)
         self.assertEqual(data[1]['sum__quantity'], 25)
         self.assertEqual(data[1][f'sum__quantityTS{year}0401'], 25)
+
+
+class TRowsTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        GeneralLedger.objects.create(account_name='debit', value=100, doc_date=datetime.datetime(year, 1, 2))
+        GeneralLedger.objects.create(account_name='debit', value=300, doc_date=datetime.datetime(year, 2, 2))
+        GeneralLedger.objects.create(account_name='credit', value=500, doc_date=datetime.datetime(year, 2, 2))
+        GeneralLedger.objects.create(account_name='credit', value=270, doc_date=datetime.datetime(year, 3, 2))
+
+    def test_trows_generator(self):
+        report = report_generators.TRowsGenerator()
+        data = report.get_report_data()
+        self.assertEqual(data[0].get('__custom_row_id__'), 'totaldebit', data[0])
+
+    def test_trow_column_included(self):
+        report = TRowsGenerator()
+        columns = report.get_list_display_columns()
+        self.assertEqual(len(columns), 3, columns)
+
+    def test_columns(self):
+        pass

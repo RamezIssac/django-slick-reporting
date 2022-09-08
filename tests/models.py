@@ -194,3 +194,9 @@ class Initiative(models.Model):
     #                            blank=True)
     architect = models.ForeignKey(Architect, on_delete=models.DO_NOTHING, verbose_name="CX Architect:", null=True,
                                   blank=True, to_field="name")
+
+
+class GeneralLedger(models.Model):
+    account_name = models.CharField(max_length=20, null=True)
+    doc_date = models.DateTimeField(_('date'), db_index=True)
+    value = models.DecimalField(_('value'), max_digits=19, decimal_places=2, default=0)
