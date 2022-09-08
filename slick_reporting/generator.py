@@ -311,14 +311,17 @@ class ReportGenerator(object):
         for window, window_cols in all_columns:
             for col_data in window_cols:
                 klass = col_data['ref']
-
+                # print(klass)
                 if isclass(klass) and issubclass(klass, SlickReportField):
                     dependencies_names = klass.get_full_dependency_list()
 
                     # check if any of this dependencies is on the report
                     fields_on_report = [x for x in window_cols if x['ref'] in dependencies_names]
                     for field in fields_on_report:
+                        # print(field['name'])
+                        # import pdb; pdb.set_trace()
                         self._report_fields_dependencies[window][field['name']] = col_data['name']
+
             for col_data in window_cols:
                 klass = col_data['ref']
                 name = col_data['name']
@@ -343,6 +346,7 @@ class ReportGenerator(object):
                     q_filters = self._construct_crosstab_filter(col_data)
 
                 report_class.init_preparation(q_filters, date_filter)
+                print(name)
                 self.report_fields_classes[name] = report_class
 
     def _get_record_data(self, obj, columns):
@@ -366,13 +370,29 @@ class ReportGenerator(object):
                     data[name] = obj['name']
 
                 elif col_data.get('name', '') == '__custom_row_value__':
-                    computation_class = self.report_fields_classes[obj['name']]
+
+                    source = self._report_fields_dependencies[window].get(name, False)
+
+                    # if source:
+                    #     computation_class = self.report_fields_classes[source]
+                    #     value = computation_class.get_dependency_value(group_by_val,
+                    #                                                    col_data['ref'].name)
+                    # else:
+                    #     try:
+                    #         computation_class = self.report_fields_classes[name]
+                    #     except KeyError:
+                    #         continue
+                    #     value = computation_class.resolve(group_by_val, data)
+
+                    try:
+                        computation_class = self.report_fields_classes[obj['name']]
+                    except:
+                        import pdb ; pdb.set_trace()
                     value = computation_class.resolve(group_by_val, data)
                     if self.swap_sign: value = -value
                     data[name] = value
                 elif col_data.get('name', '') == '__custom_row_name__':
                     data['__custom_row_name__'] = obj['verbose_name']
-
 
                 elif (col_data.get('source', '') == 'magic_field' and self.group_by) or (
                         self.time_series_pattern and not self.group_by):
@@ -404,7 +424,7 @@ class ReportGenerator(object):
             ('normal', self._parsed_columns),
             ('time_series', self._time_series_parsed_columns),
             ('crosstab', self._crosstab_parsed_columns),
-            ('t_row', self._t_row_parsed_columns),
+            ('custom_rows', self._t_row_parsed_columns),
         )
 
         get_record_data = self._get_record_data
@@ -548,7 +568,7 @@ class ReportGenerator(object):
         """
         _values = []
 
-        cols = self.time_series_columns or []
+        cols = self.time_series_columns or self.custom_rows or []
         series = self._get_time_series_dates(self.time_series_pattern)
 
         for index, dt in enumerate(series):
@@ -561,8 +581,8 @@ class ReportGenerator(object):
                     magic_field_class = col
 
                 _values.append({
-                    'name': magic_field_class.name + 'TS' + dt[1].strftime('%Y%m%d'),
-                    'original_name': magic_field_class.name,
+                    'name': magic_field_class.get_name() + 'TS' + dt[1].strftime('%Y%m%d'),
+                    'original_name': magic_field_class.get_name(),
                     'verbose_name': self.get_time_series_field_verbose_name(magic_field_class, dt, index, series),
                     'ref': magic_field_class,
                     'start_date': dt[0],

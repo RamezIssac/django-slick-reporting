@@ -252,11 +252,21 @@ class ClientTotalBalancesWithShowEmptyFalse(ClientTotalBalance):
 
 
 class TotalDebit(SlickReportField):
-    pass
+    base_kwargs_filters = {'account_name': 'debit'}
 
 
 class TotalCredit(SlickReportField):
-    pass
+    base_kwargs_filters = {'account_name': 'credit'}
+
+
+class NetValue(SlickReportField):
+    requires = [TotalDebit, TotalCredit]
+
+    def final_calculation(self, debit, credit, dep_dict):
+        debit = dep_dict.get('TotalDebit')
+        credit = dep_dict.get('TotalCredit')
+        return debit - credit
+
 
 
 class TRowsGenerator(ReportGenerator):
@@ -264,3 +274,12 @@ class TRowsGenerator(ReportGenerator):
     report_model = GeneralLedger
     date_field = 'doc_date'
     # t_row_columns = ['__trow__name__', '__trow_verbose_name__', '__trow_value__']
+
+
+class TRowsGeneratorTimeSeries(ReportGenerator):
+    custom_rows = [TotalDebit, TotalCredit,
+                   # NetValue
+                   ]
+    report_model = GeneralLedger
+    date_field = 'doc_date'
+    time_series_pattern = 'monthly'

@@ -485,16 +485,24 @@ class TRowsTest(TestCase):
         GeneralLedger.objects.create(account_name='debit', value=300, doc_date=datetime.datetime(year, 2, 2))
         GeneralLedger.objects.create(account_name='credit', value=500, doc_date=datetime.datetime(year, 2, 2))
         GeneralLedger.objects.create(account_name='credit', value=270, doc_date=datetime.datetime(year, 3, 2))
+        GeneralLedger.objects.create(account_name='credit', value=70, doc_date=datetime.datetime(year, 4, 2))
 
     def test_trows_generator(self):
         report = report_generators.TRowsGenerator()
         data = report.get_report_data()
-        self.assertEqual(data[0].get('__custom_row_id__'), 'totaldebit', data[0])
+        self.assertEqual(data[0].get('__custom_row_id__'), 'TotalDebit', data[0])
 
-    def test_trow_column_included(self):
+    def test_custom_row_column_included(self):
         report = TRowsGenerator()
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 3, columns)
+
+    def test_custom_row_in_timeseries(self):
+        report = report_generators.TRowsGeneratorTimeSeries()
+        data = report.get_report_data()
+
+        self.assertEqual(data[0].get(f'TotalDebitTS{year}0201'), 100, data[0])
+        self.assertEqual(data[0].get(f'TotalCreditTS{year}0301'), 500, data[0])
 
     def test_columns(self):
         pass
