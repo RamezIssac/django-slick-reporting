@@ -449,7 +449,6 @@ class ReportGenerator(object):
                 magic_field_class = None
 
             if attribute_field:
-                # todo Add testing here
                 col_data = {'name': col,
                             'verbose_name': getattr(attribute_field, 'verbose_name', col),
                             # 'type': 'method',

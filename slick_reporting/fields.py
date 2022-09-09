@@ -132,7 +132,6 @@ class SlickReportField(object):
         self._cache = debit_results, credit_results, dep_values
 
     def prepare(self, q_filters=None, kwargs_filters=None, **kwargs):
-        # super(SlickReportField, self).prepare(q_filters, kwargs_filters, **kwargs)
         """
         This is the first hook where you can customize the calculation away from the Django Query aggregation method
         This method et called with all available parameters , so you can prepare the results for the whole set and save

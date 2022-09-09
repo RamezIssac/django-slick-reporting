@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [0.6.4]
 - Fix highchart cache to target the specific chart
 - Added initial and required to report_form_factory
-- Added base_q_filters and base_kwargs_filters to SlickReportField to control the base queryset 
+- Added base_q_filters and base_kwargs_filters to SlickReportField to control the base queryset
+- Add ability to customize ReportField on the fly 
+- Adds `prevent_group_by` option to SlickReportField Will prevent group by calculation for this specific field, serves when you want to compute overall results.
+- Support reference to SlickReportField class directly in `requires` instead of its "registered" name.
+- Adds PercentageToBalance report field 
 
 ## [0.6.3]
 
