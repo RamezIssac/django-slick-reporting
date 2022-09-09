@@ -1,4 +1,5 @@
 import uuid
+from typing import Iterable
 
 from django.db.models import Sum
 from django.template.defaultfilters import date as date_filter
@@ -111,10 +112,16 @@ class SlickReportField(object):
         return [field_registry.get_field_by_name(x) if type(x) is str else x for x in requires]
 
     def apply_q_plus_filter(self, qs):
-        return qs.filter(*self.plus_side_q)
+        if isinstance(self.plus_side_q, Iterable):
+            return qs.filter(*self.plus_side_q)
+        else:
+            return qs.filter(self.plus_side_q)
 
     def apply_q_minus_filter(self, qs):
-        return qs.filter(*self.minus_side_q)
+        if isinstance(self.minus_side_q, Iterable):
+            return qs.filter(*self.minus_side_q)
+        else:
+            return qs.filter(self.minus_side_q)
 
     def apply_aggregation(self, queryset, group_by=''):
         annotation = self.calculation_method(self.calculation_field)
@@ -138,6 +145,7 @@ class SlickReportField(object):
 
         debit_results, credit_results = self.prepare(q_filters, kwargs_filters, **kwargs)
         self._cache = debit_results, credit_results, dep_values
+        return self
 
     def prepare(self, q_filters=None, kwargs_filters=None, **kwargs):
         # super(SlickReportField, self).prepare(q_filters, kwargs_filters, **kwargs)
@@ -158,7 +166,6 @@ class SlickReportField(object):
             queryset = queryset.filter(*q_filters)
         if kwargs_filters:
             queryset = queryset.filter(**kwargs_filters)
-
         if self.plus_side_q:
             queryset = self.apply_q_plus_filter(queryset)
         debit_results = self.apply_aggregation(queryset, group_by)
@@ -375,6 +382,7 @@ class BalanceReportField(SlickReportField):
         debit = debit or 0
         credit = credit or 0
         fb = fb or 0
+        # print(self, fb, debit, credit)
         return fb + debit - credit
 
 

@@ -1,6 +1,6 @@
 import datetime
 
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import SlickReportField, PercentageToBalance
@@ -53,6 +53,16 @@ class GroupByCharField(ReportGenerator):
     date_field = 'doc_date'
     group_by = 'flag'
     columns = ['flag', '__balance__', SlickReportField.create(Sum, 'quantity')]
+
+
+class DebitCreditCalculationReport(ReportGenerator):
+    report_model = SalesWithFlag
+    date_field = 'doc_date'
+    group_by = 'client'
+    columns = ['slug', 'name', '__balance__',
+               SlickReportField.create(Sum, 'quantity')
+               ]
+
 
 
 class GroupByCharFieldPlusTimeSeries(ReportGenerator):

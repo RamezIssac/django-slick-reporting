@@ -121,6 +121,9 @@ class ReportGenerator(object):
 
     custom_rows = None
 
+    plus_side_q_filters = None
+    minus_side_q_filters = None
+
     def __init__(self, report_model=None, main_queryset=None, start_date=None, end_date=None, date_field=None,
                  q_filters=None, kwargs_filters=None,
                  group_by=None, columns=None,
@@ -128,7 +131,7 @@ class ReportGenerator(object):
                  crosstab_model=None, crosstab_columns=None, crosstab_ids=None, crosstab_compute_reminder=None,
                  swap_sign=False, show_empty_records=None,
                  print_flag=False,
-                 doc_type_plus_list=None, doc_type_minus_list=None, limit_records=False, format_row_func=None):
+                 plus_side_q_filters=None, minus_side_q_filters=None, limit_records=False, format_row_func=None):
         """
 
         :param report_model: Main model containing the data
@@ -150,8 +153,8 @@ class ReportGenerator(object):
         :param show_empty_records:
         :param base_model:
         :param print_flag:
-        :param doc_type_plus_list:
-        :param doc_type_minus_list:
+        :param plus_side_q_filters:
+        :param minus_side_q_filters:
         :param limit_records:
         """
         from .app_settings import SLICK_REPORTING_DEFAULT_START_DATE, SLICK_REPORTING_DEFAULT_END_DATE
@@ -222,9 +225,8 @@ class ReportGenerator(object):
 
         # doc_types = form.get_doc_type_plus_minus_lists()
         doc_types = [], []
-        self.doc_type_plus_list = list(doc_type_plus_list) if doc_type_plus_list else doc_types[0]
-        self.doc_type_minus_list = list(doc_type_minus_list) if doc_type_minus_list else doc_types[1]
-
+        self.plus_side_q_filters = self.plus_side_q_filters or (plus_side_q_filters if plus_side_q_filters else [])
+        self.minus_side_q_filters = self.minus_side_q_filters or (minus_side_q_filters if minus_side_q_filters else [])
         self.swap_sign = self.swap_sign or swap_sign
         self.limit_records = self.limit_records or limit_records
 
@@ -309,16 +311,18 @@ class ReportGenerator(object):
             ('custom_rows', self.get_custom_rows_as_rows())
         )
         for window, window_cols in all_columns:
-            for col_data in window_cols:
-                klass = col_data['ref']
-                # print(klass)
-                if isclass(klass) and issubclass(klass, SlickReportField):
-                    dependencies_names = klass.get_full_dependency_list()
+            if window == 'time_series':
+                self._time_series_dependencies()
+            else:
+                for col_data in window_cols:
+                    klass = col_data['ref']
+                    if isclass(klass) and issubclass(klass, SlickReportField):
+                        dependencies_names = klass.get_full_dependency_list()
 
-                    # check if any of this dependencies is on the report
-                    fields_on_report = [x for x in window_cols if x['ref'] in dependencies_names]
-                    for field in fields_on_report:
-                        self._report_fields_dependencies[window][field['name']] = col_data['name']
+                        # check if any of this dependencies is on the report
+                        fields_on_report = [x for x in window_cols if x['ref'] in dependencies_names]
+                        for field in fields_on_report:
+                            self._report_fields_dependencies[window][field['name']] = col_data['name']
 
             for col_data in window_cols:
                 klass = col_data['ref']
@@ -330,7 +334,8 @@ class ReportGenerator(object):
                 if self._report_fields_dependencies[window].get(name, False):
                     continue
 
-                report_class = klass(self.doc_type_plus_list, self.doc_type_minus_list,
+                report_class = klass(plus_side_q=self.plus_side_q_filters,
+                                     minus_side_q=self.minus_side_q_filters,
                                      group_by=self.group_by,
                                      report_model=self.report_model, date_field=self.date_field)
 
@@ -343,7 +348,7 @@ class ReportGenerator(object):
                 if window == 'crosstab':
                     q_filters = self._construct_crosstab_filter(col_data)
 
-                report_class.init_preparation(q_filters, date_filter)
+                report_class = report_class.init_preparation(q_filters, date_filter)
                 self.report_fields_classes[name] = report_class
 
     def _get_record_data(self, obj, columns):
@@ -373,8 +378,6 @@ class ReportGenerator(object):
                     if source:
                         computation_class = self.report_fields_classes[source]
                         value = computation_class.get_dependency_value('', obj['name'])
-                        if type(value) is dict:
-                            import pdb; pdb.set_trace()
 
                     else:
                         computation_class = self.report_fields_classes[obj['name']]
@@ -390,9 +393,7 @@ class ReportGenerator(object):
                     source = self._report_fields_dependencies[window].get(name, False)
                     if source:
                         computation_class = self.report_fields_classes[source]
-
-                        value = computation_class.get_dependency_value(group_by_val, col_data['ref'].name)
-
+                        value = computation_class.get_dependency_value(group_by_val, col_data['original_name'])
                     else:
                         try:
                             computation_class = self.report_fields_classes[name]
@@ -400,7 +401,7 @@ class ReportGenerator(object):
                             continue
                         value = computation_class.resolve(group_by_val, data)
 
-                    if self.swap_sign: value = -value
+                    value = -value if self.swap_sign else value
                     data[name] = value
 
                 else:
@@ -553,6 +554,25 @@ class ReportGenerator(object):
 
         return columns
 
+    def _time_series_dependencies(self):
+        """
+        Prepare the report field dependencies for time series
+        :return:
+        """
+        periods = {}
+        for col in self._time_series_parsed_columns:
+            periods.setdefault(col['date_repr'], [])
+            periods[col['date_repr']].append(col)
+        for key, period_cols in periods.items():
+            for col_data in period_cols:
+                klass = col_data['ref']
+                if isclass(klass) and issubclass(klass, SlickReportField):
+                    dependencies_names = klass.get_full_dependency_list()
+                    fields_on_report = [x for x in period_cols if x['ref'] in dependencies_names]
+                    for field in fields_on_report:
+                        self._report_fields_dependencies['time_series'][field['name']] = col_data[
+                            'name']
+
     def get_time_series_parsed_columns(self):
         """
         Return time series columns with all needed data attached
@@ -572,10 +592,11 @@ class ReportGenerator(object):
                     magic_field_class = field_registry.get_field_by_name(col)
                 elif issubclass(col, SlickReportField):
                     magic_field_class = col
-
+                date_repr = dt[1].strftime('%Y%m%d')
                 _values.append({
-                    'name': magic_field_class.get_name() + 'TS' + dt[1].strftime('%Y%m%d'),
+                    'name': magic_field_class.get_name() + 'TS' + date_repr,
                     'original_name': magic_field_class.get_name(),
+                    'date_repr': date_repr,
                     'verbose_name': self.get_time_series_field_verbose_name(magic_field_class, dt, index, series),
                     'ref': magic_field_class,
                     'start_date': dt[0],
@@ -788,6 +809,7 @@ class ReportGenerator(object):
     @classmethod
     def _get_report_field_data(cls, magic_field_class):
         return {'name': magic_field_class.get_name(),
+                'original_name': magic_field_class.get_name(),
                 'verbose_name': magic_field_class.get_verbose_name(),
                 'source': 'magic_field',
                 'ref': magic_field_class,

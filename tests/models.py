@@ -78,6 +78,8 @@ class SalesWithFlag(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.value = self.quantity * self.price
+        if not self.flag:
+            self.flag = 'sales'
         super().save(force_insert, force_update, using, update_fields)
 
     class Meta:

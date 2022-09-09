@@ -1,7 +1,7 @@
 import datetime
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
@@ -10,7 +10,7 @@ from slick_reporting.fields import SlickReportField, BalanceReportField
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.registry import field_registry
 from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2, GroupByCharField, \
-    GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy, TRowsGenerator
+    GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy, TRowsGenerator, DebitCreditCalculationReport
 from . import report_generators
 from .models import Client, Contact, Product, SimpleSales, UserJoined, SalesWithFlag, ComplexSales, TaxCode, \
     GeneralLedger
@@ -476,6 +476,21 @@ class TestGroupByFlag(TestCase):
         self.assertEqual(data[1]['sum__quantity'], 25)
         self.assertEqual(data[1][f'sum__quantityTS{year}0401'], 25)
 
+    def test_debit_credit(self):
+        report = DebitCreditCalculationReport()
+        data = report.get_report_data()
+        self.assertEqual(data[2]['sum__quantity'], 115)
+        self.assertEqual(data[2]['__balance__'], 1150)
+
+        report = DebitCreditCalculationReport(
+            plus_side_q_filters=Q(flag='sales'),
+            minus_side_q_filters=Q(flag='sales-return')
+        )
+
+        data = report.get_report_data()
+        self.assertEqual(data[2]['sum__quantity'], 65, data)
+        self.assertEqual(data[2]['__balance__'], 650)
+
 
 class TRowsTest(TestCase):
     @classmethod
@@ -483,6 +498,7 @@ class TRowsTest(TestCase):
         super().setUpTestData()
         GeneralLedger.objects.create(account_name='debit', value=100, doc_date=datetime.datetime(year, 1, 2))
         GeneralLedger.objects.create(account_name='debit', value=300, doc_date=datetime.datetime(year, 2, 2))
+
         GeneralLedger.objects.create(account_name='credit', value=500, doc_date=datetime.datetime(year, 2, 2))
         GeneralLedger.objects.create(account_name='credit', value=270, doc_date=datetime.datetime(year, 3, 2))
         GeneralLedger.objects.create(account_name='credit', value=70, doc_date=datetime.datetime(year, 4, 2))
@@ -491,6 +507,7 @@ class TRowsTest(TestCase):
         report = report_generators.TRowsGenerator()
         data = report.get_report_data()
         self.assertEqual(data[0].get('__custom_row_id__'), 'TotalDebit', data[0])
+        self.assertEqual(data[0].get('__custom_row_value__'), 400, data[0])
 
     def test_custom_row_column_included(self):
         report = TRowsGenerator()
@@ -503,6 +520,3 @@ class TRowsTest(TestCase):
 
         self.assertEqual(data[0].get(f'TotalDebitTS{year}0201'), 100, data[0])
         self.assertEqual(data[0].get(f'TotalCreditTS{year}0301'), 500, data[0])
-
-    def test_columns(self):
-        pass
