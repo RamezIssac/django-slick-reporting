@@ -247,7 +247,6 @@ class SlickReportField(object):
         annotation = self.get_annotation_name()
 
         cached_debit, cached_credit, dependencies_value = cached
-
         if cached_debit or cached_credit:
             debit = None
             if cached_debit is not None:
@@ -255,6 +254,7 @@ class SlickReportField(object):
                     x = list(cached_debit.keys())[0]
                     debit_value = cached_debit[x]
                 else:
+
                     for i, x in enumerate(cached_debit):
                         if str(x[group_by]) == current_obj:
                             debit = cached_debit[i]

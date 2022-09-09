@@ -318,8 +318,6 @@ class ReportGenerator(object):
                     # check if any of this dependencies is on the report
                     fields_on_report = [x for x in window_cols if x['ref'] in dependencies_names]
                     for field in fields_on_report:
-                        # print(field['name'])
-                        # import pdb; pdb.set_trace()
                         self._report_fields_dependencies[window][field['name']] = col_data['name']
 
             for col_data in window_cols:
@@ -346,7 +344,6 @@ class ReportGenerator(object):
                     q_filters = self._construct_crosstab_filter(col_data)
 
                 report_class.init_preparation(q_filters, date_filter)
-                print(name)
                 self.report_fields_classes[name] = report_class
 
     def _get_record_data(self, obj, columns):
@@ -371,24 +368,18 @@ class ReportGenerator(object):
 
                 elif col_data.get('name', '') == '__custom_row_value__':
 
-                    source = self._report_fields_dependencies[window].get(name, False)
+                    source = self._report_fields_dependencies[window].get(obj['name'], False)
 
-                    # if source:
-                    #     computation_class = self.report_fields_classes[source]
-                    #     value = computation_class.get_dependency_value(group_by_val,
-                    #                                                    col_data['ref'].name)
-                    # else:
-                    #     try:
-                    #         computation_class = self.report_fields_classes[name]
-                    #     except KeyError:
-                    #         continue
-                    #     value = computation_class.resolve(group_by_val, data)
+                    if source:
+                        computation_class = self.report_fields_classes[source]
+                        value = computation_class.get_dependency_value('', obj['name'])
+                        if type(value) is dict:
+                            import pdb; pdb.set_trace()
 
-                    try:
+                    else:
                         computation_class = self.report_fields_classes[obj['name']]
-                    except:
-                        import pdb ; pdb.set_trace()
-                    value = computation_class.resolve(group_by_val, data)
+                        value = computation_class.resolve(group_by_val, data)
+
                     if self.swap_sign: value = -value
                     data[name] = value
                 elif col_data.get('name', '') == '__custom_row_name__':
@@ -399,14 +390,16 @@ class ReportGenerator(object):
                     source = self._report_fields_dependencies[window].get(name, False)
                     if source:
                         computation_class = self.report_fields_classes[source]
-                        value = computation_class.get_dependency_value(group_by_val,
-                                                                       col_data['ref'].name)
+
+                        value = computation_class.get_dependency_value(group_by_val, col_data['ref'].name)
+
                     else:
                         try:
                             computation_class = self.report_fields_classes[name]
                         except KeyError:
                             continue
                         value = computation_class.resolve(group_by_val, data)
+
                     if self.swap_sign: value = -value
                     data[name] = value
 

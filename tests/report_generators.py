@@ -270,7 +270,9 @@ class NetValue(SlickReportField):
 
 
 class TRowsGenerator(ReportGenerator):
-    custom_rows = [TotalDebit, TotalCredit]
+    custom_rows = [TotalDebit, TotalCredit,
+                   NetValue
+                   ]
     report_model = GeneralLedger
     date_field = 'doc_date'
     # t_row_columns = ['__trow__name__', '__trow_verbose_name__', '__trow_value__']
@@ -278,7 +280,7 @@ class TRowsGenerator(ReportGenerator):
 
 class TRowsGeneratorTimeSeries(ReportGenerator):
     custom_rows = [TotalDebit, TotalCredit,
-                   # NetValue
+                   NetValue
                    ]
     report_model = GeneralLedger
     date_field = 'doc_date'
