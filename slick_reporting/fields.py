@@ -222,12 +222,13 @@ class SlickReportField(object):
 
         return self.final_calculation(debit_value, credit_value, dependencies_value)
 
-    def get_dependency_value(self, current_obj, name=None):
+    def get_dependency_value(self, current_obj, name=None, current_row=None):
         """
         Get the values of the ReportFields specified in `requires`
 
         :param current_obj: the current object which we want the calculation for
         :param name: Optional, the name of the specific dependency you want.
+        :param current_row: Optional, Dictionary representing the current _being proceeded_ row.
 
         :return: a dict containing dependencies names as keys and their calculation as values
                  or a specific value if name is specified.
