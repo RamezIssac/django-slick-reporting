@@ -90,7 +90,11 @@ class SlickReportViewBase(FormView):
         Automatically instantiate a form based on details provided
         :return:
         """
-        return self.form_class or report_form_factory(self.get_report_model(), crosstab_model=self.crosstab_model,
+        initial = self.get_initial()
+        return self.form_class or report_form_factory(self.get_report_model(),
+                                                      start_date=initial.get('start_date'),
+                                                      end_date=initial.get('end_date'),
+                                                      crosstab_model=self.crosstab_model,
                                                       display_compute_reminder=self.crosstab_compute_reminder,
                                                       excluded_fields=self.excluded_fields)
 
@@ -125,9 +129,11 @@ class SlickReportViewBase(FormView):
         crosstab_compute_reminder = self.form.get_crosstab_compute_reminder() if self.request.GET or self.request.POST \
             else self.crosstab_compute_reminder
 
+        initial = self.get_initial()
+
         return self.report_generator_class(self.get_report_model(),
-                                           start_date=self.form.cleaned_data['start_date'],
-                                           end_date=self.form.cleaned_data['end_date'],
+                                           start_date=self.form.cleaned_data['start_date'] or initial['start_date'],
+                                           end_date=self.form.cleaned_data['end_date'] or initial['end_date'],
                                            q_filters=q_filters,
                                            kwargs_filters=kw_filters,
                                            date_field=self.date_field,
@@ -210,11 +216,10 @@ class SlickReportViewBase(FormView):
         return cls.__name__.lower()
 
     def get_initial(self):
-        # todo revise why not actually displaying datetime on screen
-        return {
-            'start_date': SLICK_REPORTING_DEFAULT_START_DATE,
-            'end_date': SLICK_REPORTING_DEFAULT_END_DATE
-        }
+        initial = super().get_initial()
+        initial['start_date'] = SLICK_REPORTING_DEFAULT_START_DATE
+        initial['end_date'] = SLICK_REPORTING_DEFAULT_END_DATE
+        return initial
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

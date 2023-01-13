@@ -96,7 +96,8 @@ def _default_foreign_key_widget(f_field):
     return {'form_class': forms.ModelMultipleChoiceField, 'required': False, }
 
 
-def report_form_factory(model, crosstab_model=None, display_compute_reminder=True, fkeys_filter_func=None,
+def report_form_factory(model, crosstab_model=None, start_date=None, end_date=None,
+                        display_compute_reminder=True, fkeys_filter_func=None,
                         foreign_key_widget_func=None, excluded_fields=None):
     """
     Create a Report Form based on the report_model passed by
@@ -127,11 +128,11 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
     fields = OrderedDict()
 
     fields['start_date'] = forms.DateTimeField(required=False, label=_('From date'),
-                                               initial=app_settings.SLICK_REPORTING_DEFAULT_START_DATE,
+                                               initial=start_date or app_settings.SLICK_REPORTING_DEFAULT_START_DATE,
                                                widget=forms.DateTimeInput(attrs={'autocomplete': "off"}))
 
     fields['end_date'] = forms.DateTimeField(required=False, label=_('To  date'),
-                                             initial=app_settings.SLICK_REPORTING_DEFAULT_END_DATE,
+                                             initial=end_date or app_settings.SLICK_REPORTING_DEFAULT_END_DATE,
                                              widget=forms.DateTimeInput(attrs={'autocomplete': "off"}))
 
     for name, f_field in fkeys_map.items():
