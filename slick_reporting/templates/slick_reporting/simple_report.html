@@ -170,11 +170,14 @@
 
             }
 
-            $('table').DataTable();
+            try {
+              $('table').DataTable();
+            } catch {
+              // Ignore if the DataTables library is not available.
+            }
+            
             $('.nav-charts').find('a:first').trigger('click');
             setDatePicker();
-
-
         })
     </script>
 
