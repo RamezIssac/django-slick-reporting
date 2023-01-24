@@ -3,7 +3,7 @@
 Structure
 ==========
 
-If you haven't, please check https://django-slick-reporting.com for a quick walk-though with live code examples..
+If you haven't yet, please check https://django-slick-reporting.com for a quick walk-though with live code examples..
 
 And now, Let's explore the main components of Django Slick Reporting and what setting you can set on project level.
 
@@ -11,7 +11,7 @@ Components
 ----------
 
 
-1. Result Field: represent a number, a calculation unit, for example: a Sum of a certain field.
+1. Report Field: represent a number, a calculation unit, for example: a Sum of a certain field.
    The report field identifies how the calculation should be done. ResultFields can depend on each other.
 
 2. Generator: Represent a concrete report structure.If it would group by certain field, do a time series or a cross tab, and which columns (Report Field) to be calculated.
