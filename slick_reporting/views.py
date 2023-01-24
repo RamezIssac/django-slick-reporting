@@ -92,7 +92,10 @@ class SlickReportViewBase(FormView):
         """
         return self.form_class or report_form_factory(self.get_report_model(), crosstab_model=self.crosstab_model,
                                                       display_compute_reminder=self.crosstab_compute_reminder,
-                                                      excluded_fields=self.excluded_fields)
+                                                      excluded_fields=self.excluded_fields,
+                                                      initial=self.get_form_initial(),
+                                                      # required=self.required_fields
+                                                      )
 
     def get_form_kwargs(self):
         """
@@ -209,7 +212,8 @@ class SlickReportViewBase(FormView):
     def get_report_slug(cls):
         return cls.__name__.lower()
 
-    def get_initial(self):
+    @staticmethod
+    def get_form_initial():
         # todo revise why not actually displaying datetime on screen
         return {
             'start_date': SLICK_REPORTING_DEFAULT_START_DATE,
@@ -236,3 +240,8 @@ class SlickReportView(SlickReportViewBase):
         cls.report_generator_class.check_columns(cls.columns, cls.group_by, cls.get_report_model())
 
         super().__init_subclass__()
+
+    @staticmethod
+    def check_chart_settings(chart_settings=None):
+        #todo check on chart settings
+        return

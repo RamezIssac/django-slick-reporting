@@ -43,8 +43,14 @@ class SlickReportField(object):
     plus_side_q = None
     minus_side_q = None
 
+    base_kwargs_filters = None
+    base_q_filters = None
+
     _require_classes = None
     _debit_and_credit = True
+
+    prevent_group_by = False
+    """Will prevent group by calculation for this specific field, serves when you want to compute overall results"""
 
     @classmethod
     def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
@@ -86,7 +92,7 @@ class SlickReportField(object):
         self.requires = self.requires or []
         self.group_by = self.group_by or group_by
         self._cache = None, None, None
-        self._require_classes = [field_registry.get_field_by_name(x) for x in self.requires]
+        self._require_classes = self._get_required_classes()
 
         if not self.plus_side_q and not self.minus_side_q:
             self._debit_and_credit = False
@@ -94,7 +100,7 @@ class SlickReportField(object):
     @classmethod
     def _get_required_classes(cls):
         requires = cls.requires or []
-        return [field_registry.get_field_by_name(x) for x in requires]
+        return [field_registry.get_field_by_name(x) if type(x) is str else x for x in requires]
 
     def apply_q_plus_filter(self, qs):
         return qs.filter(*self.plus_side_q)
@@ -138,6 +144,7 @@ class SlickReportField(object):
         :return:
         """
         queryset = self.get_queryset()
+        group_by = '' if self.prevent_group_by else self.group_by
         if q_filters:
             queryset = queryset.filter(*q_filters)
         if kwargs_filters:
@@ -145,7 +152,7 @@ class SlickReportField(object):
 
         if self.plus_side_q:
             queryset = self.apply_q_plus_filter(queryset)
-        debit_results = self.apply_aggregation(queryset, self.group_by)
+        debit_results = self.apply_aggregation(queryset, group_by)
 
         credit_results = None
         if self._debit_and_credit:
@@ -157,12 +164,16 @@ class SlickReportField(object):
             if self.minus_side_q:
                 queryset = self.apply_q_minus_filter(queryset)
 
-            credit_results = self.apply_aggregation(queryset, self.group_by)
+            credit_results = self.apply_aggregation(queryset, group_by)
 
         return debit_results, credit_results
 
     def get_queryset(self):
         queryset = self.report_model.objects
+        if self.base_q_filters:
+            queryset = queryset.filter(*self.base_q_filters)
+        if self.base_kwargs_filters:
+            queryset = queryset.filter(**self.base_kwargs_filters)
         return queryset.order_by()
 
     def get_annotation_name(self):
@@ -221,7 +232,7 @@ class SlickReportField(object):
         return dep_results
 
     def extract_data(self, cached, current_obj):
-        group_by = self.group_by
+        group_by = '' if self.prevent_group_by else self.group_by
         debit_value = 0
         credit_value = 0
         annotation = self.get_annotation_name()
@@ -361,6 +372,19 @@ class BalanceReportField(SlickReportField):
 field_registry.register(BalanceReportField)
 
 
+class PercentageToBalance(SlickReportField):
+    requires = [BalanceReportField]
+    name = 'PercentageToBalance'
+    verbose_name = _('%')
+
+    prevent_group_by = True
+
+    def final_calculation(self, debit, credit, dep_dict):
+        obj_balance = dep_dict.get('__balance__')
+        total = debit - credit
+        return (obj_balance/total) * 100
+
+
 class CreditReportField(SlickReportField):
     name = '__credit__'
     verbose_name = _('Credit')
@@ -408,6 +432,7 @@ class BalanceQTYReportField(SlickReportField):
     verbose_name = _('Cumulative QTY')
     calculation_field = 'quantity'
     requires = ['__fb_quan__']
+    is_summable = False
 
     def final_calculation(self, debit, credit, dep_dict):
         # Use `get` so it fails loud if its not there

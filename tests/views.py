@@ -1,5 +1,5 @@
 from slick_reporting.views import SlickReportView
-from slick_reporting.fields import SlickReportField
+from slick_reporting.fields import SlickReportField, TotalReportField
 from django.db.models import Sum, Count
 from .models import SimpleSales, ComplexSales
 from django.utils.translation import gettext_lazy as _
@@ -23,7 +23,7 @@ class ProductClientSalesMatrix(SlickReportView):
     columns = ['slug', 'name']
 
     crosstab_model = 'client'
-    crosstab_columns = ['__total__']
+    crosstab_columns = [TotalReportField]
 
     chart_settings = [
         {
@@ -61,7 +61,7 @@ class MonthlyProductSalesWQS(SlickReportView):
     group_by = 'client'
     columns = ['slug', 'name']
     time_series_pattern = 'monthly'
-    time_series_columns = ['__total__', '__balance__']
+    time_series_columns = [TotalReportField, '__balance__']
 
 
 class TaxSales(SlickReportView):
