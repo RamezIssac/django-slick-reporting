@@ -358,7 +358,7 @@ class ReportGenerator(object):
         data = {}
         group_by_val = None
         if self.group_by:
-            if self.group_by_field.related_model:
+            if self.group_by_field.related_model and '__' not in self.group_by:
                 primary_key_name = self.get_primary_key_name(self.group_by_field.related_model)
             else:
                 primary_key_name = self.group_by_field_attname

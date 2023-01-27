@@ -12,6 +12,24 @@ class Product(models.Model):
         ('medium', 'medium'),
         ('big', 'big'),
     )
+    slug = models.CharField(max_length=200, verbose_name=_('Slug'))
+    name = models.CharField(max_length=200, verbose_name=_('Name'))
+    sku = models.CharField(max_length=200, default='', blank=True)
+    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
+    notes = models.TextField()
+
+    class Meta:
+        verbose_name = _('Product')
+        verbose_name_plural = _('Products')
+
+
+class ProductCustomID(models.Model):
+    CATEGORY_CHOICES = (
+        ('tiny', 'tiny'),
+        ('small', 'small'),
+        ('medium', 'medium'),
+        ('big', 'big'),
+    )
     hash = models.AutoField(primary_key=True)
     slug = models.CharField(max_length=200, verbose_name=_('Slug'))
     name = models.CharField(max_length=200, verbose_name=_('Name'))
@@ -46,6 +64,31 @@ class SimpleSales(models.Model):
     doc_date = models.DateTimeField(_('date'), db_index=True)
     client = models.ForeignKey(Client, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.DecimalField(_('quantity'), max_digits=19, decimal_places=2, default=0)
+    price = models.DecimalField(_('price'), max_digits=19, decimal_places=2, default=0)
+    value = models.DecimalField(_('value'), max_digits=19, decimal_places=2, default=0)
+    created_at = models.DateTimeField(null=True, verbose_name=_('Created at'))
+    flag = models.CharField(max_length=50, default='sales')
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.DO_NOTHING, null=True)
+    object_id = models.PositiveIntegerField(null=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        self.value = self.quantity * self.price
+        super().save(force_insert, force_update, using, update_fields)
+
+    class Meta:
+        verbose_name = _('Sale')
+        verbose_name_plural = _('Sales')
+        ordering = ['-created_at']
+
+
+class SalesProductWithCustomID(models.Model):
+    slug = models.SlugField()
+    doc_date = models.DateTimeField(_('date'), db_index=True)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE)
+    product = models.ForeignKey(ProductCustomID, on_delete=models.CASCADE)
     quantity = models.DecimalField(_('quantity'), max_digits=19, decimal_places=2, default=0)
     price = models.DecimalField(_('price'), max_digits=19, decimal_places=2, default=0)
     value = models.DecimalField(_('value'), max_digits=19, decimal_places=2, default=0)

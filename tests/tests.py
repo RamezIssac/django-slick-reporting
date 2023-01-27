@@ -12,7 +12,8 @@ from slick_reporting.registry import field_registry
 from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix2, GroupByCharField, \
     GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy
 from . import report_generators
-from .models import Client, Contact, Product, SimpleSales, UserJoined, SalesWithFlag, ComplexSales, TaxCode
+from .models import Client, Contact, Product, SimpleSales, UserJoined, SalesWithFlag, ComplexSales, TaxCode, \
+    ProductCustomID, SalesProductWithCustomID
 from .views import SlickReportView
 
 User = get_user_model()
@@ -48,6 +49,9 @@ class BaseTestData:
         cls.product1 = Product.objects.create(name='Product 1', category='small')
         cls.product2 = Product.objects.create(name='Product 2', category='medium')
         cls.product3 = Product.objects.create(name='Product 3', category='big')
+
+        cls.product_w_custom_id1 = ProductCustomID.objects.create(name='Product 1', category='small')
+        cls.product_w_custom_id2 = ProductCustomID.objects.create(name='Product 2', category='medium')
 
         SimpleSales.objects.create(
             doc_date=datetime.datetime(year, 1, 2), client=cls.client1,
@@ -107,6 +111,18 @@ class BaseTestData:
         sale3.tax.add(cls.tax1)
         sale4.tax.add(cls.tax2)
 
+        SalesProductWithCustomID.objects.create(
+            doc_date=datetime.datetime(year, 1, 2), client=cls.client1,
+            product=cls.product_w_custom_id1, quantity=10, price=10, created_at=datetime.datetime(year, 1, 5))
+        SalesProductWithCustomID.objects.create(
+            doc_date=datetime.datetime(year, 2, 2), client=cls.client1,
+            product=cls.product_w_custom_id1, quantity=10, price=10, created_at=datetime.datetime(year, 2, 3))
+
+        SalesProductWithCustomID.objects.create(
+            doc_date=datetime.datetime(year, 3, 2), client=cls.client1,
+            product=cls.product_w_custom_id2, quantity=10, price=10, created_at=datetime.datetime(year, 3, 3))
+
+
 
 # @override_settings(ROOT_URLCONF='reporting_tests.urls', RA_CACHE_REPORTS=False, USE_TZ=False)
 class ReportTest(BaseTestData, TestCase):
@@ -118,6 +134,12 @@ class ReportTest(BaseTestData, TestCase):
         self.assertEqual(data[0].get('__balance__'), 300, data[0])
 
     def test_product_total_sales(self):
+        report = report_generators.ProductTotalSalesProductWithCustomID()
+        data = report.get_report_data()
+        self.assertEqual(data[0]['__balance__'], 200)
+        self.assertEqual(data[1]['__balance__'], 100)
+
+    def test_product_total_sales_product_custom_id(self):
         report = report_generators.ProductTotalSales()
         data = report.get_report_data()
         self.assertEqual(data[0]['__balance__'], 1800)
