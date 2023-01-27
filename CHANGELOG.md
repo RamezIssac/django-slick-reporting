@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.5]
+- Fix Issue with group_by field pointing to model with custom primary key Issue #58 
+
+
 ## [0.6.4]
 - Fix highchart cache to target the specific chart
 - Added initial and required to report_form_factory

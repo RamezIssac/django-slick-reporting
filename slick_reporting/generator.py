@@ -353,8 +353,6 @@ class ReportGenerator(object):
         :return: a dict object containing all needed data
         """
 
-        # todo , if columns are empty for whatever reason this will throw an error
-        # display_link = self.list_display_links or columns[0]
         data = {}
         group_by_val = None
         if self.group_by:
@@ -389,8 +387,6 @@ class ReportGenerator(object):
 
                 else:
                     data[name] = obj.get(name, '')
-                # if self.group_by and name in display_link:
-                #     data[name] = make_linkable_field(self.group_by_field.related_model, group_by_val, data[name])
         return data
 
     def get_report_data(self):
