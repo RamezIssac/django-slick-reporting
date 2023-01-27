@@ -206,14 +206,12 @@ class ReportGenerator(object):
             except IndexError:
                 raise ImproperlyConfigured(
                     f'Can not find group_by field:{self.group_by} in report_model {self.report_model} ')
-            self.focus_field_as_key = self.group_by_field
             if '__' not in self.group_by:
                 self.group_by_field_attname = self.group_by_field.attname
             else:
                 self.group_by_field_attname = self.group_by
 
         else:
-            self.focus_field_as_key = None
             self.group_by_field_attname = None
 
         # doc_types = form.get_doc_type_plus_minus_lists()
@@ -340,6 +338,13 @@ class ReportGenerator(object):
                 report_class.init_preparation(q_filters, date_filter)
                 self.report_fields_classes[name] = report_class
 
+    @staticmethod
+    def get_primary_key_name(model):
+        for field in model._meta.fields:
+            if field.primary_key:
+                return field.attname
+        return ''
+
     def _get_record_data(self, obj, columns):
         """
         the function is run for every obj in the main_queryset
@@ -348,12 +353,15 @@ class ReportGenerator(object):
         :return: a dict object containing all needed data
         """
 
-        # todo , if columns are empty for whatever reason this will throw an error
-        display_link = self.list_display_links or columns[0]
         data = {}
         group_by_val = None
         if self.group_by:
-            column_data = obj.get(self.group_by_field_attname, obj.get('id'))
+            if self.group_by_field.related_model and '__' not in self.group_by:
+                primary_key_name = self.get_primary_key_name(self.group_by_field.related_model)
+            else:
+                primary_key_name = self.group_by_field_attname
+
+            column_data = obj.get(primary_key_name, obj.get('id'))
             group_by_val = str(column_data)
 
         for window, window_cols in columns:
@@ -379,8 +387,6 @@ class ReportGenerator(object):
 
                 else:
                     data[name] = obj.get(name, '')
-                # if self.group_by and name in display_link:
-                #     data[name] = make_linkable_field(self.group_by_field.related_model, group_by_val, data[name])
         return data
 
     def get_report_data(self):

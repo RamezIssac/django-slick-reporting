@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import SlickReportField, PercentageToBalance
 from slick_reporting.generator import ReportGenerator
-from .models import Client, SimpleSales, Product, SalesWithFlag
+from .models import Client, SimpleSales, Product, SalesWithFlag, SalesProductWithCustomID
 from .models import OrderLine
 
 
@@ -77,6 +77,13 @@ class ClientTotalBalancesOrderedDESC(ClientTotalBalance):
 
 class ProductTotalSales(ReportGenerator):
     report_model = SimpleSales
+    date_field = 'doc_date'
+    group_by = 'product'
+    columns = ['slug', 'name', '__balance__', '__balance_quantity__']
+
+
+class ProductTotalSalesProductWithCustomID(ReportGenerator):
+    report_model = SalesProductWithCustomID
     date_field = 'doc_date'
     group_by = 'product'
     columns = ['slug', 'name', '__balance__', '__balance_quantity__']
