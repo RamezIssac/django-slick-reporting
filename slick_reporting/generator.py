@@ -369,7 +369,10 @@ class ReportGenerator(object):
 
                 name = col_data['name']
 
-                if (col_data.get('source', '') == 'magic_field' and self.group_by) or (
+                if col_data.get('source', '') == 'attribute_field':
+                    data[name] = col_data['ref'](self, obj, data)
+
+                elif (col_data.get('source', '') == 'magic_field' and self.group_by) or (
                         self.time_series_pattern and not self.group_by):
                     source = self._report_fields_dependencies[window].get(name, False)
                     if source:
@@ -457,7 +460,7 @@ class ReportGenerator(object):
             if attribute_field:
                 col_data = {'name': col,
                             'verbose_name': getattr(attribute_field, 'verbose_name', col),
-                            # 'type': 'method',
+                            'source': 'attribute_field',
                             'ref': attribute_field,
                             'type': 'text'
                             }

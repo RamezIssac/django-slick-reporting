@@ -46,9 +46,9 @@ class BaseTestData:
         cls.client3.save()
         cls.clientIdle = Client.objects.create(name='Client Idle')
 
-        cls.product1 = Product.objects.create(name='Product 1', category='small')
-        cls.product2 = Product.objects.create(name='Product 2', category='medium')
-        cls.product3 = Product.objects.create(name='Product 3', category='big')
+        cls.product1 = Product.objects.create(name='Product 1', category='small', sku='a1b1')
+        cls.product2 = Product.objects.create(name='Product 2', category='medium', sku='a2b2')
+        cls.product3 = Product.objects.create(name='Product 3', category='big', sku='3333')
 
         cls.product_w_custom_id1 = ProductCustomID.objects.create(name='Product 1', category='small')
         cls.product_w_custom_id2 = ProductCustomID.objects.create(name='Product 2', category='medium')
@@ -143,6 +143,8 @@ class ReportTest(BaseTestData, TestCase):
         report = report_generators.ProductTotalSales()
         data = report.get_report_data()
         self.assertEqual(data[0]['__balance__'], 1800)
+        self.assertEqual(data[0]['get_object_sku'], 'A1B1')
+        self.assertEqual(data[0]['average_value'], data[0]['__balance__']/data[0]['__balance_quantity__'])
 
     def test_product_total_sales_with_percentage(self):
         report = report_generators.ProductTotalSalesWithPercentage()
