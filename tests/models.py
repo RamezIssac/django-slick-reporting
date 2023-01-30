@@ -42,8 +42,14 @@ class ProductCustomID(models.Model):
         verbose_name_plural = _('Products')
 
 
+class Agent(models.Model):
+    name = models.CharField(max_length=200, verbose_name=_('Name'))
+
+
 class Contact(models.Model):
     address = models.CharField(max_length=200, verbose_name=_('Name'))
+    po_box = models.CharField(max_length=200, verbose_name=_('po_box'), null=True, blank=True)
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE)
 
 
 class Client(models.Model):

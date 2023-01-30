@@ -13,7 +13,7 @@ from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix
     GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy
 from . import report_generators
 from .models import Client, Contact, Product, SimpleSales, UserJoined, SalesWithFlag, ComplexSales, TaxCode, \
-    ProductCustomID, SalesProductWithCustomID
+    ProductCustomID, SalesProductWithCustomID, Agent
 from .views import SlickReportView
 
 User = get_user_model()
@@ -35,14 +35,16 @@ class BaseTestData:
                                                 password='password')
         cls.user = user
         cls.limited_user = limited_user
+        agent = Agent.objects.create(name='John')
+        agent2 = Agent.objects.create(name='Frank')
         cls.client1 = Client.objects.create(name='Client 1')
-        cls.client1.contact = Contact.objects.create(address='Street 1')
+        cls.client1.contact = Contact.objects.create(address='Street 1', agent=agent)
         cls.client1.save()
         cls.client2 = Client.objects.create(name='Client 2')
-        cls.client2.contact = Contact.objects.create(address='Street 2')
+        cls.client2.contact = Contact.objects.create(address='Street 2', agent=agent)
         cls.client2.save()
         cls.client3 = Client.objects.create(name='Client 3')
-        cls.client3.contact = Contact.objects.create(address='Street 3')
+        cls.client3.contact = Contact.objects.create(address='Street 3' , agent=agent2)
         cls.client3.save()
         cls.clientIdle = Client.objects.create(name='Client Idle')
 

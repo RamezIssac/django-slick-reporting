@@ -225,6 +225,36 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         self.assertEqual(data[1]['contact__address'], 'Street 2')
         self.assertEqual(data[2]['contact__address'], 'Street 3')
 
+    def test_traversing_group_by_and_foreign_key_field(self):
+        report = ReportGenerator(report_model=SimpleSales, group_by='client__contact',
+                                 columns=[
+                                     'po_box', 'address', 'agent__name',
+                                     SlickReportField.create(Sum, 'value'), '__total__'],
+                                 # time_series_pattern='monthly',
+                                 date_field='doc_date',
+                                 # time_series_columns=['__debit__', '__credit__', '__balance__', '__total__']
+                                 )
+
+        self.assertTrue(report._report_fields_dependencies)
+        data = report.get_report_data()
+        self.assertNotEqual(data, [])
+        # self.assertTrue(False)
+        self.assertEqual(data[0]['address'], 'Street 1')
+        self.assertEqual(data[1]['address'], 'Street 2')
+        self.assertEqual(data[1]['agent__name'], 'John')
+        self.assertEqual(data[2]['agent__name'], 'Frank')
+
+    def test_traversing_group_by_sanity(self):
+        report = ReportGenerator(report_model=SimpleSales, group_by='client__contact__agent',
+                                 columns=['name', SlickReportField.create(Sum, 'value'), '__total__'],
+                                 date_field='doc_date', )
+
+        self.assertTrue(report._report_fields_dependencies)
+        data = report.get_report_data()
+        self.assertNotEqual(data, [])
+        # self.assertTrue(False)
+        self.assertEqual(len(data), 2)
+
     def test_db_field_column_verbose_name(self):
         report = GenericGenerator()
         field_list = report.get_list_display_columns()
