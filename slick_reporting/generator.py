@@ -198,12 +198,10 @@ class ReportGenerator(object):
         # todo validate columns is not empty (if no time series / cross tab)
 
         if self.group_by:
-            group_by_split = self.group_by.split('__')
-            search_field = group_by_split[0]
             try:
-                self.group_by_field = [x for x in self.report_model._meta.get_fields() if x.name == search_field][0]
+                self.group_by_field = get_field_from_query_text(self.group_by, self.report_model)
 
-            except IndexError:
+            except (IndexError, AttributeError):
                 raise ImproperlyConfigured(
                     f'Can not find group_by field:{self.group_by} in report_model {self.report_model} ')
             if '__' not in self.group_by:
@@ -245,7 +243,7 @@ class ReportGenerator(object):
 
             else:
                 self.main_queryset = self._apply_queryset_options(main_queryset)
-                if type(self.group_by_field) is ForeignKey and '__' not in self.group_by:
+                if type(self.group_by_field) is ForeignKey:
                     ids = self.main_queryset.values_list(self.group_by_field_attname).distinct()
                     # uses the same logic that is in Django's query.py when fields is empty in values() call
                     concrete_fields = [f.name for f in self.group_by_field.related_model._meta.concrete_fields]
@@ -369,7 +367,10 @@ class ReportGenerator(object):
 
                 name = col_data['name']
 
-                if (col_data.get('source', '') == 'magic_field' and self.group_by) or (
+                if col_data.get('source', '') == 'attribute_field':
+                    data[name] = col_data['ref'](self, obj, data)
+
+                elif (col_data.get('source', '') == 'magic_field' and self.group_by) or (
                         self.time_series_pattern and not self.group_by):
                     source = self._report_fields_dependencies[window].get(name, False)
                     if source:
@@ -420,6 +421,7 @@ class ReportGenerator(object):
         :param report_model: the report model
         :return: List of dict, each dict contains relevant data to the respective field in `columns`
         """
+        group_by_field = ''
         group_by_model = None
         if group_by:
             try:
@@ -457,7 +459,7 @@ class ReportGenerator(object):
             if attribute_field:
                 col_data = {'name': col,
                             'verbose_name': getattr(attribute_field, 'verbose_name', col),
-                            # 'type': 'method',
+                            'source': 'attribute_field',
                             'ref': attribute_field,
                             'type': 'text'
                             }
@@ -473,6 +475,11 @@ class ReportGenerator(object):
             else:
                 # A database field
                 model_to_use = group_by_model if group_by and '__' not in group_by else report_model
+                group_by_str = str(group_by)
+                if '__' in group_by_str:
+                    related_model = get_field_from_query_text(group_by, model_to_use).related_model
+                    model_to_use = related_model if related_model else model_to_use
+
                 try:
                     if '__' in col:
                         # A traversing link order__client__email
