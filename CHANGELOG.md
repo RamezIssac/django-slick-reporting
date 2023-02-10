@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.6]
+
+- Now a method on a generator can be effectively used as column
+- Use correct model when traversing on group by
+
+
 ## [0.6.5]
 - Fix Issue with group_by field pointing to model with custom primary key Issue #58 
 

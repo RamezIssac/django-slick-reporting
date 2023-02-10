@@ -13,7 +13,7 @@ from tests.report_generators import ClientTotalBalance, ProductClientSalesMatrix
     GroupByCharFieldPlusTimeSeries, TimeSeriesWithOutGroupBy
 from . import report_generators
 from .models import Client, Contact, Product, SimpleSales, UserJoined, SalesWithFlag, ComplexSales, TaxCode, \
-    ProductCustomID, SalesProductWithCustomID
+    ProductCustomID, SalesProductWithCustomID, Agent
 from .views import SlickReportView
 
 User = get_user_model()
@@ -35,20 +35,22 @@ class BaseTestData:
                                                 password='password')
         cls.user = user
         cls.limited_user = limited_user
+        agent = Agent.objects.create(name='John')
+        agent2 = Agent.objects.create(name='Frank')
         cls.client1 = Client.objects.create(name='Client 1')
-        cls.client1.contact = Contact.objects.create(address='Street 1')
+        cls.client1.contact = Contact.objects.create(address='Street 1', agent=agent)
         cls.client1.save()
         cls.client2 = Client.objects.create(name='Client 2')
-        cls.client2.contact = Contact.objects.create(address='Street 2')
+        cls.client2.contact = Contact.objects.create(address='Street 2', agent=agent)
         cls.client2.save()
         cls.client3 = Client.objects.create(name='Client 3')
-        cls.client3.contact = Contact.objects.create(address='Street 3')
+        cls.client3.contact = Contact.objects.create(address='Street 3' , agent=agent2)
         cls.client3.save()
         cls.clientIdle = Client.objects.create(name='Client Idle')
 
-        cls.product1 = Product.objects.create(name='Product 1', category='small')
-        cls.product2 = Product.objects.create(name='Product 2', category='medium')
-        cls.product3 = Product.objects.create(name='Product 3', category='big')
+        cls.product1 = Product.objects.create(name='Product 1', category='small', sku='a1b1')
+        cls.product2 = Product.objects.create(name='Product 2', category='medium', sku='a2b2')
+        cls.product3 = Product.objects.create(name='Product 3', category='big', sku='3333')
 
         cls.product_w_custom_id1 = ProductCustomID.objects.create(name='Product 1', category='small')
         cls.product_w_custom_id2 = ProductCustomID.objects.create(name='Product 2', category='medium')
@@ -143,6 +145,8 @@ class ReportTest(BaseTestData, TestCase):
         report = report_generators.ProductTotalSales()
         data = report.get_report_data()
         self.assertEqual(data[0]['__balance__'], 1800)
+        self.assertEqual(data[0]['get_object_sku'], 'A1B1')
+        self.assertEqual(data[0]['average_value'], data[0]['__balance__']/data[0]['__balance_quantity__'])
 
     def test_product_total_sales_with_percentage(self):
         report = report_generators.ProductTotalSalesWithPercentage()
