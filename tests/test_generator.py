@@ -115,7 +115,6 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
 
         self.assertRaises(Exception, not_known_pattern)
 
-
     def test_time_series_custom_pattern(self):
         # report = ReportGenerator(OrderLine, date_field='order__date_placed', group_by='client',
         #                          columns=['name', '__time_series__'],
@@ -140,11 +139,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         report = GeneratorWithAttrAsColumn()
         columns_data = report.get_list_display_columns()
         self.assertEqual(len(columns_data), 3)
-
-        self.assertEqual(columns_data[0]['verbose_name'], 'get_data_verbose_name')
-        data = report.get_report_data()
-        self.assertIsNot(data, [])
-        # todo
+        self.assertEqual(columns_data[0]['verbose_name'], 'My Verbose Name')
 
     def test_improper_group_by(self):
         def load():
@@ -177,11 +172,6 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
 
         self.assertRaises(Exception, load)
 
-    def _test_attr_called(self):
-        report = GeneratorWithAttrAsColumn()
-        data = report.get_report_data()
-        # self.assertEqual(len(report.get_list_display_columns()), 3)
-
     def test_gather_dependencies_for_time_series(self):
         report = ReportGenerator(report_model=SimpleSales, group_by='client',
                                  columns=['slug', 'name'],
@@ -202,15 +192,14 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
 
         self.assertTrue(report._report_fields_dependencies)
         data = report.get_report_data()
-        # import pdb;
-        # pdb.set_trace()
         self.assertNotEqual(data, [])
         self.assertEqual(data[0]['product__category'], 'small')
         self.assertEqual(data[1]['product__category'], 'big')
 
     def test_group_by_and_foreign_key_field(self):
         report = ReportGenerator(report_model=SimpleSales, group_by='client',
-                                 columns=['name', 'contact_id', 'contact__address', SlickReportField.create(Sum, 'value'), '__total__'],
+                                 columns=['name', 'contact_id', 'contact__address',
+                                          SlickReportField.create(Sum, 'value'), '__total__'],
                                  # time_series_pattern='monthly',
                                  date_field='doc_date',
                                  # time_series_columns=['__debit__', '__credit__', '__balance__', '__total__']
@@ -236,6 +225,30 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         self.assertEqual(data[1]['contact__address'], 'Street 2')
         self.assertEqual(data[2]['contact__address'], 'Street 3')
 
+    def test_traversing_group_by_and_foreign_key_field(self):
+        report = ReportGenerator(report_model=SimpleSales, group_by='client__contact',
+                                 columns=['po_box', 'address', 'agent__name',
+                                          SlickReportField.create(Sum, 'value'), '__total__'],
+                                 date_field='doc_date')
+
+        self.assertTrue(report._report_fields_dependencies)
+        data = report.get_report_data()
+        self.assertNotEqual(data, [])
+        # self.assertTrue(False)
+        self.assertEqual(data[0]['address'], 'Street 1')
+        self.assertEqual(data[1]['address'], 'Street 2')
+        self.assertEqual(data[1]['agent__name'], 'John')
+        self.assertEqual(data[2]['agent__name'], 'Frank')
+
+    def test_traversing_group_by_sanity(self):
+        report = ReportGenerator(report_model=SimpleSales, group_by='client__contact__agent',
+                                 columns=['name', SlickReportField.create(Sum, 'value'), '__total__'],
+                                 date_field='doc_date', )
+
+        self.assertTrue(report._report_fields_dependencies)
+        data = report.get_report_data()
+        self.assertNotEqual(data, [])
+        self.assertEqual(len(data), 2)
 
     def test_db_field_column_verbose_name(self):
         report = GenericGenerator()

@@ -28,7 +28,7 @@ class GeneratorWithAttrAsColumn(GenericGenerator):
     def get_data(self, obj):
         return ''
 
-    get_data.verbose_name = 'get_data_verbose_name'
+    get_data.verbose_name = 'My Verbose Name'
 
 
 class CrosstabOnClient(GenericGenerator):
@@ -79,7 +79,16 @@ class ProductTotalSales(ReportGenerator):
     report_model = SimpleSales
     date_field = 'doc_date'
     group_by = 'product'
-    columns = ['slug', 'name', '__balance__', '__balance_quantity__']
+    columns = ['slug', 'name', '__balance__', '__balance_quantity__', 'get_object_sku', 'average_value']
+
+
+    def get_object_sku(self, obj, data):
+        return obj['sku'].upper()
+    get_object_sku.verbose_name = 'SKU ALL CAPS'
+
+    def average_value(self, obj, data):
+        return data['__balance__'] / data['__balance_quantity__']
+    average_value.verbose_name = 'Average Value'
 
 
 class ProductTotalSalesProductWithCustomID(ReportGenerator):
@@ -246,10 +255,6 @@ class ProductClientSalesMatrix2(ReportGenerator):
 
     crosstab_model = 'client'
     crosstab_columns = [SlickReportField.create(Sum, 'value', name='value__sum', verbose_name=_('Sales'))]
-
-
-class GeneratorClassWithAttrsAs(ReportGenerator):
-    columns = ['get_icon', 'slug', 'name']
 
 
 class ClientTotalBalancesWithShowEmptyFalse(ClientTotalBalance):
