@@ -306,8 +306,11 @@ class ReportGenerator(object):
                 if isclass(klass) and issubclass(klass, SlickReportField):
                     dependencies_names = klass.get_full_dependency_list()
 
-                    # check if any of this dependencies is on the report
-                    fields_on_report = [x for x in window_cols if x['ref'] in dependencies_names]
+                    # check if any of these dependencies is on the report, if found we call the child to
+                    # resolve the value for its parent avoiding extra database call
+                    fields_on_report = [x for x in window_cols if x['ref'] in dependencies_names
+                                        and ((window == 'time_series' and x.get('start_date', '') == col_data.get('start_date', '') and x.get('end_date') == col_data.get('end_date')) or
+                                             window == 'crosstab' and x.get('id') == col_data.get('id'))]
                     for field in fields_on_report:
                         self._report_fields_dependencies[window][field['name']] = col_data['name']
             for col_data in window_cols:
