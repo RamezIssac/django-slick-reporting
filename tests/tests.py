@@ -172,6 +172,14 @@ class ReportTest(BaseTestData, TestCase):
         self.assertEqual(data[0]['__total__TS%s0301' % year], 100)
         self.assertEqual(data[0]['__total__TS%s0201' % year], 100)
 
+        self.assertEqual(data[0]['__debit__TS%s0401' % year], 100)
+        self.assertEqual(data[0]['__debit__TS%s0301' % year], 100)
+        self.assertEqual(data[0]['__debit__TS%s0201' % year], 100)
+
+        self.assertEqual(data[2]['__debit__TS%s0401' % year], 300)
+        self.assertEqual(data[2]['__debit__TS%s0301' % year], 300)
+        self.assertEqual(data[2]['__debit__TS%s0201' % year], 300)
+
         # todo add __fb__ to time series and check the balance
 
     def test_client_statement_detail(self):

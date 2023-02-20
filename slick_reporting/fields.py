@@ -130,6 +130,7 @@ class SlickReportField(object):
 
         debit_results, credit_results = self.prepare(q_filters, kwargs_filters, **kwargs)
         self._cache = debit_results, credit_results, dep_values
+        return self._cache
 
     def prepare(self, q_filters=None, kwargs_filters=None, **kwargs):
         """
@@ -188,7 +189,8 @@ class SlickReportField(object):
         for dep_class in self._require_classes:
             dep = dep_class(self.plus_side_q, self.minus_side_q, self.report_model,
                             date_field=self.date_field, group_by=self.group_by)
-            values[dep.name] = {'results': dep.init_preparation(q_filters, extra_filters),
+            results = dep.init_preparation(q_filters, extra_filters)
+            values[dep.name] = {'results': results,
                                 'instance': dep}
         return values
 
@@ -216,17 +218,19 @@ class SlickReportField(object):
         :return: a dict containing dependencies names as keys and their calculation as values
                  or a specific value if name is specified.
         """
-        values = self._resolve_dependencies(current_obj)
+        values = self._resolve_dependencies(current_obj, name=None)
         if name:
             return values.get(name)
         return values
 
-    def _resolve_dependencies(self, current_obj):
+    def _resolve_dependencies(self, current_obj, name=None):
 
         dep_results = {}
         cached_debit, cached_credit, dependencies_value = self._cache
         dependencies_value = dependencies_value or {}
         for d in dependencies_value.keys():
+            if name and d != name:
+                continue
             d_instance = dependencies_value[d]['instance']
             dep_results[d] = d_instance.resolve(current_obj)
         return dep_results
@@ -382,7 +386,7 @@ class PercentageToBalance(SlickReportField):
     def final_calculation(self, debit, credit, dep_dict):
         obj_balance = dep_dict.get('__balance__')
         total = debit - credit
-        return (obj_balance/total) * 100
+        return (obj_balance / total) * 100
 
 
 class CreditReportField(SlickReportField):
