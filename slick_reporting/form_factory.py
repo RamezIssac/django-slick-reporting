@@ -25,7 +25,10 @@ class BaseReportForm:
         """
         _values = {}
         if self.is_valid():
-            for key, field in self.foreign_keys.items():
+            fk_keys = getattr(self, 'foreign_keys', [])
+            if fk_keys:
+                fk_keys = fk_keys.items()
+            for key, field in fk_keys:
                 if key in self.cleaned_data and not key == self.crosstab_key_name:
                     val = self.cleaned_data[key]
                     if val:
@@ -152,7 +155,8 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
                                                                  label=_('Display the crosstab reminder'),
                                                                  initial=True)
 
-    new_form = type('ReportForm', (BaseReportForm, forms.BaseForm,),
+    bases = (BaseReportForm, forms.BaseForm,) if full else (BaseReportForm,)
+    new_form = type('ReportForm', bases,
                     {"base_fields": fields,
                      '_fkeys': fkeys_list,
                      'foreign_keys': fkeys_map,
