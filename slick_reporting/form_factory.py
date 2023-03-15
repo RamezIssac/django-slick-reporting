@@ -155,7 +155,7 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
                                                                  label=_('Display the crosstab reminder'),
                                                                  initial=True)
 
-    bases = (BaseReportForm, forms.BaseForm,) if full else (BaseReportForm,)
+    bases = (BaseReportForm, forms.BaseForm,)
     new_form = type('ReportForm', bases,
                     {"base_fields": fields,
                      '_fkeys': fkeys_list,
