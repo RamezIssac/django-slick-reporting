@@ -1,9 +1,16 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+## [0.6.8]
+
+- Add report_title to context    
+- Enhance SearchForm to be easier to override. Still needs more enhancements.
+
+
 ## [0.6.7]
 
-- Fix issue with `ReportField` when it has a `requires` in time series and crosstab reports /  
+- Fix issue with `ReportField` when it has a `requires` in time series and crosstab reports   
 
 ## [0.6.6]
 
