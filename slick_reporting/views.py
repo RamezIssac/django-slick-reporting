@@ -41,6 +41,7 @@ class SlickReportViewBase(FormView):
     crosstab_columns = None
     crosstab_compute_reminder = True
     excluded_fields = None
+    report_title_context_key = 'title'
     """
     A list of chart settings objects instructing front end on how to plot the data.
     
@@ -222,6 +223,7 @@ class SlickReportViewBase(FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context[self.report_title_context_key] = self.report_title
         if not (self.request.POST or self.request.GET):
             # initialize empty form with initials if the no data is in the get or the post
             context['form'] = self.get_form_class()()
