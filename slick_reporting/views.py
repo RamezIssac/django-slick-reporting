@@ -42,6 +42,12 @@ class SlickReportViewBase(FormView):
     crosstab_compute_reminder = True
     excluded_fields = None
     report_title_context_key = 'title'
+
+    time_series_selector = False
+    time_series_selector_choices = None
+    time_series_selector_default = None
+    time_series_selector_allow_empty = False
+
     """
     A list of chart settings objects instructing front end on how to plot the data.
     
@@ -95,7 +101,10 @@ class SlickReportViewBase(FormView):
                                                       display_compute_reminder=self.crosstab_compute_reminder,
                                                       excluded_fields=self.excluded_fields,
                                                       initial=self.get_form_initial(),
-                                                      # required=self.required_fields
+                                                      show_time_series_selector=cls.time_series_selector,
+                                                      time_series_selector_choices=cls.time_series_selector_choices,
+                                                      time_series_selector_default=cls.time_series_selector_default
+
                                                       )
 
     def get_form_kwargs(self):
@@ -129,6 +138,10 @@ class SlickReportViewBase(FormView):
         crosstab_compute_reminder = self.form.get_crosstab_compute_reminder() if self.request.GET or self.request.POST \
             else self.crosstab_compute_reminder
 
+        time_series_pattern = self.time_series_pattern
+        if self.time_series_selector:
+            time_series_pattern = self.form.cleaned_data['time_series_pattern']
+
         return self.report_generator_class(self.get_report_model(),
                                            start_date=self.form.cleaned_data['start_date'],
                                            end_date=self.form.cleaned_data['end_date'],
@@ -140,7 +153,7 @@ class SlickReportViewBase(FormView):
                                            limit_records=self.limit_records, swap_sign=self.swap_sign,
                                            columns=self.columns,
                                            group_by=self.group_by,
-                                           time_series_pattern=self.time_series_pattern,
+                                           time_series_pattern=time_series_pattern,
                                            time_series_columns=self.time_series_columns,
 
                                            crosstab_model=self.crosstab_model,
@@ -180,8 +193,8 @@ class SlickReportViewBase(FormView):
         data = self.filter_results(data, for_print)
 
         return report_generator.get_full_response(data=data, report_slug=self.get_report_slug(),
-                                                           chart_settings=self.chart_settings,
-                                                           default_chart_title=self.report_title)
+                                                  chart_settings=self.chart_settings,
+                                                  default_chart_title=self.report_title)
 
     @classmethod
     def get_metadata(cls, generator):
@@ -245,5 +258,5 @@ class SlickReportView(SlickReportViewBase):
 
     @staticmethod
     def check_chart_settings(chart_settings=None):
-        #todo check on chart settings
+        # todo check on chart settings
         return

@@ -327,7 +327,7 @@ class SlickReportField(object):
         elif pattern == 'daily':
             return f'{cls.verbose_name} {date_period[0].strftime(dt_format)}'
         elif pattern == 'weekly':
-            return f' {cls.verbose_name} {_("Week")} {index} {date_period[0].strftime(dt_format)}'
+            return f' {cls.verbose_name} {_("Week")} {index + 1} {date_period[0].strftime(dt_format)}'
         elif pattern == 'yearly':
             year = date_filter(date_period[0], 'Y')
             return f'{cls.verbose_name} {year}'
