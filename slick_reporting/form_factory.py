@@ -7,6 +7,13 @@ from django.utils.translation import gettext_lazy as _
 from . import app_settings
 from .helpers import get_foreign_keys
 
+TIME_SERIES_CHOICES = (
+    ('monthly', _('Monthly')),
+    ('weekly', _('Weekly')),
+    ('annually', _('Yearly')),
+    ('daily', _('Daily')),
+)
+
 
 class BaseReportForm:
     '''
@@ -100,7 +107,11 @@ def _default_foreign_key_widget(f_field):
 
 
 def report_form_factory(model, crosstab_model=None, display_compute_reminder=True, fkeys_filter_func=None,
-                        foreign_key_widget_func=None, excluded_fields=None, initial=None, required=None):
+                        foreign_key_widget_func=None, excluded_fields=None, initial=None, required=None,
+                        show_time_series_selector=False,
+                        time_series_selector_choices=None, time_series_selector_default='',
+                        time_series_selector_label=None,
+                        time_series_selector_allow_empty=False):
     """
     Create a Report Form based on the report_model passed by
     1. adding a start_date and end_date fields
@@ -142,6 +153,15 @@ def report_form_factory(model, crosstab_model=None, display_compute_reminder=Tru
                                              initial=initial.get('end_date',
                                                                  app_settings.SLICK_REPORTING_DEFAULT_END_DATE),
                                              widget=forms.DateTimeInput(attrs={'autocomplete': "off"}))
+
+    if show_time_series_selector:
+        time_series_choices = tuple(TIME_SERIES_CHOICES)
+        if time_series_selector_allow_empty:
+            time_series_choices.insert(0, ('', '---------'))
+
+        fields['time_series_pattern'] = forms.ChoiceField(required=False, initial=time_series_selector_default,
+                                                          label=time_series_selector_label or _('Period Pattern'),
+                                                          choices=time_series_selector_choices or TIME_SERIES_CHOICES)
 
     for name, f_field in fkeys_map.items():
         fkeys_list.append(name)
