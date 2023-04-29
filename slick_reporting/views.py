@@ -101,10 +101,10 @@ class SlickReportViewBase(FormView):
                                                       display_compute_reminder=self.crosstab_compute_reminder,
                                                       excluded_fields=self.excluded_fields,
                                                       initial=self.get_form_initial(),
-                                                      show_time_series_selector=cls.time_series_selector,
-                                                      time_series_selector_choices=cls.time_series_selector_choices,
-                                                      time_series_selector_default=cls.time_series_selector_default,
-                                                      time_series_selector_allow_empty=cls.time_series_selector_allow_empty,
+                                                      show_time_series_selector=self.time_series_selector,
+                                                      time_series_selector_choices=self.time_series_selector_choices,
+                                                      time_series_selector_default=self.time_series_selector_default,
+                                                      time_series_selector_allow_empty=self.time_series_selector_allow_empty,
                                                       )
 
     def get_form_kwargs(self):
@@ -161,7 +161,8 @@ class SlickReportViewBase(FormView):
                                            crosstab_columns=self.crosstab_columns,
                                            crosstab_compute_reminder=crosstab_compute_reminder,
 
-                                           format_row_func=self.format_row
+                                           format_row_func=self.format_row,
+                                           container_class=self
                                            )
 
     def format_row(self, row_obj):
@@ -252,7 +253,7 @@ class SlickReportView(SlickReportViewBase):
 
         # sanity check, raises error if the columns or date fields is not mapped
         cls.report_generator_class.check_columns([cls.date_field], False, cls.get_report_model())
-        cls.report_generator_class.check_columns(cls.columns, cls.group_by, cls.get_report_model())
+        cls.report_generator_class.check_columns(cls.columns, cls.group_by, cls.get_report_model(), container_class=cls)
 
         super().__init_subclass__()
 

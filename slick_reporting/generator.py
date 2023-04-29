@@ -124,7 +124,8 @@ class ReportGenerator(object):
                  crosstab_model=None, crosstab_columns=None, crosstab_ids=None, crosstab_compute_reminder=None,
                  swap_sign=False, show_empty_records=None,
                  print_flag=False,
-                 doc_type_plus_list=None, doc_type_minus_list=None, limit_records=False, format_row_func=None):
+                 doc_type_plus_list=None, doc_type_minus_list=None, limit_records=False, format_row_func=None,
+                 container_class=None):
         """
 
         :param report_model: Main model containing the data
@@ -186,6 +187,7 @@ class ReportGenerator(object):
         self.time_series_pattern = self.time_series_pattern or time_series_pattern
         self.time_series_columns = self.time_series_columns or time_series_columns
         self.time_series_custom_dates = self.time_series_custom_dates or time_series_custom_dates
+        self.container_class = container_class
 
         self._prepared_results = {}
         self.report_fields_classes = {}
@@ -309,7 +311,8 @@ class ReportGenerator(object):
                     # check if any of these dependencies is on the report, if found we call the child to
                     # resolve the value for its parent avoiding extra database call
                     fields_on_report = [x for x in window_cols if x['ref'] in dependencies_names
-                                        and ((window == 'time_series' and x.get('start_date', '') == col_data.get('start_date', '') and x.get('end_date') == col_data.get('end_date')) or
+                                        and ((window == 'time_series' and x.get('start_date', '') == col_data.get(
+                        'start_date', '') and x.get('end_date') == col_data.get('end_date')) or
                                              window == 'crosstab' and x.get('id') == col_data.get('id'))]
                     for field in fields_on_report:
                         self._report_fields_dependencies[window][field['name']] = col_data['name']
@@ -372,6 +375,8 @@ class ReportGenerator(object):
 
                 if col_data.get('source', '') == 'attribute_field':
                     data[name] = col_data['ref'](self, obj, data)
+                elif col_data.get('source', '') == 'container_class_attribute_field':
+                    data[name] = col_data['ref'](obj, data)
 
                 elif (col_data.get('source', '') == 'magic_field' and self.group_by) or (
                         self.time_series_pattern and not self.group_by):
@@ -416,7 +421,7 @@ class ReportGenerator(object):
         return row_obj
 
     @classmethod
-    def check_columns(cls, columns, group_by, report_model, ):
+    def check_columns(cls, columns, group_by, report_model, container_class=None):
         """
         Check and parse the columns, throw errors in case an item in the columns cant not identified
         :param columns: List of columns
@@ -448,9 +453,13 @@ class ReportGenerator(object):
 
             magic_field_class = None
             attribute_field = None
-
+            is_container_class_attribute = False
             if type(col) is str:
                 attribute_field = getattr(cls, col, None)
+                if attribute_field is None:
+                    is_container_class_attribute = True
+                    attribute_field = getattr(container_class, col, None)
+
             elif issubclass(col, SlickReportField):
                 magic_field_class = col
 
@@ -462,7 +471,7 @@ class ReportGenerator(object):
             if attribute_field:
                 col_data = {'name': col,
                             'verbose_name': getattr(attribute_field, 'verbose_name', col),
-                            'source': 'attribute_field',
+                            'source': 'container_class_attribute_field' if is_container_class_attribute else 'attribute_field',
                             'ref': attribute_field,
                             'type': 'text'
                             }
@@ -490,9 +499,13 @@ class ReportGenerator(object):
                     else:
                         field = model_to_use._meta.get_field(col)
                 except FieldDoesNotExist:
-                    raise FieldDoesNotExist(
-                        f'Field "{col}" not found either as an attribute to the generator class {cls}, '
-                        f'or a computation field, or a database column for the model "{model_to_use}"')
+                    field = getattr(container_class, col, False)
+
+                    if not field:
+                        raise FieldDoesNotExist(
+                            f'Field "{col}" not found either as an attribute to the generator class {cls}, '
+                            f'{f"Container class {container_class}," if container_class else ""}'
+                            f'or a computation field, or a database column for the model "{model_to_use}"')
 
                 col_data = {'name': col,
                             'verbose_name': getattr(field, 'verbose_name', col),
@@ -505,7 +518,7 @@ class ReportGenerator(object):
         return parsed_columns
 
     def _parse(self):
-        self.parsed_columns = self.check_columns(self.columns, self.group_by, self.report_model)
+        self.parsed_columns = self.check_columns(self.columns, self.group_by, self.report_model, self.container_class)
         self._parsed_columns = list(self.parsed_columns)
         self._time_series_parsed_columns = self.get_time_series_parsed_columns()
         self._crosstab_parsed_columns = self.get_crosstab_parsed_columns()
