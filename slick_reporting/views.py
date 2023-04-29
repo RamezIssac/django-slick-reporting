@@ -1,7 +1,9 @@
 import datetime
 
 import simplejson as json
+from django import forms
 from django.conf import settings
+from django.forms import modelform_factory
 from django.http import HttpResponse
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
@@ -9,7 +11,7 @@ from django.views.generic import FormView
 
 from .app_settings import SLICK_REPORTING_DEFAULT_END_DATE, SLICK_REPORTING_DEFAULT_START_DATE, \
     SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
-from .form_factory import report_form_factory
+from .form_factory import report_form_factory, get_crispy_helper, default_formfield_callback
 from .generator import ReportGenerator, ListViewReportGenerator
 
 
@@ -235,9 +237,14 @@ class SlickReportViewBase(FormView):
             'end_date': SLICK_REPORTING_DEFAULT_END_DATE
         }
 
+    def get_form_crispy_helper(self):
+        return self.form.get_crispy_helper()
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[self.report_title_context_key] = self.report_title
+        context['crispy_helper'] = self.get_form_crispy_helper()
+
         if not (self.request.POST or self.request.GET):
             # initialize empty form with initials if the no data is in the get or the post
             context['form'] = self.get_form_class()()
@@ -265,9 +272,64 @@ class SlickReportView(SlickReportViewBase):
 
 
 class SlickReportingListView(SlickReportViewBase):
-    # todo create form easily
-
     report_generator_class = ListViewReportGenerator
+    filters = None
+
+    def get_form_filters(self, form):
+        kw_filters = {}
+
+        for name, field in form.base_fields.items():
+
+            if type(field) is forms.ModelMultipleChoiceField:
+                value = form.cleaned_data[name]
+                if value:
+                    kw_filters[f'{name}__in'] = form.cleaned_data[name]
+            elif type(field) is forms.BooleanField:
+                kw_filters[name] = form.cleaned_data[name]
+            else:
+                value = form.cleaned_data[name]
+                if value:
+                    kw_filters[name] = form.cleaned_data[name]
+
+        return [], kw_filters
+
+    def get_form_crispy_helper(self):
+        return get_crispy_helper(self.filters)
+
+    def get_report_generator(self, queryset, for_print):
+        q_filters, kw_filters = self.get_form_filters(self.form)
+
+        crosstab_compute_reminder = False
+
+        time_series_pattern = self.time_series_pattern
+
+        return self.report_generator_class(self.get_report_model(),
+                                           # start_date=self.form.cleaned_data['start_date'],
+                                           # end_date=self.form.cleaned_data['end_date'],
+                                           q_filters=q_filters,
+                                           kwargs_filters=kw_filters,
+                                           date_field=self.date_field,
+                                           main_queryset=queryset,
+                                           print_flag=for_print,
+                                           limit_records=self.limit_records, swap_sign=self.swap_sign,
+                                           columns=self.columns,
+                                           group_by=self.group_by,
+                                           time_series_pattern=time_series_pattern,
+                                           time_series_columns=self.time_series_columns,
+
+                                           crosstab_model=self.crosstab_model,
+                                           crosstab_ids=self.crosstab_ids,
+                                           crosstab_columns=self.crosstab_columns,
+                                           crosstab_compute_reminder=crosstab_compute_reminder,
+
+                                           format_row_func=self.format_row,
+                                           container_class=self
+                                           )
+
+    def get_form_class(self):
+
+        return modelform_factory(self.get_report_model(), fields=self.filters,
+                                 formfield_callback=default_formfield_callback)
 
     def get(self, request, *args, **kwargs):
         form_class = self.get_form_class()

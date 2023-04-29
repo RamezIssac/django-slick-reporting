@@ -15,6 +15,52 @@ TIME_SERIES_CHOICES = (
 )
 
 
+def default_formfield_callback(f, **kwargs):
+    kwargs['required'] = False
+    kwargs['help_text'] = ''
+    return f.formfield(**kwargs)
+
+
+def get_crispy_helper(foreign_keys_map=None, crosstab_model=None, crosstab_key_name=None,
+                      crosstab_display_compute_reminder=False, add_date_range=True):
+    from crispy_forms.helper import FormHelper
+    from crispy_forms.layout import Column, Layout, Div, Row, Field
+
+    helper = FormHelper()
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2 col-md-2 col-lg-2'
+    helper.field_class = 'col-sm-10 col-md-10 col-lg-10'
+    helper.form_tag = False
+    helper.disable_csrf = True
+    helper.render_unmentioned_fields = True
+
+    helper.layout = Layout(
+
+    )
+    if add_date_range:
+        helper.layout.fields.append(
+            Row(
+                Column(
+                    Field('start_date'), css_class='col-sm-6'),
+                Column(
+                    Field('end_date'), css_class='col-sm-6'),
+                css_class='raReportDateRange'),
+        )
+    filters_container = Div(css_class="mt-20", style='margin-top:20px')
+    # first add the crosstab model and its display reimder then the rest of the fields
+    if crosstab_model:
+        filters_container.append(Field(crosstab_key_name))
+        if crosstab_display_compute_reminder:
+            filters_container.append(Field('crosstab_compute_reminder'))
+
+    for k in foreign_keys_map:
+        if k != crosstab_key_name:
+            filters_container.append(Field(k))
+    helper.layout.fields.append(filters_container)
+
+    return helper
+
+
 class BaseReportForm:
     '''
     Holds basic function
@@ -66,40 +112,12 @@ class BaseReportForm:
         return self.cleaned_data.get('crosstab_compute_reminder', True)
 
     def get_crispy_helper(self, foreign_keys_map=None, crosstab_model=None, **kwargs):
-        from crispy_forms.helper import FormHelper
-        from crispy_forms.layout import Column, Layout, Div, Row, Field
-
-        helper = FormHelper()
-        helper.form_class = 'form-horizontal'
-        helper.label_class = 'col-sm-2 col-md-2 col-lg-2'
-        helper.field_class = 'col-sm-10 col-md-10 col-lg-10'
-        helper.form_tag = False
-        helper.disable_csrf = True
-        helper.render_unmentioned_fields = True
-
-        foreign_keys_map = foreign_keys_map or self.foreign_keys
-
-        helper.layout = Layout(
-            Row(
-                Column(
-                    Field('start_date'), css_class='col-sm-6'),
-                Column(
-                    Field('end_date'), css_class='col-sm-6'),
-                css_class='raReportDateRange'),
-            Div(css_class="mt-20", style='margin-top:20px')
-        )
-
-        # first add the crosstab model and its display reimder then the rest of the fields
-        if self.crosstab_model:
-            helper.layout.fields[1].append(Field(self.crosstab_key_name))
-            if self.crosstab_display_compute_reminder:
-                helper.layout.fields[1].append(Field('crosstab_compute_reminder'))
-
-        for k in foreign_keys_map:
-            if k != self.crosstab_key_name:
-                helper.layout.fields[1].append(Field(k))
-
-        return helper
+        return get_crispy_helper(self.foreign_keys,
+                                 crosstab_model=getattr(self, 'crosstab_model', None),
+                                 crosstab_key_name=getattr(self, 'crosstab_key_name', None),
+                                 crosstab_display_compute_reminder=getattr(self, 'crosstab_display_compute_reminder',
+                                                                           False),
+                                 **kwargs)
 
 
 def _default_foreign_key_widget(f_field):
