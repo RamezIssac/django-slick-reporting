@@ -128,7 +128,6 @@ class SlickReportViewBase(FormView):
             # elif self.request.GET:
             kwargs.update({
                 'data': self.request.GET,
-                'files': self.request.FILES,
             })
         return kwargs
 
@@ -285,7 +284,9 @@ class SlickReportingListView(SlickReportViewBase):
                 if value:
                     kw_filters[f'{name}__in'] = form.cleaned_data[name]
             elif type(field) is forms.BooleanField:
-                kw_filters[name] = form.cleaned_data[name]
+                # boolean field while checked on frontend , and have initial = True, give false value on cleaned_data
+                #  Hence this check to see if it was indeed in the GET params,
+                kw_filters[name] = form.cleaned_data[name] if name in self.request.GET else field.initial
             else:
                 value = form.cleaned_data[name]
                 if value:
@@ -311,16 +312,9 @@ class SlickReportingListView(SlickReportViewBase):
                                            date_field=self.date_field,
                                            main_queryset=queryset,
                                            print_flag=for_print,
-                                           limit_records=self.limit_records, swap_sign=self.swap_sign,
-                                           columns=self.columns,
-                                           group_by=self.group_by,
-                                           time_series_pattern=time_series_pattern,
-                                           time_series_columns=self.time_series_columns,
+                                           limit_records=self.limit_records,
 
-                                           crosstab_model=self.crosstab_model,
-                                           crosstab_ids=self.crosstab_ids,
-                                           crosstab_columns=self.crosstab_columns,
-                                           crosstab_compute_reminder=crosstab_compute_reminder,
+                                           columns=self.columns,
 
                                            format_row_func=self.format_row,
                                            container_class=self
