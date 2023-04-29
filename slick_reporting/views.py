@@ -10,7 +10,7 @@ from django.views.generic import FormView
 from .app_settings import SLICK_REPORTING_DEFAULT_END_DATE, SLICK_REPORTING_DEFAULT_START_DATE, \
     SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .form_factory import report_form_factory
-from .generator import ReportGenerator
+from .generator import ReportGenerator, ListViewReportGenerator
 
 
 class SlickReportViewBase(FormView):
@@ -47,8 +47,6 @@ class SlickReportViewBase(FormView):
     time_series_selector_choices = None
     time_series_selector_default = None
     time_series_selector_allow_empty = False
-
-    use_queryset_values = True
 
     """
     A list of chart settings objects instructing front end on how to plot the data.
@@ -264,3 +262,36 @@ class SlickReportView(SlickReportViewBase):
     def check_chart_settings(chart_settings=None):
         # todo check on chart settings
         return
+
+
+class SlickReportingListView(SlickReportViewBase):
+    # todo create form easily
+
+    report_generator_class = ListViewReportGenerator
+
+    def get(self, request, *args, **kwargs):
+        form_class = self.get_form_class()
+        self.form = self.get_form(form_class)
+        if self.form.is_valid():
+            report_data = self.get_report_results()
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return self.ajax_render_to_response(report_data)
+
+            return self.render_to_response(self.get_context_data(report_data=report_data))
+
+        return self.render_to_response(self.get_context_data())
+
+    def get_report_results(self, for_print=False):
+        """
+        Gets the reports Data, and, its meta data used by datatables.net and highcharts
+        :return: JsonResponse
+        """
+
+        queryset = self.get_queryset()
+        report_generator = self.get_report_generator(queryset, for_print)
+        data = report_generator.get_report_data()
+        data = self.filter_results(data, for_print)
+
+        return report_generator.get_full_response(data=data, report_slug=self.get_report_slug(),
+                                                  chart_settings=self.chart_settings,
+                                                  default_chart_title=self.report_title)

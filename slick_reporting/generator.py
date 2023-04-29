@@ -190,7 +190,6 @@ class ReportGenerator(object):
         if not self.date_field and (self.time_series_pattern or self.crosstab_model or self.group_by):
             raise ImproperlyConfigured('date_field must be set on a class level or via init')
 
-
         self._prepared_results = {}
         self.report_fields_classes = {}
 
@@ -515,7 +514,7 @@ class ReportGenerator(object):
                             'verbose_name': getattr(field, 'verbose_name', col),
                             'source': 'database',
                             'ref': field,
-                            'type': field.get_internal_type()
+                            'type': 'choice' if field.choices else field.get_internal_type(),
                             }
             col_data.update(options)
             parsed_columns.append(col_data)
@@ -749,3 +748,80 @@ class ReportGenerator(object):
             x['engine_name'] = x.get('engine_name', SLICK_REPORTING_DEFAULT_CHARTS_ENGINE)
             output.append(x)
         return output
+
+
+class ListViewReportGenerator(ReportGenerator):
+
+    def _apply_queryset_options(self, query, fields=None):
+        """
+        Apply the filters to the main queryset which will computed results be mapped to
+        :param query:
+        :param fields:
+        :return:
+        """
+        filters = {}
+        if self.date_field:
+            filters = {
+                f'{self.date_field}__gt': self.start_date,
+                f'{self.date_field}__lte': self.end_date,
+            }
+        filters.update(self.kwargs_filters)
+
+        if filters:
+            query = query.filter(**filters)
+        # if fields:
+        #     return query.values(*fields)
+        return query
+
+    def _get_record_data(self, obj, columns):
+        """
+        the function is run for every obj in the main_queryset
+        :param obj: current row
+        :param: columns： The columns we iterate on
+        :return: a dict object containing all needed data
+        """
+
+        data = {}
+        group_by_val = None
+        if self.group_by:
+            if self.group_by_field.related_model and '__' not in self.group_by:
+                primary_key_name = self.get_primary_key_name(self.group_by_field.related_model)
+            else:
+                primary_key_name = self.group_by_field_attname
+
+            column_data = obj.get(primary_key_name, obj.get('id'))
+            group_by_val = str(column_data)
+
+        for window, window_cols in columns:
+            for col_data in window_cols:
+
+                name = col_data['name']
+
+                if col_data.get('source', '') == 'attribute_field':
+                    data[name] = col_data['ref'](self, obj, data)
+                    # changed line
+                elif col_data.get('source', '') == 'container_class_attribute_field':
+                    data[name] = col_data['ref'](obj)
+
+                elif (col_data.get('source', '') == 'magic_field' and self.group_by) or (
+                        self.time_series_pattern and not self.group_by):
+                    source = self._report_fields_dependencies[window].get(name, False)
+                    if source:
+                        computation_class = self.report_fields_classes[source]
+                        value = computation_class.get_dependency_value(group_by_val,
+                                                                       col_data['ref'].name)
+                    else:
+                        try:
+                            computation_class = self.report_fields_classes[name]
+                        except KeyError:
+                            continue
+                        value = computation_class.resolve(group_by_val, data)
+                    if self.swap_sign: value = -value
+                    data[name] = value
+
+                else:
+                    if col_data.get('type', '') == 'choice':
+                        data[name] = getattr(obj, f"get_{name}_display", '')()
+                    else:
+                        data[name] = getattr(obj, name, '')
+        return data
