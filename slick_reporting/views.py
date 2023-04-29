@@ -48,6 +48,8 @@ class SlickReportViewBase(FormView):
     time_series_selector_default = None
     time_series_selector_allow_empty = False
 
+    use_queryset_values = True
+
     """
     A list of chart settings objects instructing front end on how to plot the data.
     
@@ -247,12 +249,13 @@ class SlickReportViewBase(FormView):
 class SlickReportView(SlickReportViewBase):
 
     def __init_subclass__(cls) -> None:
-        date_field = getattr(cls, 'date_field', '')
-        if not date_field:
-            raise TypeError(f'`date_field` is not set on {cls}')
+        # date_field = getattr(cls, 'date_field', '')
+        # if not date_field:
+        #     raise TypeError(f'`date_field` is not set on {cls}')
+        # cls.report_generator_class.check_columns([cls.date_field], False, cls.get_report_model())
 
         # sanity check, raises error if the columns or date fields is not mapped
-        cls.report_generator_class.check_columns([cls.date_field], False, cls.get_report_model())
+
         cls.report_generator_class.check_columns(cls.columns, cls.group_by, cls.get_report_model(), container_class=cls)
 
         super().__init_subclass__()

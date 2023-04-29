@@ -165,8 +165,6 @@ class ReportGenerator(object):
         self.end_date = end_date or datetime.datetime.combine(SLICK_REPORTING_DEFAULT_END_DATE.date(),
                                                               SLICK_REPORTING_DEFAULT_END_DATE.time())
         self.date_field = self.date_field or date_field
-        if not self.date_field:
-            raise ImproperlyConfigured('date_field must be set on a class level or via init')
 
         self.q_filters = q_filters or []
         self.kwargs_filters = kwargs_filters or {}
@@ -188,6 +186,10 @@ class ReportGenerator(object):
         self.time_series_columns = self.time_series_columns or time_series_columns
         self.time_series_custom_dates = self.time_series_custom_dates or time_series_custom_dates
         self.container_class = container_class
+
+        if not self.date_field and (self.time_series_pattern or self.crosstab_model or self.group_by):
+            raise ImproperlyConfigured('date_field must be set on a class level or via init')
+
 
         self._prepared_results = {}
         self.report_fields_classes = {}
@@ -269,11 +271,12 @@ class ReportGenerator(object):
         :param fields:
         :return:
         """
-
-        filters = {
-            f'{self.date_field}__gt': self.start_date,
-            f'{self.date_field}__lte': self.end_date,
-        }
+        filters = {}
+        if self.date_field:
+            filters = {
+                f'{self.date_field}__gt': self.start_date,
+                f'{self.date_field}__lte': self.end_date,
+            }
         filters.update(self.kwargs_filters)
 
         if filters:
@@ -454,6 +457,7 @@ class ReportGenerator(object):
             magic_field_class = None
             attribute_field = None
             is_container_class_attribute = False
+
             if type(col) is str:
                 attribute_field = getattr(cls, col, None)
                 if attribute_field is None:
