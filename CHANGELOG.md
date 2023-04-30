@@ -2,38 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0]
+
+- Added SlickReportingListView
+- Added `show_time_series_selector` capability to SlickReportView allowing User to change the time series pattern from
+  the UI.
+- Now you can have a custom column defined on the SlickReportView and not needing to customise the report generator.
+- You don't need to set date_field if you have calculations on the report
+- Easier customization of the crispy form layout
+- Enhance weekly time series default column name
+
 ## [0.6.8]
 
-- Add report_title to context    
+- Add report_title to context
 - Enhance SearchForm to be easier to override. Still needs more enhancements.
-
 
 ## [0.6.7]
 
-- Fix issue with `ReportField` when it has a `requires` in time series and crosstab reports   
+- Fix issue with `ReportField` when it has a `requires` in time series and crosstab reports
 
 ## [0.6.6]
 
 - Now a method on a generator can be effectively used as column
 - Use correct model when traversing on group by
 
-
 ## [0.6.5]
-- Fix Issue with group_by field pointing to model with custom primary key Issue #58 
 
+- Fix Issue with group_by field pointing to model with custom primary key Issue #58
 
 ## [0.6.4]
+
 - Fix highchart cache to target the specific chart
 - Added initial and required to report_form_factory
 - Added base_q_filters and base_kwargs_filters to SlickReportField to control the base queryset
-- Add ability to customize ReportField on the fly 
-- Adds `prevent_group_by` option to SlickReportField Will prevent group by calculation for this specific field, serves when you want to compute overall results.
+- Add ability to customize ReportField on the fly
+- Adds `prevent_group_by` option to SlickReportField Will prevent group by calculation for this specific field, serves
+  when you want to compute overall results.
 - Support reference to SlickReportField class directly in `requires` instead of its "registered" name.
-- Adds PercentageToBalance report field 
+- Adds PercentageToBalance report field
 
 ## [0.6.3]
 
-- Change the deprecated in Django 4 `request.is_ajax` . 
+- Change the deprecated in Django 4 `request.is_ajax` .
 
 ## [0.6.2]
 
@@ -47,14 +57,13 @@ All notable changes to this project will be documented in this file.
 
 - Breaking [ONLY] if you have overridden ReportView.get_report_results()
 - Moved the collecting of total report data to the report generator to make easier low level usage.
-- Fixed an issue with Charts.js `get_row_data` 
+- Fixed an issue with Charts.js `get_row_data`
 - Added ChartsOption 'time_series_support',in both chart.js and highcharts
-- Fixed `SlickReportField.create` to use the issuing class not the vanilla one. 
-
+- Fixed `SlickReportField.create` to use the issuing class not the vanilla one.
 
 ## [0.5.8]
 
-- Fix compatibility with Django 3.2 
+- Fix compatibility with Django 3.2
 
 ## [0.5.7]
 
@@ -63,13 +72,12 @@ All notable changes to this project will be documented in this file.
 ## [0.5.6]
 
 - Add exclude_field to report_form_factory (@gr4n0t4)
-- Added support for group by Many To Many field (@gr4n0t4) 
+- Added support for group by Many To Many field (@gr4n0t4)
 
 ## [0.5.5]
 
 - Add datepicker initialization function call (@squio)
 - Fixed an issue with default dates not being functional.
-
 
 ## [0.5.4]
 
@@ -78,7 +86,7 @@ All notable changes to this project will be documented in this file.
 ## [0.5.3]
 
 - Enhanced Field prepare flow
-- Add traversing for group_by 
+- Add traversing for group_by
 - Allowed tests to run specific tests instead of the whole suit
 - Enhanced templates structure for easier override/customization
 
@@ -87,7 +95,6 @@ All notable changes to this project will be documented in this file.
 - Enhanced Time Series Plot total HighChart by accenting the categories
 - Enhanced the default verbose names of time series.
 - Expanding test coverage
-
 
 ## [0.5.1]
 

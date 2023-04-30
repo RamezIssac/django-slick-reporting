@@ -300,10 +300,6 @@ class SlickReportingListView(SlickReportViewBase):
     def get_report_generator(self, queryset, for_print):
         q_filters, kw_filters = self.get_form_filters(self.form)
 
-        crosstab_compute_reminder = False
-
-        time_series_pattern = self.time_series_pattern
-
         return self.report_generator_class(self.get_report_model(),
                                            # start_date=self.form.cleaned_data['start_date'],
                                            # end_date=self.form.cleaned_data['end_date'],
