@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 - Added SlickReportingListView
 - Added `show_time_series_selector` capability to SlickReportView allowing User to change the time series pattern from
   the UI.
+- Added ability to export to CSV from UI, using `ExportToStreamingCSV` & `ExportToCSV`
 - Now you can have a custom column defined on the SlickReportView and not needing to customise the report generator.
 - You don't need to set date_field if you have calculations on the report
 - Easier customization of the crispy form layout

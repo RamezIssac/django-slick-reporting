@@ -1,10 +1,11 @@
 import datetime
+import csv
 
 import simplejson as json
 from django import forms
 from django.conf import settings
 from django.forms import modelform_factory
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
@@ -13,6 +14,55 @@ from .app_settings import SLICK_REPORTING_DEFAULT_END_DATE, SLICK_REPORTING_DEFA
     SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .form_factory import report_form_factory, get_crispy_helper, default_formfield_callback
 from .generator import ReportGenerator, ListViewReportGenerator
+
+
+class ExportToCSV(object):
+
+    def get_filename(self):
+        return self.report_title
+
+    def get_response(self):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename={filename}.csv'.format(filename=self.get_filename())
+
+        writer = csv.writer(response)
+        for rows in self.get_rows():
+            writer.writerow(rows)
+
+        return response
+
+    def get_rows(self):
+        columns, verbose_names = self.get_columns()
+        yield verbose_names
+        for line in self.report_data['data']:
+            yield [line[col_name] for col_name in columns]
+
+    def get_columns(self, extra_context=None):
+        return list(zip(*[(x['name'], x['verbose_name']) for x in self.report_data['columns']]))
+
+    def __init__(self, request, report_data, report_title, **kwargs):
+        self.request = request
+        self.report_data = report_data
+        self.report_title = report_title
+        self.kwargs = kwargs
+
+
+class ExportToStreamingCSV(ExportToCSV):
+
+    def get_response(self):
+        # Copied form Djagno Docs
+        class Echo:
+            def write(self, value):
+                return value
+
+        pseudo_buffer = Echo()
+        writer = csv.writer(pseudo_buffer)
+        return StreamingHttpResponse(
+            (writer.writerow(row) for row in self.get_rows()),
+            content_type="text/csv",
+            headers={
+                "Content-Disposition": 'attachment; filename="{filename}.csv"'.format(filename=self.get_filename())}
+        )
 
 
 class SlickReportViewBase(FormView):
@@ -50,6 +100,8 @@ class SlickReportViewBase(FormView):
     time_series_selector_default = None
     time_series_selector_allow_empty = False
 
+    csv_export_class = ExportToStreamingCSV
+
     """
     A list of chart settings objects instructing front end on how to plot the data.
     
@@ -62,12 +114,20 @@ class SlickReportViewBase(FormView):
         self.form = self.get_form(form_class)
         if self.form.is_valid():
             report_data = self.get_report_results()
+
+            export_csv = request.GET.get('csv', False)
+            if export_csv:
+                return self.export_csv(report_data)
+
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return self.ajax_render_to_response(report_data)
 
             return self.render_to_response(self.get_context_data(report_data=report_data))
 
         return self.render_to_response(self.get_context_data())
+
+    def export_csv(self, report_data):
+        return self.csv_export_class(self.request, report_data, self.report_title).get_response()
 
     @classmethod
     def get_report_model(cls):
