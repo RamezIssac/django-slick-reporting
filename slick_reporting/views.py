@@ -115,9 +115,12 @@ class SlickReportViewBase(FormView):
         if self.form.is_valid():
             report_data = self.get_report_results()
 
-            export_csv = request.GET.get('csv', False)
-            if export_csv:
-                return self.export_csv(report_data)
+            export_option = request.GET.get('_export', '')
+            if export_option:
+                try:
+                    return getattr(self, f'export_{export_option}')(report_data)
+                except AttributeError:
+                    pass
 
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return self.ajax_render_to_response(report_data)
@@ -346,7 +349,11 @@ class SlickReportingListView(SlickReportViewBase):
             elif type(field) is forms.BooleanField:
                 # boolean field while checked on frontend , and have initial = True, give false value on cleaned_data
                 #  Hence this check to see if it was indeed in the GET params,
-                kw_filters[name] = form.cleaned_data[name] if name in self.request.GET else field.initial
+                value = field.initial
+                if self.request.GET:
+                    value = form.cleaned_data.get(name, False)
+                kw_filters[name] = value
+
             else:
                 value = form.cleaned_data[name]
                 if value:
@@ -381,17 +388,6 @@ class SlickReportingListView(SlickReportViewBase):
         return modelform_factory(self.get_report_model(), fields=self.filters,
                                  formfield_callback=default_formfield_callback)
 
-    def get(self, request, *args, **kwargs):
-        form_class = self.get_form_class()
-        self.form = self.get_form(form_class)
-        if self.form.is_valid():
-            report_data = self.get_report_results()
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return self.ajax_render_to_response(report_data)
-
-            return self.render_to_response(self.get_context_data(report_data=report_data))
-
-        return self.render_to_response(self.get_context_data())
 
     def get_report_results(self, for_print=False):
         """

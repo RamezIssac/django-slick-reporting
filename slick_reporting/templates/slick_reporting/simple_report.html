@@ -6,9 +6,10 @@
 
 {% if form %}
     <h4>Filters</h4>
-    <form>
-        {% crispy form form.get_crispy_helper %}
+    <form id="reportForm">
+        {% crispy form crispy_helper %}
         <input type="submit" value="Filter" class="btn btn-primary btn-lg btn-block refreshReport">
+        <input type="button" value="Export Csv" class="btn btn-secondary btn-lg btn-block exportCsvBtn">
     </form>
 {% endif %}
     <h4 class="py-5">Results</h4>
@@ -63,6 +64,15 @@
             let data = {{ report_data|jsonify }};
 
             let chartContainer = $('.reportChart')
+
+        $('.exportCsvBtn').on('click', function (e) {
+            e.preventDefault()
+            let form = $('#reportForm');
+            window.location = '?' + form.serialize()+ '&_export=csv'
+            {#form.attr('action', '{% url 'slick_reporting:export_csv' %}');#}
+            {#form.submit();#}
+        });
+
 
             function setDatePicker() {
                 function setDatePickerObj() {
