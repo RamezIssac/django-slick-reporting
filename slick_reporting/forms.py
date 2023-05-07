@@ -13,7 +13,7 @@ class OrderByForm(forms.Form):
         :return: tuple of field and direction
         """
         if self.is_valid():
-            order_field = self.cleaned_data['order_by']
+            order_field = self.cleaned_data["order_by"]
             order_field = order_field or default_field
             if order_field:
                 return self.parse_order_by_field(order_field)
@@ -27,7 +27,7 @@ class OrderByForm(forms.Form):
         """
         if order_field:
             asc = True
-            if order_field[0:1] == '-':
+            if order_field[0:1] == "-":
                 order_field = order_field[1:]
                 asc = False
             return order_field, not asc

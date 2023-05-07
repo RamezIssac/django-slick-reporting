@@ -14,10 +14,10 @@ class SlickReportField(object):
     """
 
     _field_registry = field_registry
-    name = ''
+    name = ""
     """The name to be used in the ReportGenerator"""
 
-    calculation_field = 'value'
+    calculation_field = "value"
     """the Field to compute on"""
 
     calculation_method = Sum
@@ -32,7 +32,7 @@ class SlickReportField(object):
     requires = [BasicCalculationA, BasicCalculationB]
     """
 
-    type = 'number'
+    type = "number"
     """Just a string describing what this computation field return, usually passed to frontend"""
 
     is_summable = True
@@ -64,29 +64,44 @@ class SlickReportField(object):
         :return:
         """
         if not name:
-            identifier = str(uuid.uuid4()).split('-')[-1]
+            identifier = str(uuid.uuid4()).split("-")[-1]
             name = name or f"{method.name.lower()}__{field}"
             assert name not in cls._field_registry.get_all_report_fields_names()
 
-        verbose_name = verbose_name or f'{method.name} {field}'
-        report_klass = type(f'ReportField_{name}', (cls,), {
-            'name': name,
-            'verbose_name': verbose_name,
-            'calculation_field': field,
-            'calculation_method': method,
-            'is_summable': is_summable,
-        })
+        verbose_name = verbose_name or f"{method.name} {field}"
+        report_klass = type(
+            f"ReportField_{name}",
+            (cls,),
+            {
+                "name": name,
+                "verbose_name": verbose_name,
+                "calculation_field": field,
+                "calculation_method": method,
+                "is_summable": is_summable,
+            },
+        )
         return report_klass
 
-    def __init__(self, plus_side_q=None, minus_side_q=None,
-                 report_model=None,
-                 qs=None,
-                 calculation_field=None, calculation_method=None, date_field='', group_by=None):
+    def __init__(
+        self,
+        plus_side_q=None,
+        minus_side_q=None,
+        report_model=None,
+        qs=None,
+        calculation_field=None,
+        calculation_method=None,
+        date_field="",
+        group_by=None,
+    ):
         super(SlickReportField, self).__init__()
         self.date_field = date_field
         self.report_model = self.report_model or report_model
-        self.calculation_field = calculation_field if calculation_field else self.calculation_field
-        self.calculation_method = calculation_method if calculation_method else self.calculation_method
+        self.calculation_field = (
+            calculation_field if calculation_field else self.calculation_field
+        )
+        self.calculation_method = (
+            calculation_method if calculation_method else self.calculation_method
+        )
         self.plus_side_q = self.plus_side_q or plus_side_q
         self.minus_side_q = self.minus_side_q or minus_side_q
         self.requires = self.requires or []
@@ -100,7 +115,10 @@ class SlickReportField(object):
     @classmethod
     def _get_required_classes(cls):
         requires = cls.requires or []
-        return [field_registry.get_field_by_name(x) if type(x) is str else x for x in requires]
+        return [
+            field_registry.get_field_by_name(x) if type(x) is str else x
+            for x in requires
+        ]
 
     def apply_q_plus_filter(self, qs):
         return qs.filter(*self.plus_side_q)
@@ -108,7 +126,7 @@ class SlickReportField(object):
     def apply_q_minus_filter(self, qs):
         return qs.filter(*self.minus_side_q)
 
-    def apply_aggregation(self, queryset, group_by=''):
+    def apply_aggregation(self, queryset, group_by=""):
         annotation = self.calculation_method(self.calculation_field)
         if group_by:
             queryset = queryset.values(group_by).annotate(annotation)
@@ -128,7 +146,9 @@ class SlickReportField(object):
 
         dep_values = self._prepare_dependencies(q_filters, kwargs_filters.copy())
 
-        debit_results, credit_results = self.prepare(q_filters, kwargs_filters, **kwargs)
+        debit_results, credit_results = self.prepare(
+            q_filters, kwargs_filters, **kwargs
+        )
         self._cache = debit_results, credit_results, dep_values
         return self._cache
 
@@ -145,7 +165,7 @@ class SlickReportField(object):
         :return:
         """
         queryset = self.get_queryset()
-        group_by = '' if self.prevent_group_by else self.group_by
+        group_by = "" if self.prevent_group_by else self.group_by
         if q_filters:
             queryset = queryset.filter(*q_filters)
         if kwargs_filters:
@@ -182,26 +202,36 @@ class SlickReportField(object):
         Get the annotation per the database
         :return: string used ex:
         """
-        return get_calculation_annotation(self.calculation_field, self.calculation_method)
+        return get_calculation_annotation(
+            self.calculation_field, self.calculation_method
+        )
 
-    def _prepare_dependencies(self, q_filters=None, extra_filters=None, ):
+    def _prepare_dependencies(
+        self,
+        q_filters=None,
+        extra_filters=None,
+    ):
         values = {}
         for dep_class in self._require_classes:
-            dep = dep_class(self.plus_side_q, self.minus_side_q, self.report_model,
-                            date_field=self.date_field, group_by=self.group_by)
+            dep = dep_class(
+                self.plus_side_q,
+                self.minus_side_q,
+                self.report_model,
+                date_field=self.date_field,
+                group_by=self.group_by,
+            )
             results = dep.init_preparation(q_filters, extra_filters)
-            values[dep.name] = {'results': results,
-                                'instance': dep}
+            values[dep.name] = {"results": results, "instance": dep}
         return values
 
     def resolve(self, current_obj, current_row=None):
-        '''
+        """
         Reponsible for getting the exact data from the prepared value
         :param cached: the returned data from prepare
         :param current_obj: he value of group by id
         :param current_row: the row in iteration
         :return: a solid number or value
-        '''
+        """
         cached = self._cache
         debit_value, credit_value = self.extract_data(cached, current_obj)
         dependencies_value = self._resolve_dependencies(current_obj)
@@ -224,19 +254,18 @@ class SlickReportField(object):
         return values
 
     def _resolve_dependencies(self, current_obj, name=None):
-
         dep_results = {}
         cached_debit, cached_credit, dependencies_value = self._cache
         dependencies_value = dependencies_value or {}
         for d in dependencies_value.keys():
             if name and d != name:
                 continue
-            d_instance = dependencies_value[d]['instance']
+            d_instance = dependencies_value[d]["instance"]
             dep_results[d] = d_instance.resolve(current_obj)
         return dep_results
 
     def extract_data(self, cached, current_obj):
-        group_by = '' if self.prevent_group_by else self.group_by
+        group_by = "" if self.prevent_group_by else self.group_by
         debit_value = 0
         credit_value = 0
         annotation = self.get_annotation_name()
@@ -285,7 +314,6 @@ class SlickReportField(object):
         """
 
         def get_dependency(field_class):
-
             dependencies = field_class._get_required_classes()
             klasses = []
             for klass in dependencies:
@@ -305,9 +333,9 @@ class SlickReportField(object):
         :param id: the id of the current crosstab object
         :return: a verbose string
         """
-        if id == '----':
-            return _('The reminder')
-        return f'{cls.verbose_name} {model} {id}'
+        if id == "----":
+            return _("The reminder")
+        return f"{cls.verbose_name} {model} {id}"
 
     @classmethod
     def get_time_series_field_verbose_name(cls, date_period, index, dates, pattern):
@@ -319,32 +347,32 @@ class SlickReportField(object):
         :param dates a list of tuples representing the start and the end date
         :return: a verbose string
         """
-        dt_format = '%Y/%m/%d'
+        dt_format = "%Y/%m/%d"
 
-        if pattern == 'monthly':
-            month_name = date_filter(date_period[0], 'F Y')
-            return f'{cls.verbose_name} {month_name}'
-        elif pattern == 'daily':
-            return f'{cls.verbose_name} {date_period[0].strftime(dt_format)}'
-        elif pattern == 'weekly':
+        if pattern == "monthly":
+            month_name = date_filter(date_period[0], "F Y")
+            return f"{cls.verbose_name} {month_name}"
+        elif pattern == "daily":
+            return f"{cls.verbose_name} {date_period[0].strftime(dt_format)}"
+        elif pattern == "weekly":
             return f' {cls.verbose_name} {_("Week")} {index + 1} {date_period[0].strftime(dt_format)}'
-        elif pattern == 'yearly':
-            year = date_filter(date_period[0], 'Y')
-            return f'{cls.verbose_name} {year}'
+        elif pattern == "yearly":
+            year = date_filter(date_period[0], "Y")
+            return f"{cls.verbose_name} {year}"
 
-        return f'{cls.verbose_name} {date_period[0].strftime(dt_format)} - {date_period[1].strftime(dt_format)}'
+        return f"{cls.verbose_name} {date_period[0].strftime(dt_format)} - {date_period[1].strftime(dt_format)}"
 
 
 class FirstBalanceField(SlickReportField):
-    name = '__fb__'
-    verbose_name = _('first balance')
+    name = "__fb__"
+    verbose_name = _("first balance")
 
     def prepare(self, q_filters=None, extra_filters=None, **kwargs):
         extra_filters = extra_filters or {}
 
-        from_date_value = extra_filters.get(f'{self.date_field}__gte')
-        extra_filters.pop(f'{self.date_field}__gte', None)
-        extra_filters[f'{self.date_field}__lt'] = from_date_value
+        from_date_value = extra_filters.get(f"{self.date_field}__gte")
+        extra_filters.pop(f"{self.date_field}__gte", None)
+        extra_filters[f"{self.date_field}__lt"] = from_date_value
         return super(FirstBalanceField, self).prepare(q_filters, extra_filters)
 
 
@@ -352,21 +380,21 @@ field_registry.register(FirstBalanceField)
 
 
 class TotalReportField(SlickReportField):
-    name = '__total__'
-    verbose_name = _('Sum of value')
-    requires = ['__debit__', '__credit__']
+    name = "__total__"
+    verbose_name = _("Sum of value")
+    requires = ["__debit__", "__credit__"]
 
 
 field_registry.register(TotalReportField)
 
 
 class BalanceReportField(SlickReportField):
-    name = '__balance__'
-    verbose_name = _('Cumulative Total')
-    requires = ['__fb__']
+    name = "__balance__"
+    verbose_name = _("Cumulative Total")
+    requires = ["__fb__"]
 
     def final_calculation(self, debit, credit, dep_dict):
-        fb = dep_dict.get('__fb__')
+        fb = dep_dict.get("__fb__")
         debit = debit or 0
         credit = credit or 0
         fb = fb or 0
@@ -378,20 +406,20 @@ field_registry.register(BalanceReportField)
 
 class PercentageToBalance(SlickReportField):
     requires = [BalanceReportField]
-    name = 'PercentageToBalance'
-    verbose_name = _('%')
+    name = "PercentageToBalance"
+    verbose_name = _("%")
 
     prevent_group_by = True
 
     def final_calculation(self, debit, credit, dep_dict):
-        obj_balance = dep_dict.get('__balance__')
+        obj_balance = dep_dict.get("__balance__")
         total = debit - credit
         return (obj_balance / total) * 100
 
 
 class CreditReportField(SlickReportField):
-    name = '__credit__'
-    verbose_name = _('Credit')
+    name = "__credit__"
+    verbose_name = _("Credit")
 
     def final_calculation(self, debit, credit, dep_dict):
         return credit
@@ -401,8 +429,8 @@ field_registry.register(CreditReportField)
 
 
 class DebitReportField(SlickReportField):
-    name = '__debit__'
-    verbose_name = _('Debit')
+    name = "__debit__"
+    verbose_name = _("Debit")
 
     def final_calculation(self, debit, credit, dep_dict):
         return debit
@@ -412,9 +440,9 @@ field_registry.register(DebitReportField)
 
 
 class TotalQTYReportField(SlickReportField):
-    name = '__total_quantity__'
-    verbose_name = _('Total QTY')
-    calculation_field = 'quantity'
+    name = "__total_quantity__"
+    verbose_name = _("Total QTY")
+    calculation_field = "quantity"
     is_summable = False
 
 
@@ -422,9 +450,9 @@ field_registry.register(TotalQTYReportField)
 
 
 class FirstBalanceQTYReportField(FirstBalanceField):
-    name = '__fb_quan__'
-    verbose_name = _('starting QTY')
-    calculation_field = 'quantity'
+    name = "__fb_quan__"
+    verbose_name = _("starting QTY")
+    calculation_field = "quantity"
     is_summable = False
 
 
@@ -432,15 +460,15 @@ field_registry.register(FirstBalanceQTYReportField)
 
 
 class BalanceQTYReportField(SlickReportField):
-    name = '__balance_quantity__'
-    verbose_name = _('Cumulative QTY')
-    calculation_field = 'quantity'
-    requires = ['__fb_quan__']
+    name = "__balance_quantity__"
+    verbose_name = _("Cumulative QTY")
+    calculation_field = "quantity"
+    requires = ["__fb_quan__"]
     is_summable = False
 
     def final_calculation(self, debit, credit, dep_dict):
         # Use `get` so it fails loud if its not there
-        fb = dep_dict.get('__fb_quan__')
+        fb = dep_dict.get("__fb_quan__")
         fb = fb or 0
         return fb + debit - credit
 

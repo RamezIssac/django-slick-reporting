@@ -5,178 +5,201 @@ from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import SlickReportField, PercentageToBalance
 from slick_reporting.generator import ReportGenerator
-from .models import Client, SimpleSales, Product, SalesWithFlag, SalesProductWithCustomID
+from .models import (
+    Client,
+    SimpleSales,
+    Product,
+    SalesWithFlag,
+    SalesProductWithCustomID,
+)
 from .models import OrderLine
 
 
 class GenericGenerator(ReportGenerator):
     report_model = OrderLine
-    date_field = 'order__date_placed'
+    date_field = "order__date_placed"
 
     # here is the meat and potatos of the report,
     # we group the sales per client , we display columns slug and title (of the `base_model` defied above
     # and we add the magic field `__balance__` we compute the client balance.
-    group_by = 'client'
-    columns = ['slug', 'name']
+    group_by = "client"
+    columns = ["slug", "name"]
 
 
 class GeneratorWithAttrAsColumn(GenericGenerator):
-    group_by = 'client'
+    group_by = "client"
 
-    columns = ['get_data', 'slug', 'name']
+    columns = ["get_data", "slug", "name"]
 
     def get_data(self, obj):
-        return ''
+        return ""
 
-    get_data.verbose_name = 'My Verbose Name'
+    get_data.verbose_name = "My Verbose Name"
 
 
 class CrosstabOnClient(GenericGenerator):
-    group_by = 'product'
-    columns = ['name', '__total_quantity__']
-    crosstab_model = 'client'
+    group_by = "product"
+    columns = ["name", "__total_quantity__"]
+    crosstab_model = "client"
     # crosstab_columns = ['__total_quantity__']
-    crosstab_columns = [SlickReportField.create(Sum, 'quantity', name='value__sum', verbose_name=_('Sales'))]
+    crosstab_columns = [
+        SlickReportField.create(
+            Sum, "quantity", name="value__sum", verbose_name=_("Sales")
+        )
+    ]
 
 
 #
 
+
 class ClientTotalBalance(ReportGenerator):
     report_model = SimpleSales
-    date_field = 'doc_date'
-    group_by = 'client'
-    columns = ['slug', 'name', '__balance__', '__total__']
+    date_field = "doc_date"
+    group_by = "client"
+    columns = ["slug", "name", "__balance__", "__total__"]
 
 
 class GroupByCharField(ReportGenerator):
     report_model = SalesWithFlag
-    date_field = 'doc_date'
-    group_by = 'flag'
-    columns = ['flag', '__balance__', SlickReportField.create(Sum, 'quantity')]
+    date_field = "doc_date"
+    group_by = "flag"
+    columns = ["flag", "__balance__", SlickReportField.create(Sum, "quantity")]
 
 
 class GroupByCharFieldPlusTimeSeries(ReportGenerator):
     report_model = SalesWithFlag
-    date_field = 'doc_date'
-    group_by = 'flag'
-    columns = ['flag', SlickReportField.create(Sum, 'quantity')]
+    date_field = "doc_date"
+    group_by = "flag"
+    columns = ["flag", SlickReportField.create(Sum, "quantity")]
 
-    time_series_pattern = 'monthly'
-    time_series_columns = [SlickReportField.create(Sum, 'quantity')]
+    time_series_pattern = "monthly"
+    time_series_columns = [SlickReportField.create(Sum, "quantity")]
 
 
 class ClientTotalBalancesOrdered(ClientTotalBalance):
     report_slug = None
-    default_order_by = '__balance__'
+    default_order_by = "__balance__"
 
 
 class ClientTotalBalancesOrderedDESC(ClientTotalBalance):
     report_slug = None
-    default_order_by = '-__balance__'
+    default_order_by = "-__balance__"
 
 
 class ProductTotalSales(ReportGenerator):
     report_model = SimpleSales
-    date_field = 'doc_date'
-    group_by = 'product'
-    columns = ['slug', 'name', '__balance__', '__balance_quantity__', 'get_object_sku', 'average_value']
-
+    date_field = "doc_date"
+    group_by = "product"
+    columns = [
+        "slug",
+        "name",
+        "__balance__",
+        "__balance_quantity__",
+        "get_object_sku",
+        "average_value",
+    ]
 
     def get_object_sku(self, obj, data):
-        return obj['sku'].upper()
-    get_object_sku.verbose_name = 'SKU ALL CAPS'
+        return obj["sku"].upper()
+
+    get_object_sku.verbose_name = "SKU ALL CAPS"
 
     def average_value(self, obj, data):
-        return data['__balance__'] / data['__balance_quantity__']
-    average_value.verbose_name = 'Average Value'
+        return data["__balance__"] / data["__balance_quantity__"]
+
+    average_value.verbose_name = "Average Value"
 
 
 class ProductTotalSalesProductWithCustomID(ReportGenerator):
     report_model = SalesProductWithCustomID
-    date_field = 'doc_date'
-    group_by = 'product'
-    columns = ['slug', 'name', '__balance__', '__balance_quantity__']
+    date_field = "doc_date"
+    group_by = "product"
+    columns = ["slug", "name", "__balance__", "__balance_quantity__"]
 
 
 class ProductTotalSalesWithPercentage(ReportGenerator):
     report_model = SimpleSales
-    date_field = 'doc_date'
-    group_by = 'client'
-    columns = ['slug', 'name',
-               '__balance__',
-               '__balance_quantity__', PercentageToBalance]
+    date_field = "doc_date"
+    group_by = "client"
+    columns = [
+        "slug",
+        "name",
+        "__balance__",
+        "__balance_quantity__",
+        PercentageToBalance,
+    ]
 
 
 class ClientList(ReportGenerator):
-    report_title = _('Our Clients')
+    report_title = _("Our Clients")
 
     # report_slug = 'client_list'
     base_model = Client
     report_model = SimpleSales
 
-    group_by = 'client'
-    columns = ['slug', 'name']
+    group_by = "client"
+    columns = ["slug", "name"]
 
 
 class ProductClientSales(ReportGenerator):
     report_model = SimpleSales
 
-    report_slug = 'client_sales_of_products'
-    report_title = _('Client net sales for each product')
-    must_exist_filter = 'client_id'
+    report_slug = "client_sales_of_products"
+    report_title = _("Client net sales for each product")
+    must_exist_filter = "client_id"
     header_report = ClientList
 
-    group_by = 'product'
-    columns = ['slug', 'name', '__balance_quantity__', '__balance__', 'get_data']
+    group_by = "product"
+    columns = ["slug", "name", "__balance_quantity__", "__balance__", "get_data"]
 
     def get_data(self, obj):
-        return ''
+        return ""
 
 
 class ProductSalesMonthlySeries(ReportGenerator):
     base_model = Product
     report_model = SimpleSales
-    report_title = _('Product Sales Monthly')
+    report_title = _("Product Sales Monthly")
 
-    group_by = 'product'
-    columns = ['slug', 'name']
-    time_series_pattern = 'monthly',
-    time_series_columns = ['__balance_quantity__', '__balance__']
+    group_by = "product"
+    columns = ["slug", "name"]
+    time_series_pattern = ("monthly",)
+    time_series_columns = ["__balance_quantity__", "__balance__"]
 
     chart_settings = [
         {
-            'id': 'movement_column',
-            'name': _('comparison - column'),
-            'settings': {
-                'chart_type': 'column',
-                'name': _('{product} Avg. purchase price '),
-                'sub_title': _('{date_verbose}'),
-                'y_sources': ['__balance__'],
-                'series_names': [_('Avg. purchase price')],
-            }
+            "id": "movement_column",
+            "name": _("comparison - column"),
+            "settings": {
+                "chart_type": "column",
+                "name": _("{product} Avg. purchase price "),
+                "sub_title": _("{date_verbose}"),
+                "y_sources": ["__balance__"],
+                "series_names": [_("Avg. purchase price")],
+            },
         },
         {
-            'id': 'movement_line',
-            'name': _('comparison - line'),
-            'settings': {
-                'chart_type': 'line',
-                'name': _('{product} Avg. purchase price '),
-                'sub_title': _('{date_verbose}'),
-                'y_sources': ['__balance__'],
-                'series_names': [_('Avg. purchase price')],
-            }
+            "id": "movement_line",
+            "name": _("comparison - line"),
+            "settings": {
+                "chart_type": "line",
+                "name": _("{product} Avg. purchase price "),
+                "sub_title": _("{date_verbose}"),
+                "y_sources": ["__balance__"],
+                "series_names": [_("Avg. purchase price")],
+            },
         },
     ]
 
 
 class TimeSeriesCustomDates(ReportGenerator):
     report_model = SimpleSales
-    report_title = _('Product Sales Monthly')
-    date_field = 'doc_date'
+    report_title = _("Product Sales Monthly")
+    date_field = "doc_date"
     # group_by = 'product'
     # columns = ['slug', 'name']
-    time_series_pattern = 'custom'
-    time_series_columns = ['__total__']
+    time_series_pattern = "custom"
+    time_series_columns = ["__total__"]
     time_series_custom_dates = [
         (datetime.date(2020, 1, 1), datetime.date(2020, 1, 17)),
         (datetime.date(2020, 4, 17), datetime.date(2020, 5, 1)),
@@ -186,12 +209,12 @@ class TimeSeriesCustomDates(ReportGenerator):
 
 class TimeSeriesWithOutGroupBy(ReportGenerator):
     report_model = SimpleSales
-    report_title = _('Product Sales Monthly')
-    date_field = 'doc_date'
+    report_title = _("Product Sales Monthly")
+    date_field = "doc_date"
     # group_by = 'product'
     # columns = ['slug', 'name']
-    time_series_pattern = 'monthly'
-    time_series_columns = ['__total__']
+    time_series_pattern = "monthly"
+    time_series_columns = ["__total__"]
 
 
 class ClientReportMixin:
@@ -201,12 +224,12 @@ class ClientReportMixin:
 
 class ClientSalesMonthlySeries(ReportGenerator):
     report_model = SimpleSales
-    date_field = 'doc_date'
+    date_field = "doc_date"
 
-    group_by = 'client'
-    columns = ['slug', 'name']
-    time_series_pattern = 'monthly'
-    time_series_columns = ['__debit__', '__credit__', '__balance__', '__total__']
+    group_by = "client"
+    columns = ["slug", "name"]
+    time_series_pattern = "monthly"
+    time_series_columns = ["__debit__", "__credit__", "__balance__", "__total__"]
 
 
 #
@@ -214,50 +237,70 @@ class ClientSalesMonthlySeries(ReportGenerator):
 
 class ClientDetailedStatement(ReportGenerator):
     report_model = SimpleSales
-    date_field = 'doc_date'
+    date_field = "doc_date"
     group_by = None
-    columns = ['slug', 'doc_date', 'product__name', 'quantity', 'price', 'value']
+    columns = ["slug", "doc_date", "product__name", "quantity", "price", "value"]
 
 
 class ClientDetailedStatement2(ReportGenerator):
-    report_title = _('client statement')
+    report_title = _("client statement")
     base_model = Client
     report_model = SimpleSales
 
     header_report = ClientList
-    must_exist_filter = 'client_id'
+    must_exist_filter = "client_id"
 
     form_settings = {
-        'group_by': '',
-        'group_columns': ['slug', 'doc_date', 'doc_type', 'product__title', 'quantity', 'price', 'value'],
+        "group_by": "",
+        "group_columns": [
+            "slug",
+            "doc_date",
+            "doc_type",
+            "product__title",
+            "quantity",
+            "price",
+            "value",
+        ],
     }
     group_by = None
-    columns = ['slug', 'doc_date', 'doc_type', 'product__title', 'quantity', 'price', 'value']
+    columns = [
+        "slug",
+        "doc_date",
+        "doc_type",
+        "product__title",
+        "quantity",
+        "price",
+        "value",
+    ]
 
 
 class ProductClientSalesMatrix(ReportGenerator):
     report_model = SimpleSales
-    date_field = 'doc_date'
+    date_field = "doc_date"
 
-    group_by = 'product'
-    columns = ['slug', 'name']
+    group_by = "product"
+    columns = ["slug", "name"]
 
-    crosstab_model = 'client'
-    crosstab_columns = ['__total__']
+    crosstab_model = "client"
+    crosstab_columns = ["__total__"]
 
 
 class ProductClientSalesMatrix2(ReportGenerator):
     report_model = SimpleSales
-    date_field = 'doc_date'
+    date_field = "doc_date"
 
-    group_by = 'product'
-    columns = ['slug', 'name']
+    group_by = "product"
+    columns = ["slug", "name"]
 
-    crosstab_model = 'client'
-    crosstab_columns = [SlickReportField.create(Sum, 'value', name='value__sum', verbose_name=_('Sales'))]
+    crosstab_model = "client"
+    crosstab_columns = [
+        SlickReportField.create(
+            Sum, "value", name="value__sum", verbose_name=_("Sales")
+        )
+    ]
 
 
 class ClientTotalBalancesWithShowEmptyFalse(ClientTotalBalance):
     report_slug = None
-    default_order_by = '-__balance__'
+    default_order_by = "-__balance__"
     show_empty_records = False

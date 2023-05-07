@@ -15,7 +15,7 @@ def report_field_register(report_field, *args, **kwargs):
 
     def _model_admin_wrapper(admin_class):
         if not issubclass(admin_class, SlickReportField):
-            raise ValueError('Wrapped class must subclass SlickReportField.')
+            raise ValueError("Wrapped class must subclass SlickReportField.")
 
         field_registry.register(report_field)
 

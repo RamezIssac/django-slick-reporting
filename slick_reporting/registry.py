@@ -16,7 +16,9 @@ class ReportFieldRegistry(object):
         :return: report_field passed
         """
         if report_field.name in self._registry and not override:
-            raise AlreadyRegistered(f'The field name {report_field.name} is used before and `override` is False')
+            raise AlreadyRegistered(
+                f"The field name {report_field.name} is used before and `override` is False"
+            )
 
         self._registry[report_field.name] = report_field
         return report_field
@@ -37,7 +39,8 @@ class ReportFieldRegistry(object):
             return self._registry[name]
         else:
             raise KeyError(
-                f'{name} is not found in the report field registry. Options are {",".join(self.get_all_report_fields_names())}')
+                f'{name} is not found in the report field registry. Options are {",".join(self.get_all_report_fields_names())}'
+            )
 
     def get_all_report_fields_names(self):
         return list(self._registry.keys())
