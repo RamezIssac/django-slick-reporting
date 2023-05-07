@@ -124,7 +124,8 @@ class ReportGenerator(object):
                  crosstab_model=None, crosstab_columns=None, crosstab_ids=None, crosstab_compute_reminder=None,
                  swap_sign=False, show_empty_records=None,
                  print_flag=False,
-                 doc_type_plus_list=None, doc_type_minus_list=None, limit_records=False, format_row_func=None):
+                 doc_type_plus_list=None, doc_type_minus_list=None, limit_records=False, format_row_func=None,
+                 container_class=None):
         """
 
         :param report_model: Main model containing the data
@@ -164,8 +165,6 @@ class ReportGenerator(object):
         self.end_date = end_date or datetime.datetime.combine(SLICK_REPORTING_DEFAULT_END_DATE.date(),
                                                               SLICK_REPORTING_DEFAULT_END_DATE.time())
         self.date_field = self.date_field or date_field
-        if not self.date_field:
-            raise ImproperlyConfigured('date_field must be set on a class level or via init')
 
         self.q_filters = q_filters or []
         self.kwargs_filters = kwargs_filters or {}
@@ -186,6 +185,10 @@ class ReportGenerator(object):
         self.time_series_pattern = self.time_series_pattern or time_series_pattern
         self.time_series_columns = self.time_series_columns or time_series_columns
         self.time_series_custom_dates = self.time_series_custom_dates or time_series_custom_dates
+        self.container_class = container_class
+
+        if not self.date_field and (self.time_series_pattern or self.crosstab_model or self.group_by):
+            raise ImproperlyConfigured('date_field must be set on a class level or via init')
 
         self._prepared_results = {}
         self.report_fields_classes = {}
@@ -267,11 +270,12 @@ class ReportGenerator(object):
         :param fields:
         :return:
         """
-
-        filters = {
-            f'{self.date_field}__gt': self.start_date,
-            f'{self.date_field}__lte': self.end_date,
-        }
+        filters = {}
+        if self.date_field:
+            filters = {
+                f'{self.date_field}__gt': self.start_date,
+                f'{self.date_field}__lte': self.end_date,
+            }
         filters.update(self.kwargs_filters)
 
         if filters:
@@ -309,7 +313,8 @@ class ReportGenerator(object):
                     # check if any of these dependencies is on the report, if found we call the child to
                     # resolve the value for its parent avoiding extra database call
                     fields_on_report = [x for x in window_cols if x['ref'] in dependencies_names
-                                        and ((window == 'time_series' and x.get('start_date', '') == col_data.get('start_date', '') and x.get('end_date') == col_data.get('end_date')) or
+                                        and ((window == 'time_series' and x.get('start_date', '') == col_data.get(
+                        'start_date', '') and x.get('end_date') == col_data.get('end_date')) or
                                              window == 'crosstab' and x.get('id') == col_data.get('id'))]
                     for field in fields_on_report:
                         self._report_fields_dependencies[window][field['name']] = col_data['name']
@@ -372,6 +377,8 @@ class ReportGenerator(object):
 
                 if col_data.get('source', '') == 'attribute_field':
                     data[name] = col_data['ref'](self, obj, data)
+                elif col_data.get('source', '') == 'container_class_attribute_field':
+                    data[name] = col_data['ref'](obj, data)
 
                 elif (col_data.get('source', '') == 'magic_field' and self.group_by) or (
                         self.time_series_pattern and not self.group_by):
@@ -416,12 +423,13 @@ class ReportGenerator(object):
         return row_obj
 
     @classmethod
-    def check_columns(cls, columns, group_by, report_model, ):
+    def check_columns(cls, columns, group_by, report_model, container_class=None):
         """
         Check and parse the columns, throw errors in case an item in the columns cant not identified
         :param columns: List of columns
         :param group_by: group by field if any
         :param report_model: the report model
+        :param container_class: a class to search for custom columns attribute in, typically the SlickReportView
         :return: List of dict, each dict contains relevant data to the respective field in `columns`
         """
         group_by_field = ''
@@ -448,9 +456,14 @@ class ReportGenerator(object):
 
             magic_field_class = None
             attribute_field = None
+            is_container_class_attribute = False
 
             if type(col) is str:
                 attribute_field = getattr(cls, col, None)
+                if attribute_field is None:
+                    is_container_class_attribute = True
+                    attribute_field = getattr(container_class, col, None)
+
             elif issubclass(col, SlickReportField):
                 magic_field_class = col
 
@@ -462,7 +475,7 @@ class ReportGenerator(object):
             if attribute_field:
                 col_data = {'name': col,
                             'verbose_name': getattr(attribute_field, 'verbose_name', col),
-                            'source': 'attribute_field',
+                            'source': 'container_class_attribute_field' if is_container_class_attribute else 'attribute_field',
                             'ref': attribute_field,
                             'type': 'text'
                             }
@@ -490,22 +503,26 @@ class ReportGenerator(object):
                     else:
                         field = model_to_use._meta.get_field(col)
                 except FieldDoesNotExist:
-                    raise FieldDoesNotExist(
-                        f'Field "{col}" not found either as an attribute to the generator class {cls}, '
-                        f'or a computation field, or a database column for the model "{model_to_use}"')
+                    field = getattr(container_class, col, False)
+
+                    if not field:
+                        raise FieldDoesNotExist(
+                            f'Field "{col}" not found either as an attribute to the generator class {cls}, '
+                            f'{f"Container class {container_class}," if container_class else ""}'
+                            f'or a computation field, or a database column for the model "{model_to_use}"')
 
                 col_data = {'name': col,
                             'verbose_name': getattr(field, 'verbose_name', col),
                             'source': 'database',
                             'ref': field,
-                            'type': field.get_internal_type()
+                            'type': 'choice' if field.choices else field.get_internal_type(),
                             }
             col_data.update(options)
             parsed_columns.append(col_data)
         return parsed_columns
 
     def _parse(self):
-        self.parsed_columns = self.check_columns(self.columns, self.group_by, self.report_model)
+        self.parsed_columns = self.check_columns(self.columns, self.group_by, self.report_model, self.container_class)
         self._parsed_columns = list(self.parsed_columns)
         self._time_series_parsed_columns = self.get_time_series_parsed_columns()
         self._crosstab_parsed_columns = self.get_crosstab_parsed_columns()
@@ -732,3 +749,80 @@ class ReportGenerator(object):
             x['engine_name'] = x.get('engine_name', SLICK_REPORTING_DEFAULT_CHARTS_ENGINE)
             output.append(x)
         return output
+
+
+class ListViewReportGenerator(ReportGenerator):
+
+    def _apply_queryset_options(self, query, fields=None):
+        """
+        Apply the filters to the main queryset which will computed results be mapped to
+        :param query:
+        :param fields:
+        :return:
+        """
+        filters = {}
+        if self.date_field:
+            filters = {
+                f'{self.date_field}__gt': self.start_date,
+                f'{self.date_field}__lte': self.end_date,
+            }
+        filters.update(self.kwargs_filters)
+
+        if filters:
+            query = query.filter(**filters)
+        # if fields:
+        #     return query.values(*fields)
+        return query
+
+    def _get_record_data(self, obj, columns):
+        """
+        the function is run for every obj in the main_queryset
+        :param obj: current row
+        :param: columns： The columns we iterate on
+        :return: a dict object containing all needed data
+        """
+
+        data = {}
+        group_by_val = None
+        if self.group_by:
+            if self.group_by_field.related_model and '__' not in self.group_by:
+                primary_key_name = self.get_primary_key_name(self.group_by_field.related_model)
+            else:
+                primary_key_name = self.group_by_field_attname
+
+            column_data = obj.get(primary_key_name, obj.get('id'))
+            group_by_val = str(column_data)
+
+        for window, window_cols in columns:
+            for col_data in window_cols:
+
+                name = col_data['name']
+
+                if col_data.get('source', '') == 'attribute_field':
+                    data[name] = col_data['ref'](self, obj, data)
+                    # changed line
+                elif col_data.get('source', '') == 'container_class_attribute_field':
+                    data[name] = col_data['ref'](obj)
+
+                elif (col_data.get('source', '') == 'magic_field' and self.group_by) or (
+                        self.time_series_pattern and not self.group_by):
+                    source = self._report_fields_dependencies[window].get(name, False)
+                    if source:
+                        computation_class = self.report_fields_classes[source]
+                        value = computation_class.get_dependency_value(group_by_val,
+                                                                       col_data['ref'].name)
+                    else:
+                        try:
+                            computation_class = self.report_fields_classes[name]
+                        except KeyError:
+                            continue
+                        value = computation_class.resolve(group_by_val, data)
+                    if self.swap_sign: value = -value
+                    data[name] = value
+
+                else:
+                    if col_data.get('type', '') == 'choice':
+                        data[name] = getattr(obj, f"get_{name}_display", '')()
+                    else:
+                        data[name] = getattr(obj, name, '')
+        return data

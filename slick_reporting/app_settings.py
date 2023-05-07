@@ -4,6 +4,8 @@ from django.utils.functional import lazy
 
 import datetime
 
+from django.utils.timezone import now
+
 
 def get_first_of_this_year():
     d = datetime.datetime.today()
@@ -21,8 +23,8 @@ def get_start_date():
 
 
 def get_end_date():
-    start_date = getattr(settings, 'SLICK_REPORTING_DEFAULT_END_DATE', False)
-    return start_date or get_end_of_this_year()
+    end_date = getattr(settings, 'SLICK_REPORTING_DEFAULT_END_DATE', False)
+    return end_date or datetime.datetime.today()
 
 
 SLICK_REPORTING_DEFAULT_START_DATE = lazy(get_start_date, datetime.datetime)()

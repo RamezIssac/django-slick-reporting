@@ -7,16 +7,39 @@ What is SlickReportView?
 -----------------------
 
 SlickReportView is a CBV that inherits form ``FromView`` and expose the report generator needed attributes.
-it also
+Also
 
 * Auto generate the search form
 * return the results as a json response if ajax request
 * Works on GET and POST
+* Export to CSV (extendable to apply other exporting method)
+
 
 How the search form is generated ?
 -----------------------------------
 Behind the scene, Sample report calls ``slick_reporting.form_factory.report_form_factory``
 a helper method which generates a form containing start date and end date, as well as all foreign keys on the report_model.
+
+
+Export to CSV
+--------------
+To trigger an export to CSV, just add ``?_export=csv`` to the url.
+This will call the export_csv on the view class, engaging a `ExportToStreamingCSV`
+
+You can extend the functionality, say you want to export to pdf.
+Add a ``export_pdf`` method to the view class, accepting the report_data json response and return the response you want.
+This ``export_pdf` will be called automatically when url parameter contain ``?_export=pdf``
+
+Having an `_export` parameter not implemented, to say the view class do not implement ``export_{parameter_name}``,  will be ignored.
+
+SlickReportingListView
+-----------------------
+This is a simple ListView to display data in a model, like you would with an admin ChangeList view.
+It's a simple ListView with a few extra features:
+
+filters: a list of report_model fields to be used as filters.
+
+
 
 Override the Form
 ------------------
