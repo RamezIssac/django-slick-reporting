@@ -24,7 +24,7 @@ def get_start_date():
 
 def get_end_date():
     end_date = getattr(settings, 'SLICK_REPORTING_DEFAULT_END_DATE', False)
-    return end_date or now() #get_end_of_this_year()
+    return end_date or datetime.datetime.today()
 
 
 SLICK_REPORTING_DEFAULT_START_DATE = lazy(get_start_date, datetime.datetime)()

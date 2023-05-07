@@ -429,6 +429,7 @@ class ReportGenerator(object):
         :param columns: List of columns
         :param group_by: group by field if any
         :param report_model: the report model
+        :param container_class: a class to search for custom columns attribute in, typically the SlickReportView
         :return: List of dict, each dict contains relevant data to the respective field in `columns`
         """
         group_by_field = ''

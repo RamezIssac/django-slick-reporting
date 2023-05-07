@@ -1,5 +1,4 @@
 from datetime import datetime
-from unittest import skip
 
 import pytz
 from django.db.models import Sum

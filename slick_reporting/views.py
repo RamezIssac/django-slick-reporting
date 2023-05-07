@@ -368,26 +368,20 @@ class SlickReportingListView(SlickReportViewBase):
         q_filters, kw_filters = self.get_form_filters(self.form)
 
         return self.report_generator_class(self.get_report_model(),
-                                           # start_date=self.form.cleaned_data['start_date'],
-                                           # end_date=self.form.cleaned_data['end_date'],
                                            q_filters=q_filters,
                                            kwargs_filters=kw_filters,
                                            date_field=self.date_field,
                                            main_queryset=queryset,
                                            print_flag=for_print,
                                            limit_records=self.limit_records,
-
                                            columns=self.columns,
-
                                            format_row_func=self.format_row,
-                                           container_class=self
-                                           )
+                                           container_class=self)
 
     def get_form_class(self):
 
         return modelform_factory(self.get_report_model(), fields=self.filters,
                                  formfield_callback=default_formfield_callback)
-
 
     def get_report_results(self, for_print=False):
         """
