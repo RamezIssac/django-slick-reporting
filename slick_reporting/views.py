@@ -20,7 +20,8 @@ from .form_factory import (
     get_crispy_helper,
     default_formfield_callback,
 )
-from .generator import ReportGenerator, ListViewReportGenerator
+from .generator import ReportGenerator, ListViewReportGenerator, Chart
+
 
 
 class ExportToCSV(object):

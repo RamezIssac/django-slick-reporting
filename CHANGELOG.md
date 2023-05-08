@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - You don't need to set date_field if don't you have calculations on the report
 - Easier customization of the crispy form layout
 - Enhance weekly time series default column name
+- Add `Chart` data class to hold chart data
 
 ## [0.6.8]
 

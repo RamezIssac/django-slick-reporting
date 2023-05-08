@@ -2,9 +2,11 @@ from __future__ import unicode_literals
 
 import datetime
 import logging
+from dataclasses import dataclass
+from inspect import isclass
+
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
 from django.db.models import Q, ForeignKey
-from inspect import isclass
 
 from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import SlickReportField
@@ -12,6 +14,31 @@ from .helpers import get_field_from_query_text
 from .registry import field_registry
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class Chart:
+    title: str
+    type: str
+    data_source: list
+    title_source: list
+    plot_total: bool = False
+    engine: str = SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
+    COLUMN = "column"
+    LINE = "line"
+    PIE = "pie"
+    BAR = "bar"
+    AREA = "area"
+
+    def to_dict(self):
+        return dict(
+            title=self.title,
+            type=self.type,
+            data_source=self.data_source,
+            title_source=self.title_source,
+            plot_total=self.plot_total,
+            engine=self.engine,
+        )
 
 
 class ReportGenerator(object):
@@ -883,14 +910,17 @@ class ReportGenerator(object):
         output = []
         chart_settings = chart_settings or []
         report_title = default_chart_title or ""
-        for i, x in enumerate(chart_settings):
-            x["id"] = x.get("id", f"{x['type']}-{i}")
-            if not x.get("title", False):
-                x["title"] = report_title
-            x["engine_name"] = x.get(
+        for i, chart in enumerate(chart_settings):
+            if type(chart) is Chart:
+                chart = chart.to_dict()
+
+            chart["id"] = chart.get("id", f"{chart['type']}-{i}")
+            if not chart.get("title", False):
+                chart["title"] = report_title
+            chart["engine_name"] = chart.get(
                 "engine_name", SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
             )
-            output.append(x)
+            output.append(chart)
         return output
 
 
