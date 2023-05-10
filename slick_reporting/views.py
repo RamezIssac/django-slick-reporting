@@ -23,7 +23,6 @@ from .form_factory import (
 from .generator import ReportGenerator, ListViewReportGenerator, Chart
 
 
-
 class ExportToCSV(object):
     def get_filename(self):
         return self.report_title
