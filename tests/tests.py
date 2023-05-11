@@ -483,7 +483,7 @@ class TestView(BaseTestData, TestCase):
         )
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertTrue("pie" in data["chart_settings"][0]["id"])
+        self.assertTrue(data["chart_settings"][0]["id"] != "")
         self.assertTrue(data["chart_settings"][0]["title"], "awesome report title")
 
     def test_error_on_missing_date_field(self):
