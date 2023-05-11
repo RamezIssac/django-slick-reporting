@@ -914,7 +914,14 @@ class ReportGenerator(object):
             if type(chart) is Chart:
                 chart = chart.to_dict()
 
-            chart["id"] = chart.get("id", f"{chart['type']}-{i}")
+            chart["id"] = chart.get("id", f"{i}")
+            chart_type = chart.get("type", "line")
+            if (
+                chart_type == "column"
+                and SLICK_REPORTING_DEFAULT_CHARTS_ENGINE == "chartsjs"
+            ):
+                chart["type"] = "bar"
+
             if not chart.get("title", False):
                 chart["title"] = report_title
             chart["engine_name"] = chart.get(
