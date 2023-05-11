@@ -609,7 +609,7 @@ class ReportGenerator(object):
             elif magic_field_class:
                 # a magic field
                 col_data = {
-                    "name": magic_field_class.name,
+                    "name": magic_field_class.get_name(),
                     "verbose_name": magic_field_class.verbose_name,
                     "source": "magic_field",
                     "ref": magic_field_class,
@@ -718,10 +718,10 @@ class ReportGenerator(object):
 
                 _values.append(
                     {
-                        "name": magic_field_class.name
+                        "name": magic_field_class.get_name()
                         + "TS"
                         + dt[1].strftime("%Y%m%d"),
-                        "original_name": magic_field_class.name,
+                        "original_name": magic_field_class.get_name(),
                         "verbose_name": self.get_time_series_field_verbose_name(
                             magic_field_class, dt, index, series
                         ),

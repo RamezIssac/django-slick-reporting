@@ -222,6 +222,33 @@ class ClientReportMixin:
     report_model = SimpleSales
 
 
+class TotalValue(SlickReportField):
+    calculation_method = Sum
+    calculation_field = "value"
+    is_summable = True
+    verbose_name = _("Total Value")
+    name = "total_value"
+
+    def final_calculation(self, debit, credit, dep_dict):
+        result = super().final_calculation(debit, credit, dep_dict)
+        print(result)
+        return round(result, 2)
+
+
+class PercentageToTotal(SlickReportField):
+    requires = (TotalValue,)
+    prevent_group_by = True
+    is_summable = True
+    name = "percentage_to_total"
+    verbose_name = _("% Total")
+
+    def final_calculation(self, debit, credit, dep_dict):
+        try:
+            return round((debit or 0 - credit or 0) / dep_dict.get("total_value", 0), 2)
+        except ZeroDivisionError:
+            return 0
+
+
 class ClientSalesMonthlySeries(ReportGenerator):
     report_model = SimpleSales
     date_field = "doc_date"
@@ -229,7 +256,14 @@ class ClientSalesMonthlySeries(ReportGenerator):
     group_by = "client"
     columns = ["slug", "name"]
     time_series_pattern = "monthly"
-    time_series_columns = ["__debit__", "__credit__", "__balance__", "__total__"]
+    time_series_columns = [
+        "__debit__",
+        "__credit__",
+        "__balance__",
+        "__total__",
+        TotalValue,
+        PercentageToTotal,
+    ]
 
 
 #

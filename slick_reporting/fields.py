@@ -1,5 +1,6 @@
 import uuid
 
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Sum
 from django.template.defaultfilters import date as date_filter
 from django.utils.translation import gettext_lazy as _
@@ -53,6 +54,15 @@ class SlickReportField(object):
     """Will prevent group by calculation for this specific field, serves when you want to compute overall results"""
 
     @classmethod
+    def get_name(cls, method=None, field=None):
+        method = method or cls.calculation_method
+        field = field or cls.calculation_field
+        name = f"{method.name.lower()}__{field}"
+        if name in cls._field_registry.get_all_report_fields_names():
+            raise ImproperlyConfigured(f"{cls} has not unique name {name}")
+        return name
+
+    @classmethod
     def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
         """
         Creates a ReportField class on the fly
@@ -64,10 +74,7 @@ class SlickReportField(object):
         :return:
         """
         if not name:
-            identifier = str(uuid.uuid4()).split("-")[-1]
-            name = name or f"{method.name.lower()}__{field}"
-            assert name not in cls._field_registry.get_all_report_fields_names()
-
+            name = cls.get_name(method, field)
         verbose_name = verbose_name or f"{method.name} {field}"
         report_klass = type(
             f"ReportField_{name}",
@@ -111,6 +118,10 @@ class SlickReportField(object):
 
         if not self.plus_side_q and not self.minus_side_q:
             self._debit_and_credit = False
+
+        self.name = self.name or self.get_name(
+            self.__class__, self.calculation_method, self.calculation_field
+        )
 
     @classmethod
     def _get_required_classes(cls):
@@ -347,6 +358,7 @@ class SlickReportField(object):
         :param dates a list of tuples representing the start and the end date
         :return: a verbose string
         """
+        # todo make it easy to customize the format
         dt_format = "%Y/%m/%d"
 
         if pattern == "monthly":

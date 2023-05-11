@@ -17,7 +17,7 @@ class ReportFieldRegistry(object):
         """
         if report_field.name in self._registry and not override:
             raise AlreadyRegistered(
-                f"The field name {report_field.name} is used before and `override` is False"
+                f"The field name {report_field.get_name()} is used before and `override` is False"
             )
 
         self._registry[report_field.name] = report_field
