@@ -52,6 +52,17 @@ class SlickReportField(object):
     prevent_group_by = False
     """Will prevent group by calculation for this specific field, serves when you want to compute overall results"""
 
+    def __new__(cls, *args, **kwargs):
+        """
+        This is where we register the class in the registry
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        if not cls.name:
+            raise ValueError(f"ReportField {cls} must have a name")
+        return super(SlickReportField, cls).__new__(cls)
+
     @classmethod
     def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
         """
@@ -136,7 +147,7 @@ class SlickReportField(object):
 
     def init_preparation(self, q_filters=None, kwargs_filters=None, **kwargs):
         """
-        Called by the generator to preparet he calculation of this field + it's requirements
+        Called by the generator to prepare the calculation of this field + it's requirements
         :param q_filters:
         :param kwargs_filters:
         :param kwargs:

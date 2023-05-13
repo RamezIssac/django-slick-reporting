@@ -189,8 +189,8 @@
                 percent: 'Percent',
             },
             credits: {
-                text: 'RaSystems.io',
-                href: 'https://rasystems.io'
+                // text: 'RaSystems.io',
+                // href: 'https://rasystems.io'
             },
             notify_error: function () {
             },
