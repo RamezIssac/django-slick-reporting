@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
   the UI.
 - Added ability to export to CSV from UI, using `ExportToStreamingCSV` & `ExportToCSV`
 - Now you can have a custom column defined on the SlickReportView (and not needing to customise the report generator).
-- You don't need to set date_field if don't you have calculations on the report
+- You don't need to set date_field if you don't have calculations on the report
 - Easier customization of the crispy form layout
 - Enhance weekly time series default column name
 - Add `Chart` data class to hold chart data
