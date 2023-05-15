@@ -6,6 +6,7 @@
 
     var COLORS = ['#7cb5ec', '#f7a35c', '#90ee7e', '#7798BF', '#aaeeee', '#ff0066', '#eeaaee', '#55BF3B', '#DF5353', '#7798BF', '#aaeeee'];
 
+    let _chart_cache = {};
     function is_time_series(response, chartOptions) {
         if (chartOptions.time_series_support === false) return false;
         return response['metadata']['time_series_pattern'] !== ""
@@ -66,8 +67,6 @@
         }
         return chartObject
     }
-
-
 
 
     function extractDataFromResponse(response, chartOptions) {
@@ -154,12 +153,34 @@
         return COLORS
     }
 
+    function displayChart(data, $elem, chart_id) {
+        chart_id = chart_id || $elem.attr('data-report-default-chart') || '';
+        // let chart = $elem;
+        // let chartObject = getObjFromArray(data.chart_settings, 'id', chart_id, true);
+        let cache_key = data.report_slug
+        try {
+            let existing_chart = _chart_cache[cache_key];
+            if (typeof (existing_chart) !== 'undefined') {
+                existing_chart.destroy();
+            }
+        } catch (e) {
+            console.error(e)
+        }
 
-    if (typeof($.slick_reporting) === 'undefined') {
+        let chartObject = $.slick_reporting.chartsjs.createChartObject(data, chart_id);
+        // _chart_cache[cache_key] = chart.highcharts(chartObject);
+        var $chart = $elem.find('canvas');
+        _chart_cache[cache_key] = new Chart($chart, chartObject);
+
+    }
+
+
+    if (typeof ($.slick_reporting) === 'undefined') {
         $.slick_reporting = {}
     }
     $.slick_reporting.chartsjs = {
         createChartObject: createChartObject,
+        displayChart: displayChart,
         defaults: {
             // normalStackedTooltipFormatter: normalStackedTooltipFormatter,
             messages: {
@@ -168,8 +189,8 @@
                 percent: 'Percent',
             },
             credits: {
-                text: 'RaSystems.io',
-                href: 'https://rasystems.io'
+                // text: 'RaSystems.io',
+                // href: 'https://rasystems.io'
             },
             notify_error: function () {
             },

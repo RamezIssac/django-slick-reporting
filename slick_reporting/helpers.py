@@ -11,7 +11,7 @@ def get_calculation_annotation(calculation_field, calculation_method):
     @return: the annotation ex value__sum
     """
 
-    return '__'.join([calculation_field.lower(), calculation_method.name.lower()])
+    return "__".join([calculation_field.lower(), calculation_method.name.lower()])
 
 
 def get_foreign_keys(model):
@@ -21,13 +21,17 @@ def get_foreign_keys(model):
     :return: Ordered Dict
     """
     from django.db import models
+
     fields = model._meta.get_fields()
     fkeys = OrderedDict()
     for f in fields:
-        if f.is_relation and type(f) is not models.OneToOneRel \
-                and type(f) is not models.ManyToOneRel \
-                and type(f) is not models.ManyToManyRel \
-                and type(f) is not GenericForeignKey:
+        if (
+            f.is_relation
+            and type(f) is not models.OneToOneRel
+            and type(f) is not models.ManyToOneRel
+            and type(f) is not models.ManyToManyRel
+            and type(f) is not GenericForeignKey
+        ):
             fkeys[f.attname] = f
     return fkeys
 
@@ -40,7 +44,7 @@ def get_field_from_query_text(path, model):
     :param model:
     :return:
     """
-    relations = path.split('__')
+    relations = path.split("__")
     _rel = model
     field = None
     for i, m in enumerate(relations):
