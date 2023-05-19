@@ -75,6 +75,7 @@ Next step :ref:`structure`
 
    concept
    the_view
+   time_series_options
    report_generator
    computation_field
 
