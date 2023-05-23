@@ -452,6 +452,7 @@ class DebitReportField(SlickReportField):
 class CreditQuantityReportField(SlickReportField):
     name = "__credit_quantity__"
     verbose_name = _("Credit QTY")
+    calculation_field = "quantity"
     is_summable = False
 
     def final_calculation(self, debit, credit, dep_dict):
@@ -461,6 +462,7 @@ class CreditQuantityReportField(SlickReportField):
 @field_registry.register
 class DebitQuantityReportField(SlickReportField):
     name = "__debit_quantity__"
+    calculation_field = "quantity"
     verbose_name = _("Debit QTY")
     is_summable = False
 
