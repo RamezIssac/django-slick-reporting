@@ -345,7 +345,7 @@ class SlickReportField(object):
         :return: a verbose string
         """
         if id == "----":
-            return _("The reminder")
+            return _("The remainder")
         return f"{cls.verbose_name} {model} {id}"
 
     @classmethod

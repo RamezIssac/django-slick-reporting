@@ -97,6 +97,7 @@ class BaseReportForm:
 
     @cached_property
     def crosstab_key_name(self):
+        # todo get the model more accurately
         """
         return the actual foreignkey field name by simply adding an '_id' at the end.
         This is hook is to customize this naieve approach.

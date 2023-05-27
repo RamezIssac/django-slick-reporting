@@ -302,7 +302,7 @@ class ReportGenerator(object):
         # self.date_field = date_field or self.date_field
 
         # in case of a group by, do we show a grouped by model data regardless of their appearance in the results
-        # a client who didnt make a transaction during the date period.
+        # a client who didn't make a transaction during the date period.
         self.show_empty_records = False  # show_empty_records if show_empty_records else self.show_empty_records
         # Looks like this options is harder then what i thought as it interfere with the usual filtering of the report
 
