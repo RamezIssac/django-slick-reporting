@@ -302,6 +302,15 @@ class ReportTest(BaseTestData, TestCase):
         self.assertEqual(data[0]["__total__CT%s" % self.client2.pk], 600)
         self.assertEqual(data[0]["__total__CT----"], 900)
 
+    def test_productclientsalesmatrix_no_remainder(self):
+        report = report_generators.ProductClientSalesMatrix(
+            crosstab_ids=[self.client1.pk, self.client2.pk],
+            crosstab_compute_remainder=False,
+        )
+        data = report.get_report_data()
+        self.assertEqual(data[0]["__total__CT%s" % self.client1.pk], 300)
+        self.assertEqual(data[0]["__total__CT%s" % self.client2.pk], 600)
+
     def test_show_empty_records(self):
         report = report_generators.ClientTotalBalance()
         data = report.get_report_data()
@@ -436,7 +445,7 @@ class TestView(BaseTestData, TestCase):
         from .report_generators import ProductClientSalesMatrix
 
         data = ProductClientSalesMatrix(
-            crosstab_compute_reminder=True,
+            crosstab_compute_remainder=True,
             crosstab_ids=[self.client1.pk, self.client2.pk],
         ).get_report_data()
 
@@ -446,7 +455,7 @@ class TestView(BaseTestData, TestCase):
             reverse("product_crosstab_client"),
             data={
                 "client_id": [self.client1.pk, self.client2.pk],
-                "crosstab_compute_reminder": True,
+                "crosstab_compute_remainder": True,
             },
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
@@ -456,7 +465,7 @@ class TestView(BaseTestData, TestCase):
 
     def test_crosstab_report_view_clumns_on_fly(self):
         data = ProductClientSalesMatrix2(
-            crosstab_compute_reminder=True,
+            crosstab_compute_remainder=True,
             crosstab_ids=[self.client1.pk, self.client2.pk],
         ).get_report_data()
 
@@ -464,7 +473,7 @@ class TestView(BaseTestData, TestCase):
             reverse("crosstab-columns-on-fly"),
             data={
                 "client_id": [self.client1.pk, self.client2.pk],
-                "crosstab_compute_reminder": True,
+                "crosstab_compute_remainder": True,
             },
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
@@ -477,7 +486,7 @@ class TestView(BaseTestData, TestCase):
             reverse("product_crosstab_client"),
             data={
                 "client_id": [self.client1.pk, self.client2.pk],
-                "crosstab_compute_reminder": True,
+                "crosstab_compute_remainder": True,
             },
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )

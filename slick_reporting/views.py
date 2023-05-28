@@ -103,7 +103,7 @@ class SlickReportViewBase(FormView):
     crosstab_model = None
     crosstab_ids = None
     crosstab_columns = None
-    crosstab_compute_reminder = True
+    crosstab_compute_remainder = True
     excluded_fields = None
     report_title_context_key = "title"
 
@@ -184,7 +184,7 @@ class SlickReportViewBase(FormView):
         return self.form_class or report_form_factory(
             self.get_report_model(),
             crosstab_model=self.crosstab_model,
-            display_compute_reminder=self.crosstab_compute_reminder,
+            display_compute_remainder=self.crosstab_compute_remainder,
             excluded_fields=self.excluded_fields,
             initial=self.get_form_initial(),
             show_time_series_selector=self.time_series_selector,
@@ -223,10 +223,10 @@ class SlickReportViewBase(FormView):
         if self.crosstab_model:
             self.crosstab_ids = self.form.get_crosstab_ids()
 
-        crosstab_compute_reminder = (
-            self.form.get_crosstab_compute_reminder()
+        crosstab_compute_remainder = (
+            self.form.get_crosstab_compute_remainder()
             if self.request.GET or self.request.POST
-            else self.crosstab_compute_reminder
+            else self.crosstab_compute_remainder
         )
 
         time_series_pattern = self.time_series_pattern
@@ -251,7 +251,7 @@ class SlickReportViewBase(FormView):
             crosstab_model=self.crosstab_model,
             crosstab_ids=self.crosstab_ids,
             crosstab_columns=self.crosstab_columns,
-            crosstab_compute_reminder=crosstab_compute_reminder,
+            crosstab_compute_remainder=crosstab_compute_remainder,
             format_row_func=self.format_row,
             container_class=self,
         )

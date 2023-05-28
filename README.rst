@@ -21,6 +21,7 @@ Django Slick Reporting
 
 A one stop reports engine with batteries included.
 
+This is project is an extract of the reporting engine of `Django ERP Framework <https://github.com/RamezIssac/django-erp-framework>`_
 
 Features
 --------
@@ -28,7 +29,7 @@ Features
 - Effortlessly create Simple, Grouped, Time series and Crosstab reports in a handful of code lines.
 - Create your Custom Calculation easily, which will be integrated with the above reports types
 - Optimized for speed.
-- Batteries included! Chart.js , DataTable.net & a Bootstrap form.
+- Batteries included! Highcharts & Chart.js charting capabilities , DataTable.net & easily customizable Bootstrap form.
 
 Installation
 ------------

@@ -345,7 +345,7 @@ class SlickReportField(object):
         :return: a verbose string
         """
         if id == "----":
-            return _("The reminder")
+            return _("The remainder")
         return f"{cls.verbose_name} {model} {id}"
 
     @classmethod
@@ -376,7 +376,7 @@ class SlickReportField(object):
 
 class FirstBalanceField(SlickReportField):
     name = "__fb__"
-    verbose_name = _("first balance")
+    verbose_name = _("opening balance")
 
     def prepare(self, q_filters=None, extra_filters=None, **kwargs):
         extra_filters = extra_filters or {}
@@ -401,7 +401,7 @@ field_registry.register(TotalReportField)
 
 class BalanceReportField(SlickReportField):
     name = "__balance__"
-    verbose_name = _("Cumulative Total")
+    verbose_name = _("Closing Total")
     requires = ["__fb__"]
 
     def final_calculation(self, debit, credit, dep_dict):
@@ -439,6 +439,7 @@ class CreditReportField(SlickReportField):
 field_registry.register(CreditReportField)
 
 
+@field_registry.register
 class DebitReportField(SlickReportField):
     name = "__debit__"
     verbose_name = _("Debit")
@@ -447,7 +448,26 @@ class DebitReportField(SlickReportField):
         return debit
 
 
-field_registry.register(DebitReportField)
+@field_registry.register
+class CreditQuantityReportField(SlickReportField):
+    name = "__credit_quantity__"
+    verbose_name = _("Credit QTY")
+    calculation_field = "quantity"
+    is_summable = False
+
+    def final_calculation(self, debit, credit, dep_dict):
+        return credit
+
+
+@field_registry.register
+class DebitQuantityReportField(SlickReportField):
+    name = "__debit_quantity__"
+    calculation_field = "quantity"
+    verbose_name = _("Debit QTY")
+    is_summable = False
+
+    def final_calculation(self, debit, credit, dep_dict):
+        return debit
 
 
 class TotalQTYReportField(SlickReportField):
@@ -461,8 +481,8 @@ field_registry.register(TotalQTYReportField)
 
 
 class FirstBalanceQTYReportField(FirstBalanceField):
-    name = "__fb_quan__"
-    verbose_name = _("starting QTY")
+    name = "__fb_quantity__"
+    verbose_name = _("Opening QTY")
     calculation_field = "quantity"
     is_summable = False
 
@@ -472,14 +492,14 @@ field_registry.register(FirstBalanceQTYReportField)
 
 class BalanceQTYReportField(SlickReportField):
     name = "__balance_quantity__"
-    verbose_name = _("Cumulative QTY")
+    verbose_name = _("Closing QTY")
     calculation_field = "quantity"
-    requires = ["__fb_quan__"]
+    requires = ["__fb_quantity__"]
     is_summable = False
 
     def final_calculation(self, debit, credit, dep_dict):
         # Use `get` so it fails loud if its not there
-        fb = dep_dict.get("__fb_quan__")
+        fb = dep_dict.get("__fb_quantity__")
         fb = fb or 0
         return fb + debit - credit
 

@@ -24,13 +24,13 @@ from .models import SimpleSales, Client
 class MatrixTests(BaseTestData, TestCase):
     def test_matrix_column_included(self):
         report = CrosstabOnClient(
-            crosstab_ids=[self.client1.pk], crosstab_compute_reminder=False
+            crosstab_ids=[self.client1.pk], crosstab_compute_remainder=False
         )
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 3, columns)
 
         report = CrosstabOnClient(
-            crosstab_ids=[self.client1.pk], crosstab_compute_reminder=True
+            crosstab_ids=[self.client1.pk], crosstab_compute_remainder=True
         )
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 4, columns)
@@ -39,14 +39,14 @@ class MatrixTests(BaseTestData, TestCase):
         report = CrosstabOnClient(
             columns=["__crosstab__", "name", "__total_quantity__"],
             crosstab_ids=[self.client1.pk],
-            crosstab_compute_reminder=False,
+            crosstab_compute_remainder=False,
         )
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 3, columns)
         self.assertEqual(columns[0]["name"], "value__sumCT1")
 
         report = CrosstabOnClient(
-            crosstab_ids=[self.client1.pk], crosstab_compute_reminder=True
+            crosstab_ids=[self.client1.pk], crosstab_compute_remainder=True
         )
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 4, columns)
@@ -69,7 +69,7 @@ class MatrixTests(BaseTestData, TestCase):
         :return:
         """
         report = CrosstabOnClient(
-            crosstab_ids=[self.client1.pk], crosstab_compute_reminder=False
+            crosstab_ids=[self.client1.pk], crosstab_compute_remainder=False
         )
         columns = report.get_crosstab_parsed_columns()
         for col in columns:

@@ -122,7 +122,7 @@ class ReportGenerator(object):
     crosstab_ids = None
     """A list is the ids to create a crosstab report on"""
 
-    crosstab_compute_reminder = True
+    crosstab_compute_remainder = True
     """Include an an extra crosstab_columns for the outer group ( ie: all expects those `crosstab_ids`) """
 
     show_empty_records = True
@@ -161,7 +161,7 @@ class ReportGenerator(object):
         crosstab_model=None,
         crosstab_columns=None,
         crosstab_ids=None,
-        crosstab_compute_reminder=None,
+        crosstab_compute_remainder=None,
         swap_sign=False,
         show_empty_records=None,
         print_flag=False,
@@ -187,7 +187,7 @@ class ReportGenerator(object):
         :param crosstab_model:
         :param crosstab_columns:
         :param crosstab_ids:
-        :param crosstab_compute_reminder:
+        :param crosstab_compute_remainder:
         :param swap_sign:
         :param show_empty_records:
         :param base_model:
@@ -226,10 +226,10 @@ class ReportGenerator(object):
         self.crosstab_model = self.crosstab_model or crosstab_model
         self.crosstab_columns = crosstab_columns or self.crosstab_columns or []
         self.crosstab_ids = self.crosstab_ids or crosstab_ids or []
-        self.crosstab_compute_reminder = (
-            self.crosstab_compute_reminder
-            if crosstab_compute_reminder is None
-            else crosstab_compute_reminder
+        self.crosstab_compute_remainder = (
+            self.crosstab_compute_remainder
+            if crosstab_compute_remainder is None
+            else crosstab_compute_remainder
         )
 
         self.format_row = format_row_func or self._default_format_row
@@ -302,7 +302,7 @@ class ReportGenerator(object):
         # self.date_field = date_field or self.date_field
 
         # in case of a group by, do we show a grouped by model data regardless of their appearance in the results
-        # a client who didnt make a transaction during the date period.
+        # a client who didn't make a transaction during the date period.
         self.show_empty_records = False  # show_empty_records if show_empty_records else self.show_empty_records
         # Looks like this options is harder then what i thought as it interfere with the usual filtering of the report
 
@@ -374,11 +374,11 @@ class ReportGenerator(object):
 
     def _construct_crosstab_filter(self, col_data):
         """
-        In charge of adding the needed crosstab filter, specific to the case of is_reminder or not
+        In charge of adding the needed crosstab filter, specific to the case of is_remainder or not
         :param col_data:
         :return:
         """
-        if col_data["is_reminder"]:
+        if col_data["is_remainder"]:
             filters = [~Q(**{f"{col_data['model']}_id__in": self.crosstab_ids})]
         else:
             filters = [Q(**{f"{col_data['model']}_id": col_data["id"]})]
@@ -805,7 +805,7 @@ class ReportGenerator(object):
         """
         report_columns = self.crosstab_columns or []
         ids = list(self.crosstab_ids)
-        if self.crosstab_compute_reminder:
+        if self.crosstab_compute_remainder:
             ids.append("----")
         output_cols = []
         ids_length = len(ids) - 1
@@ -827,7 +827,9 @@ class ReportGenerator(object):
                         "ref": magic_field_class,
                         "id": id,
                         "model": self.crosstab_model,
-                        "is_reminder": counter == ids_length,
+                        "is_remainder": counter == ids_length
+                        if self.crosstab_compute_remainder
+                        else False,
                         "source": "magic_field" if magic_field_class else "",
                         "is_summable": magic_field_class.is_summable,
                     }

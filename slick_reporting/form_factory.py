@@ -25,7 +25,7 @@ def get_crispy_helper(
     foreign_keys_map=None,
     crosstab_model=None,
     crosstab_key_name=None,
-    crosstab_display_compute_reminder=False,
+    crosstab_display_compute_remainder=False,
     add_date_range=True,
 ):
     from crispy_forms.helper import FormHelper
@@ -52,8 +52,8 @@ def get_crispy_helper(
     # first add the crosstab model and its display reimder then the rest of the fields
     if crosstab_model:
         filters_container.append(Field(crosstab_key_name))
-        if crosstab_display_compute_reminder:
-            filters_container.append(Field("crosstab_compute_reminder"))
+        if crosstab_display_compute_remainder:
+            filters_container.append(Field("crosstab_compute_remainder"))
 
     for k in foreign_keys_map:
         if k != crosstab_key_name:
@@ -97,6 +97,7 @@ class BaseReportForm:
 
     @cached_property
     def crosstab_key_name(self):
+        # todo get the model more accurately
         """
         return the actual foreignkey field name by simply adding an '_id' at the end.
         This is hook is to customize this naieve approach.
@@ -114,16 +115,16 @@ class BaseReportForm:
             return [x for x in qs.values_list("pk", flat=True)]
         return []
 
-    def get_crosstab_compute_reminder(self):
-        return self.cleaned_data.get("crosstab_compute_reminder", True)
+    def get_crosstab_compute_remainder(self):
+        return self.cleaned_data.get("crosstab_compute_remainder", True)
 
     def get_crispy_helper(self, foreign_keys_map=None, crosstab_model=None, **kwargs):
         return get_crispy_helper(
             self.foreign_keys,
             crosstab_model=getattr(self, "crosstab_model", None),
             crosstab_key_name=getattr(self, "crosstab_key_name", None),
-            crosstab_display_compute_reminder=getattr(
-                self, "crosstab_display_compute_reminder", False
+            crosstab_display_compute_remainder=getattr(
+                self, "crosstab_display_compute_remainder", False
             ),
             **kwargs,
         )
@@ -139,7 +140,7 @@ def _default_foreign_key_widget(f_field):
 def report_form_factory(
     model,
     crosstab_model=None,
-    display_compute_reminder=True,
+    display_compute_remainder=True,
     fkeys_filter_func=None,
     foreign_key_widget_func=None,
     excluded_fields=None,
@@ -158,7 +159,7 @@ def report_form_factory(
 
     :param model: the report_model
     :param crosstab_model: crosstab model if any
-    :param display_compute_reminder:  relevant only if crosstab_model is specified. Control if we show the check to
+    :param display_compute_remainder:  relevant only if crosstab_model is specified. Control if we show the check to
     display the rest.
     :param fkeys_filter_func:  a receives an OrderedDict of Foreign Keys names and their model field instances found on the model, return the OrderedDict that would be used
     :param foreign_key_widget_func: receives a Field class return the used widget like this {'form_class': forms.ModelMultipleChoiceField, 'required': False, }
@@ -218,9 +219,9 @@ def report_form_factory(
             field_attrs["required"] = True
         fields[name] = f_field.formfield(**field_attrs)
 
-    if crosstab_model and display_compute_reminder:
-        fields["crosstab_compute_reminder"] = forms.BooleanField(
-            required=False, label=_("Display the crosstab reminder"), initial=True
+    if crosstab_model and display_compute_remainder:
+        fields["crosstab_compute_remainder"] = forms.BooleanField(
+            required=False, label=_("Display the crosstab remainder"), initial=True
         )
 
     bases = (
@@ -235,7 +236,7 @@ def report_form_factory(
             "_fkeys": fkeys_list,
             "foreign_keys": fkeys_map,
             "crosstab_model": crosstab_model,
-            "crosstab_display_compute_reminder": display_compute_reminder,
+            "crosstab_display_compute_remainder": display_compute_remainder,
         },
     )
     return new_form
