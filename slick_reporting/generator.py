@@ -827,7 +827,9 @@ class ReportGenerator(object):
                         "ref": magic_field_class,
                         "id": id,
                         "model": self.crosstab_model,
-                        "is_remainder": counter == ids_length,
+                        "is_remainder": counter == ids_length
+                        if self.crosstab_compute_remainder
+                        else False,
                         "source": "magic_field" if magic_field_class else "",
                         "is_summable": magic_field_class.is_summable,
                     }
