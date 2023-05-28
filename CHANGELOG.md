@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0]
+
+- Breaking: [Only if you use Crosstab reports] renamed crosstab_compute_reminder to crosstab_compute_remainder
+- Breaking : [Only if you set the templates statics by hand] renamed slick_reporting to ra.hightchart.js and ra.chartjs.js to 
+  erp_framework.highchart.js and erp_framework.chartjs.js respectively
+
 ## [0.7.0]
 
 - Added SlickReportingListView: a Report Class to display content of the model (like a ModelAdmin ChangeList)

@@ -310,7 +310,6 @@ class ReportTest(BaseTestData, TestCase):
         data = report.get_report_data()
         self.assertEqual(data[0]["__total__CT%s" % self.client1.pk], 300)
         self.assertEqual(data[0]["__total__CT%s" % self.client2.pk], 600)
-        # self.assertEqual(data[0]["__total__CT----"], 900)
 
     def test_show_empty_records(self):
         report = report_generators.ClientTotalBalance()
