@@ -11,6 +11,7 @@ from .models import (
     Product,
     SalesWithFlag,
     SalesProductWithCustomID,
+    ComplexSales,
 )
 from .models import OrderLine
 
@@ -42,6 +43,23 @@ class CrosstabOnClient(GenericGenerator):
     columns = ["name", "__total_quantity__"]
     crosstab_model = "client"
     # crosstab_columns = ['__total_quantity__']
+    crosstab_columns = [
+        SlickReportField.create(
+            Sum, "quantity", name="value__sum", verbose_name=_("Sales")
+        )
+    ]
+
+
+class CrosstabOnField(ReportGenerator):
+    report_model = ComplexSales
+    date_field = "doc_date"
+
+    group_by = "product"
+    columns = ["name"]
+    crosstab_model = "flag"
+    crosstab_field = "flag"
+    crosstab_ids = ["sales", "sales-return"]
+
     crosstab_columns = [
         SlickReportField.create(
             Sum, "quantity", name="value__sum", verbose_name=_("Sales")

@@ -166,6 +166,7 @@ class BaseTestData:
             product=cls.product1,
             quantity=30,
             price=10,
+            flag="sales",
         )
         sale2 = ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2),
@@ -173,6 +174,7 @@ class BaseTestData:
             product=cls.product1,
             quantity=30,
             price=10,
+            flag="sales",
         )
         sale3 = ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2),
@@ -180,6 +182,7 @@ class BaseTestData:
             product=cls.product1,
             quantity=30,
             price=10,
+            flag="sales",
         )
         sale4 = ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2),
@@ -187,6 +190,23 @@ class BaseTestData:
             product=cls.product1,
             quantity=30,
             price=10,
+            flag="sales-return",
+        )
+        sale4 = ComplexSales.objects.create(
+            doc_date=datetime.datetime(year, 3, 2),
+            client=cls.client3,
+            product=cls.product2,
+            quantity=34,
+            price=10,
+            flag="sales-return",
+        )
+        sale5 = ComplexSales.objects.create(
+            doc_date=datetime.datetime(year, 3, 2),
+            client=cls.client2,
+            product=cls.product1,
+            quantity=77,
+            price=10,
+            flag="",
         )
         sale1.tax.add(cls.tax1)
         sale1.tax.add(cls.tax2)
@@ -362,7 +382,8 @@ class ReportTest(BaseTestData, TestCase):
             columns=["tax__name", "tax__count"],
         )
         data = report_generator.get_report_data()
-        self.assertEqual(len(data), 3)
+
+        self.assertEqual(len(data), 4)  # 3 taxes + 1 empty
         self.assertEqual(data[0]["tax__name"], "State")
         self.assertEqual(data[0]["tax__count"], 3)
         self.assertEqual(data[1]["tax__name"], "Vat reduced")

@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import datetime
 import logging
+from warnings import warn
 from dataclasses import dataclass
 from inspect import isclass
 
@@ -59,6 +60,12 @@ class ReportGenerator(object):
     date_field = None
     """Main date field to use whenever date filter is needed"""
 
+    start_date_field_name = None
+    """If set, the report will use this field to filter the start date, default to date_field"""
+
+    end_date_field_name = None
+    """If set, the report will use this field to filter the end date, default to date_field"""
+
     print_flag = None
     list_display_links = []
 
@@ -112,10 +119,13 @@ class ReportGenerator(object):
     Example: [ (start_date_1, end_date_1), (start_date_2, end_date_2), ....]
     """
 
-    crosstab_model = None
+    crosstab_model = None  # deprecated
+
+    crosstab_field = None
     """
     If set, a cross tab over this model selected ids (via `crosstab_ids`)  
     """
+
     crosstab_columns = None
     """The computation fields which will be computed for each crosstab-ed ids """
 
@@ -159,6 +169,7 @@ class ReportGenerator(object):
         time_series_columns=None,
         time_series_custom_dates=None,
         crosstab_model=None,
+        crosstab_field=None,
         crosstab_columns=None,
         crosstab_ids=None,
         crosstab_compute_remainder=None,
@@ -170,6 +181,8 @@ class ReportGenerator(object):
         limit_records=False,
         format_row_func=None,
         container_class=None,
+        start_date_field_name=None,
+        end_date_field_name=None,
     ):
         """
 
@@ -220,10 +233,25 @@ class ReportGenerator(object):
         )
         self.date_field = self.date_field or date_field
 
+        self.start_date_field_name = (
+            self.start_date_field_name or start_date_field_name or self.date_field
+        )
+        self.end_date_field_name = (
+            self.end_date_field_name or end_date_field_name or self.date_field
+        )
+
         self.q_filters = q_filters or []
         self.kwargs_filters = kwargs_filters or {}
+        self.crosstab_field = self.crosstab_field or crosstab_field
 
         self.crosstab_model = self.crosstab_model or crosstab_model
+        if self.crosstab_model:
+            warn(
+                "crosstab_model is deprecated; use crosstab_field instead",
+                DeprecationWarning,
+            )
+            self.crosstab_field = self.crosstab_field or self.crosstab_model
+
         self.crosstab_columns = crosstab_columns or self.crosstab_columns or []
         self.crosstab_ids = self.crosstab_ids or crosstab_ids or []
         self.crosstab_compute_remainder = (
@@ -247,11 +275,11 @@ class ReportGenerator(object):
         )
         self.container_class = container_class
 
-        if not self.date_field and (
-            self.time_series_pattern or self.crosstab_model or self.group_by
-        ):
+        if not (
+            self.date_field or (self.start_date_field_name and self.end_date_field_name)
+        ) and (self.time_series_pattern or self.crosstab_field or self.group_by):
             raise ImproperlyConfigured(
-                "date_field must be set on a class level or via init"
+                f"date_field or [start_date_field_name and end_date_field_name] must be set for {self}"
             )
 
         self._prepared_results = {}
@@ -297,9 +325,6 @@ class ReportGenerator(object):
 
         self.swap_sign = self.swap_sign or swap_sign
         self.limit_records = self.limit_records or limit_records
-
-        # passed to the report fields
-        # self.date_field = date_field or self.date_field
 
         # in case of a group by, do we show a grouped by model data regardless of their appearance in the results
         # a client who didn't make a transaction during the date period.
@@ -361,8 +386,8 @@ class ReportGenerator(object):
         filters = {}
         if self.date_field:
             filters = {
-                f"{self.date_field}__gt": self.start_date,
-                f"{self.date_field}__lte": self.end_date,
+                f"{self.start_date_field_name}__gt": self.start_date,
+                f"{self.end_date_field_name}__lte": self.end_date,
             }
         filters.update(self.kwargs_filters)
 
@@ -378,10 +403,12 @@ class ReportGenerator(object):
         :param col_data:
         :return:
         """
+        field = get_field_from_query_text(col_data["crosstab_field"], self.report_model)
+        column_name = field.column
         if col_data["is_remainder"]:
-            filters = [~Q(**{f"{col_data['model']}_id__in": self.crosstab_ids})]
+            filters = [~Q(**{f"{column_name}__in": self.crosstab_ids})]
         else:
-            filters = [Q(**{f"{col_data['model']}_id": col_data["id"]})]
+            filters = [Q(**{f"{column_name}": col_data["id"]})]
         return filters
 
     def _prepare_report_dependencies(self):
@@ -685,7 +712,7 @@ class ReportGenerator(object):
             except ValueError:
                 columns += time_series_columns
 
-        if self.crosstab_model:
+        if self.crosstab_field:
             crosstab_columns = self.get_crosstab_parsed_columns()
 
             try:
@@ -822,11 +849,12 @@ class ReportGenerator(object):
                         "name": f"{magic_field_class.name}CT{id}",
                         "original_name": magic_field_class.name,
                         "verbose_name": self.get_crosstab_field_verbose_name(
-                            magic_field_class, self.crosstab_model, id
+                            magic_field_class, self.crosstab_field, id
                         ),
                         "ref": magic_field_class,
                         "id": id,
-                        "model": self.crosstab_model,
+                        "crosstab_field": self.crosstab_field,
+                        # "model": self.crosstab_model,
                         "is_remainder": counter == ids_length
                         if self.crosstab_compute_remainder
                         else False,
@@ -860,7 +888,7 @@ class ReportGenerator(object):
             "time_series_column_verbose_names": [
                 x["verbose_name"] for x in time_series_columns
             ],
-            "crosstab_model": self.crosstab_model or "",
+            "crosstab_model": self.crosstab_field or "",
             "crosstab_column_names": [x["name"] for x in crosstab_columns],
             "crosstab_column_verbose_names": [
                 x["verbose_name"] for x in crosstab_columns
