@@ -55,12 +55,18 @@ class Contact(models.Model):
 
 
 class Client(models.Model):
+    class SexChoices(models.TextChoices):
+        FEMALE = "FEMALE", _("Female")
+        MALE = "MALE", _("Male")
+        OTHER = "OTHER", _("Other")
+
     slug = models.CharField(max_length=200, verbose_name=_("Client Slug"))
 
     name = models.CharField(max_length=200, verbose_name=_("Name"), unique=True)
     email = models.EmailField(blank=True)
     notes = models.TextField()
     contact = models.ForeignKey(Contact, on_delete=models.CASCADE, null=True)
+    sex = models.CharField(max_length=10, choices=SexChoices.choices, default="OTHER")
 
     class Meta:
         verbose_name = _("Client")

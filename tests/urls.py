@@ -20,7 +20,7 @@ urlpatterns = [
     ),
     path(
         "product_crosstab_client-to_field-set/",
-        views.ProductClientSalesMatrixToFIeldSet.as_view(),
+        views.ProductClientSalesMatrixToFieldSet.as_view(),
         name="product_crosstab_client_to_field_set",
     ),
     path(

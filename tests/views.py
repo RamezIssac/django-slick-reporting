@@ -43,7 +43,7 @@ class ProductClientSalesMatrix(SlickReportView):
     ]
 
 
-class ProductClientSalesMatrixToFIeldSet(SlickReportView):
+class ProductClientSalesMatrixToFieldSet(SlickReportView):
     report_title = "awesome report title"
     report_model = SimpleSales2
     date_field = "doc_date"
