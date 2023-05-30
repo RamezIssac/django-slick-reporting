@@ -12,6 +12,7 @@ from .models import (
     SalesWithFlag,
     SalesProductWithCustomID,
     ComplexSales,
+    SimpleSales2,
 )
 from .models import OrderLine
 
@@ -72,6 +73,13 @@ class CrosstabOnField(ReportGenerator):
 
 class ClientTotalBalance(ReportGenerator):
     report_model = SimpleSales
+    date_field = "doc_date"
+    group_by = "client"
+    columns = ["slug", "name", "__balance__", "__total__"]
+
+
+class ClientTotalBalance2(ReportGenerator):
+    report_model = SimpleSales2
     date_field = "doc_date"
     group_by = "client"
     columns = ["slug", "name", "__balance__", "__total__"]
@@ -303,6 +311,17 @@ class ProductClientSalesMatrix(ReportGenerator):
     crosstab_columns = ["__total__"]
 
 
+class ProductClientSalesMatrixToFieldSet(ReportGenerator):
+    report_model = SimpleSales2
+    date_field = "doc_date"
+
+    group_by = "product"
+    columns = ["slug", "name"]
+
+    crosstab_model = "client"
+    crosstab_columns = ["__total__"]
+
+
 class ProductClientSalesMatrix2(ReportGenerator):
     report_model = SimpleSales
     date_field = "doc_date"
@@ -316,6 +335,25 @@ class ProductClientSalesMatrix2(ReportGenerator):
             Sum, "value", name="value__sum", verbose_name=_("Sales")
         )
     ]
+
+
+class ProductClientSalesMatrixwSimpleSales2(ReportGenerator):
+    report_model = SimpleSales2
+    date_field = "doc_date"
+
+    group_by = "product"
+    columns = ["slug", "name"]
+
+    crosstab_model = "client"
+    crosstab_columns = [
+        SlickReportField.create(
+            Sum, "value", name="value__sum", verbose_name=_("Sales")
+        )
+    ]
+
+
+class GeneratorClassWithAttrsAs(ReportGenerator):
+    columns = ["get_icon", "slug", "name"]
 
 
 class ClientTotalBalancesWithShowEmptyFalse(ClientTotalBalance):

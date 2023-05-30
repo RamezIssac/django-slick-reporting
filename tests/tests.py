@@ -15,6 +15,7 @@ from tests.report_generators import (
     GroupByCharField,
     GroupByCharFieldPlusTimeSeries,
     TimeSeriesWithOutGroupBy,
+    ProductClientSalesMatrixwSimpleSales2,
 )
 from . import report_generators
 from .models import (
@@ -29,6 +30,7 @@ from .models import (
     ProductCustomID,
     SalesProductWithCustomID,
     Agent,
+    SimpleSales2,
 )
 from .views import SlickReportView
 
@@ -149,6 +151,80 @@ class BaseTestData:
         )
 
         SimpleSales.objects.create(
+            doc_date=datetime.datetime(year, 3, 2),
+            client=cls.client3,
+            product=cls.product1,
+            quantity=30,
+            price=10,
+        )
+
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 1, 2),
+            client=cls.client1,
+            product=cls.product1,
+            quantity=10,
+            price=10,
+            created_at=datetime.datetime(year, 1, 5),
+        )
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 2, 2),
+            client=cls.client1,
+            product=cls.product1,
+            quantity=10,
+            price=10,
+            created_at=datetime.datetime(year, 2, 3),
+        )
+
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 3, 2),
+            client=cls.client1,
+            product=cls.product1,
+            quantity=10,
+            price=10,
+            created_at=datetime.datetime(year, 3, 3),
+        )
+
+        # client 2
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 1, 2),
+            client=cls.client2,
+            product=cls.product1,
+            quantity=20,
+            price=10,
+        )
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 2, 2),
+            client=cls.client2,
+            product=cls.product1,
+            quantity=20,
+            price=10,
+        )
+
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 3, 2),
+            client=cls.client2,
+            product=cls.product1,
+            quantity=20,
+            price=10,
+        )
+
+        # client 3
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 1, 2),
+            client=cls.client3,
+            product=cls.product1,
+            quantity=30,
+            price=10,
+        )
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 2, 2),
+            client=cls.client3,
+            product=cls.product1,
+            quantity=30,
+            price=10,
+        )
+
+        SimpleSales2.objects.create(
             doc_date=datetime.datetime(year, 3, 2),
             client=cls.client3,
             product=cls.product1,
@@ -352,6 +428,29 @@ class ReportTest(BaseTestData, TestCase):
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
+    def test_view_filter_to_field_set(self):
+        report_generator = ReportGenerator(
+            report_model=SimpleSales2,
+            date_field="doc_date",
+            group_by="client",
+            columns=["slug", "name"],
+            time_series_pattern="monthly",
+            time_series_columns=["__total__", "__balance__"],
+        )
+        data = report_generator.get_report_data()
+        response = self.client.get(
+            reverse("report-to-field-set"),
+            data={
+                "client_id": [self.client2.name, self.client1.name],
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        view_report_data = response.json()
+        self.assertTrue(len(data), 2)
+        # self.assertEqual(view_report_data['data'], data)
+
     def test_filter_as_int_n_list(self):
         report = ClientTotalBalance(
             kwargs_filters={"client": self.client1.pk}, show_empty_records=True
@@ -445,6 +544,31 @@ class TestView(BaseTestData, TestCase):
         self.assertTrue(len(data), 2)
         # self.assertEqual(view_report_data['data'], data)
 
+    def test_view_filter_to_field_set(self):
+        report_generator = ReportGenerator(
+            report_model=SimpleSales2,
+            date_field="doc_date",
+            group_by="client",
+            columns=["slug", "name"],
+            # time_series_pattern="monthly",
+            # time_series_columns=["__total__", "__balance__"],
+        )
+        data = report_generator.get_report_data()
+        response = self.client.get(
+            reverse("report-to-field-set"),
+            # data={
+            #     "client_id": [self.client2.name, self.client1.name],
+            # },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        # breakpoint()
+        self.assertTrue(len(data), 2)
+
+        view_report_data = response.json()
+
+        # self.assertEqual(view_report_data['data'], data)
+
     def test_ajax(self):
         report_generator = ReportGenerator(
             report_model=SimpleSales,
@@ -494,6 +618,46 @@ class TestView(BaseTestData, TestCase):
             reverse("crosstab-columns-on-fly"),
             data={
                 "client_id": [self.client1.pk, self.client2.pk],
+                "crosstab_compute_remainder": True,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data["data"], data, view_report_data)
+
+    def test_crosstab_report_view_to_field_set(self):
+        from .report_generators import ProductClientSalesMatrixToFieldSet
+
+        data = ProductClientSalesMatrixToFieldSet(
+            crosstab_compute_remainder=True,
+            crosstab_ids=[self.client1.name, self.client2.name],
+        ).get_report_data()
+
+        response = self.client.get(reverse("product_crosstab_client_to_field_set"))
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get(
+            reverse("product_crosstab_client_to_field_set"),
+            data={
+                "client_id": [self.client1.name, self.client2.name],
+                "crosstab_compute_remainder": True,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data["data"], data)
+
+    def test_crosstab_report_view_clumns_on_fly_to_field_set(self):
+        data = ProductClientSalesMatrixwSimpleSales2(
+            crosstab_compute_remainder=True,
+            crosstab_ids=[self.client1.name, self.client2.name],
+        ).get_report_data()
+
+        response = self.client.get(
+            reverse("crosstab-columns-on-fly-to-field-set"),
+            data={
+                "client_id": [self.client1.name, self.client2.name],
                 "crosstab_compute_remainder": True,
             },
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
