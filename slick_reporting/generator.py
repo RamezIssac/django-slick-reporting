@@ -405,10 +405,7 @@ class ReportGenerator(object):
         :return:
         """
         field = get_field_from_query_text(col_data["crosstab_field"], self.report_model)
-        if field is ForeignKey:
-            column_name = field.target_field.name
-        else:
-            column_name = field.column
+        column_name = field.column
         if col_data["is_remainder"]:
             filters = [~Q(**{f"{column_name}__in": self.crosstab_ids})]
         else:

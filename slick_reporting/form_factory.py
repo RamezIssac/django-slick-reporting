@@ -112,7 +112,9 @@ class BaseReportForm:
         """
         if self.crosstab_model:
             qs = self.cleaned_data.get(self.crosstab_key_name)
-            return [x for x in qs.values_list("pk", flat=True)]
+            return [
+                x for x in qs.values_list(self.crosstab_field_related_name, flat=True)
+            ]
         return []
 
     def get_crosstab_compute_remainder(self):
@@ -168,6 +170,7 @@ def report_form_factory(
     :param required a list of fields that should be marked as required
     :return:
     """
+    crosstab_field_related_name = ""
     foreign_key_widget_func = foreign_key_widget_func or _default_foreign_key_widget
     fkeys_filter_func = fkeys_filter_func or (lambda x: x)
 
@@ -223,6 +226,10 @@ def report_form_factory(
         fields["crosstab_compute_remainder"] = forms.BooleanField(
             required=False, label=_("Display the crosstab remainder"), initial=True
         )
+        crosstab_field_klass = [
+            x for x in model._meta.get_fields() if x.name == crosstab_model
+        ]
+        crosstab_field_related_name = crosstab_field_klass[0].to_fields[0]
 
     bases = (
         BaseReportForm,
@@ -237,6 +244,7 @@ def report_form_factory(
             "foreign_keys": fkeys_map,
             "crosstab_model": crosstab_model,
             "crosstab_display_compute_remainder": display_compute_remainder,
+            "crosstab_field_related_name": crosstab_field_related_name,
         },
     )
     return new_form

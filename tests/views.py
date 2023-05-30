@@ -52,6 +52,7 @@ class ProductClientSalesMatrixToFIeldSet(SlickReportView):
     columns = ["slug", "name"]
 
     crosstab_model = "client"
+    crosstab_field = "client"
     crosstab_columns = ["__total__"]
 
     chart_settings = [
