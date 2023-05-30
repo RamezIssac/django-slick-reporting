@@ -16,6 +16,7 @@ from .report_generators import (
     GroupByCharField,
     TimeSeriesCustomDates,
     CrosstabOnField,
+    CrosstabOnTraversingField,
 )
 
 from .tests import BaseTestData, year
@@ -84,6 +85,16 @@ class CrosstabTests(BaseTestData, TestCase):
         self.assertEqual(data[0]["value__sumCTsales-return"], 30, data)
         self.assertEqual(data[0]["value__sumCT----"], 77, data)
         self.assertEqual(data[1]["value__sumCTsales-return"], 34, data)
+
+    def test_crosstab_on_traversing_field(self):
+        report = CrosstabOnTraversingField()
+        data = report.get_report_data()
+        breakpoint()
+        self.assertEqual(len(data), 2, data)
+        self.assertEqual(data[0]["value__sumCTOTHER"], 120, data)
+        self.assertEqual(data[0]["value__sumCTFEMALE"], 77, data)
+        self.assertEqual(data[0]["value__sumCT----"], 0, data)
+        self.assertEqual(data[1]["value__sumCTOTHER"], 34, data)
 
 
 class GeneratorReportStructureTest(BaseTestData, TestCase):

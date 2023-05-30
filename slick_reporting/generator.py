@@ -404,8 +404,14 @@ class ReportGenerator(object):
         :param col_data:
         :return:
         """
-        field = get_field_from_query_text(col_data["crosstab_field"], self.report_model)
-        column_name = field.column
+        if "__" in col_data["crosstab_field"]:
+            column_name = col_data["crosstab_field"]
+        else:
+            field = get_field_from_query_text(
+                col_data["crosstab_field"], self.report_model
+            )
+            column_name = field.column
+        # breakpoint()
         if col_data["is_remainder"]:
             filters = [~Q(**{f"{column_name}__in": self.crosstab_ids})]
         else:

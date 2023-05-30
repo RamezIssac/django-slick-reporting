@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [unreleased]
 - Allow cross tab on fields & deprecate `crosstab_model` in favor of crosstab_field, to be removed next version.
 - Add support for start_date_field_name and end_date_field_name
+- Add support to crosstab on traversing fields
+- Fix an issue if a foreign key have a custom `to_field` in group_by and `crosstab_field` 
 
 ## [0.8.0]
 
