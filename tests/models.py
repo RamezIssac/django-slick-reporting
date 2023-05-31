@@ -319,3 +319,22 @@ class Initiative(models.Model):
         blank=True,
         to_field="name",
     )
+
+
+"""
+form 
+-----
+
+get_filters
+self.form.cleaned_data["start_date"],
+self.form.cleaned_data["end_date"],
+
+
+get_crosstab_ids
+get_crosstab_compute_remainder
+
+form.cleaned_data["time_series_pattern"]
+
+crispy_helper (already done)
+
+"""

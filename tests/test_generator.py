@@ -89,7 +89,6 @@ class CrosstabTests(BaseTestData, TestCase):
     def test_crosstab_on_traversing_field(self):
         report = CrosstabOnTraversingField()
         data = report.get_report_data()
-        breakpoint()
         self.assertEqual(len(data), 2, data)
         self.assertEqual(data[0]["value__sumCTOTHER"], 120, data)
         self.assertEqual(data[0]["value__sumCTFEMALE"], 77, data)

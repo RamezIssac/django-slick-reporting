@@ -31,6 +31,7 @@ def get_crispy_helper(
     from crispy_forms.helper import FormHelper
     from crispy_forms.layout import Column, Layout, Div, Row, Field
 
+    foreign_keys_map = foreign_keys_map or []
     helper = FormHelper()
     helper.form_class = "form-horizontal"
     helper.label_class = "col-sm-2 col-md-2 col-lg-2"
@@ -63,7 +64,51 @@ def get_crispy_helper(
     return helper
 
 
-class BaseReportForm:
+class BaseReportForm(forms.Form):
+    def get_filters(self):
+        raise NotImplemented(
+            "get_filters() must be implemented in subclass,"
+            "should return a tuple of (Q objects, kwargs filter) to be passed to QuerySet.filter()"
+        )
+
+    def get_start_date(self):
+        raise NotImplemented(
+            "get_start_date() must be implemented in subclass,"
+            "should return a datetime object"
+        )
+
+    def get_end_date(self):
+        raise NotImplemented(
+            "get_end_date() must be implemented in subclass,"
+            "should return a datetime object"
+        )
+
+    def get_crosstab_compute_remainder(self):
+        raise NotImplemented(
+            "get_crosstab_compute_remainder() must be implemented in subclass,"
+            "should return a boolean value"
+        )
+
+    def get_crosstab_ids(self):
+        raise NotImplemented(
+            "get_crosstab_ids() must be implemented in subclass,"
+            "should return a list of ids to be used for crosstab"
+        )
+
+    def get_time_series_pattern(self):
+        raise NotImplemented(
+            "get_time_series_pattern() must be implemented in subclass,"
+            "should return a string value of a valid time series pattern"
+        )
+
+    def get_crispy_helper(self):
+        raise NotImplemented(
+            "get_crispy_helper() must be implemented in subclass,"
+            "should return a crispy helper object"
+        )
+
+
+class SlickReportForm(BaseReportForm):
     """
     Holds basic function
     """
@@ -76,6 +121,15 @@ class BaseReportForm:
             css=SLICK_REPORTING_FORM_MEDIA.get("css", {}),
             js=SLICK_REPORTING_FORM_MEDIA.get("js", []),
         )
+
+    def get_start_date(self):
+        return self.cleaned_data.get("start_date")
+
+    def get_end_date(self):
+        return self.cleaned_data.get("end_date")
+
+    def get_time_series_pattern(self):
+        return self.cleaned_data.get("time_series_pattern")
 
     def get_filters(self):
         """
@@ -232,7 +286,7 @@ def report_form_factory(
         crosstab_field_related_name = crosstab_field_klass[0].to_fields[0]
 
     bases = (
-        BaseReportForm,
+        SlickReportForm,
         forms.BaseForm,
     )
     new_form = type(
@@ -248,3 +302,8 @@ def report_form_factory(
         },
     )
     return new_form
+
+    class SearchForm(SlickReportForm, new_form):
+        pass
+
+    return SearchForm
