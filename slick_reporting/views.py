@@ -101,6 +101,8 @@ class SlickReportViewBase(FormView):
     chart_settings = None
 
     crosstab_model = None
+    crosstab_field = None
+
     crosstab_ids = None
     crosstab_columns = None
     crosstab_compute_remainder = True
@@ -231,12 +233,12 @@ class SlickReportViewBase(FormView):
 
         time_series_pattern = self.time_series_pattern
         if self.time_series_selector:
-            time_series_pattern = self.form.cleaned_data["time_series_pattern"]
+            time_series_pattern = self.form.get_time_series_pattern()
 
         return self.report_generator_class(
             self.get_report_model(),
-            start_date=self.form.cleaned_data["start_date"],
-            end_date=self.form.cleaned_data["end_date"],
+            start_date=self.form.get_start_date(),
+            end_date=self.form.get_end_date(),
             q_filters=q_filters,
             kwargs_filters=kw_filters,
             date_field=self.date_field,
@@ -332,7 +334,13 @@ class SlickReportViewBase(FormView):
         }
 
     def get_form_crispy_helper(self):
-        return self.form.get_crispy_helper()
+        """
+        A hook retuning crispy helper for the form
+        :return:
+        """
+        if hasattr(self, "form"):
+            return self.form.get_crispy_helper()
+        return None
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -371,6 +379,9 @@ class SlickReportingListView(SlickReportViewBase):
     filters = None
 
     def get_form_filters(self, form):
+        if self.form_class:
+            return form.get_filters()
+
         kw_filters = {}
 
         for name, field in form.base_fields.items():
@@ -413,11 +424,16 @@ class SlickReportingListView(SlickReportViewBase):
         )
 
     def get_form_class(self):
-        return modelform_factory(
-            self.get_report_model(),
-            fields=self.filters,
-            formfield_callback=default_formfield_callback,
-        )
+        if self.form_class:
+            return self.form_class
+
+        elif self.filters:
+            return modelform_factory(
+                self.get_report_model(),
+                fields=self.filters,
+                formfield_callback=default_formfield_callback,
+            )
+        return forms.Form
 
     def get_report_results(self, for_print=False):
         """
