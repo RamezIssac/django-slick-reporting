@@ -1,0 +1,42 @@
+{% load i18n static %}
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+
+{#<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>#}
+{#<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"/>#}
+
+
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap4.min.css"/>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://code.highcharts.com/highcharts.js"></script>
+
+
+
+<script type="text/javascript" src="{% static "erp_framework/js/erp_framework.js" %}"></script>
+
+<script>
+    $.erp_framework.rtl = {% if LANGUAGE_BIDI %} true ;{% else %} false; {% endif %}
+    $.erp_framework.defaults.messages.total = "{% trans "Total" %}"
+</script>
+<script type="text/javascript" src="{% static 'erp_framework/js/erp_framework.report_loader.js' %}"></script>
+<script src="{% static 'slick_reporting/main.js' %}"></script>
+<script src="{% static 'slick_reporting/erp_framework.highchart.js' %}"></script>
+<script src="{% static 'slick_reporting/erp_framework.chartsjs.js' %}"></script>
+<script src="{% static 'erp_framework/js/erp_framework.datatable.js' %}"></script>
+
+<script>
+
+    jQuery(document).ready(function () {
+        $('.page-container').show();
+        $.erp_framework.focus_first();
+        $.erp_framework.report_loader.initialize();
+        $('#changelist-form table').addClass('table table-hover table-striped table-condensed table-bordered')
+    });
+</script>
+

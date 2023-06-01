@@ -59,9 +59,9 @@
 {% endblock %}
 {% block extrajs %}
     {{ block.super }}
-    <script src="{% static 'slick_reporting/main.js' %}"></script>
-    <script src="{% static 'slick_reporting/erp_framework.chartsjs.js' %}"></script>
-    <script src="{% static 'slick_reporting/erp_framework.highchart.js' %}"></script>
+{#    <script src="{% static 'slick_reporting/main.js' %}"></script>#}
+{#    <script src="{% static 'slick_reporting/erp_framework.chartsjs.js' %}"></script>#}
+{#    <script src="{% static 'slick_reporting/erp_framework.highchart.js' %}"></script>#}
 
     <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"
@@ -85,75 +85,6 @@
                 window.location = '?' + form.serialize() + '&_export=csv'
             });
 
-
-            function setDatePicker() {
-                function setDatePickerObj() {
-                    var range_start = new Date();
-                    var range_end = new Date();
-                    let container = $(document);
-                    let $startDate = container.find('input[name=start_date]');
-                    let $endDate = container.find('input[name=end_date]');
-                    if ($startDate.val() && $endDate.val()) {
-                        range_start = new Date($startDate.val());
-                        range_end = new Date($endDate.val());
-                    } else {
-                        range_start.setHours(0);
-                        range_start.setMinutes(0);
-                        range_end.setDate(range_start.getDate() + 1);
-                        range_end.setHours(0);
-                        range_end.setMinutes(0);
-                    }
-
-                    return {
-
-                        autoUpdateInput: false,
-                        timePicker: true,
-                        timePicker24Hour: true,
-                        timePickerIncrement: 10,
-                        autoApply: true,
-                        startDate: range_start,
-                        endDate: range_end,
-                        alwaysShowCalendars: true,
-
-                        ranges: {
-                            '{% trans "Today" %}': [range_start, range_end],
-                            '{% trans "Yesterday" %}': [moment(range_start).subtract('days', 1), moment(range_end).subtract('days', 1)],
-                            '{% trans "Last 7 Days" %}': [moment(range_start).subtract('days', 6), moment(range_end)],
-                            '{% trans "This Month" %}': [moment(range_start).startOf('month'), moment(range_end).endOf('month')],
-                            '{% trans "Last Month" %}': [moment(range_start).subtract('month', 1).startOf('month'), moment(range_end).subtract('month', 1).endOf('month')]
-                        },
-
-                        opens: 'right',
-                        showDropdowns: true,
-                        linkedCalendars: false,
-                        buttonClasses: ['btn'],
-                        applyClass: 'btn-small btn-info btn-block',
-                        cancelClass: 'btn-small btn-default btn-block',
-                        locale: {
-                            direction: {% if LANGUAGE_BIDI %} 'rtl' {% else %}'ltr'{% endif %},
-                            format: 'YYYY-MM-DD',
-                            applyLabel: '{% trans "Apply" %}',
-                            fromLabel: '{% trans "From" %}',
-                            toLabel: '{% trans "To" %}',
-                            startLabel: '{% trans "start date"|capfirst %}:',
-                            endLabel: '{% trans "end date"|capfirst %}:',
-                            cancelLabel: '{% trans "Cancel" %}',
-                            customRangeLabel: '{% trans "choose"|capfirst %}',
-                            firstDay: 1
-                        }
-                    };
-                }
-
-                $('.raReportDateRange').daterangepicker(setDatePickerObj()).on('apply.daterangepicker', function (ev, picker) {
-                    var container = picker.element;
-                    var $startDate = container.find('[name=start_date]');
-                    var $endDate = container.find('[name=end_date]');
-                    $startDate.val(picker.startDate.format('YYYY') + '-' + picker.startDate.format('MM') + "-" + picker.startDate.format('DD') + ' ' + picker.startDate.format('HH') + ":" + picker.startDate.format('mm'))
-                    $endDate.val(picker.endDate.format('YYYY') + '-' + picker.endDate.format('MM') + "-" + picker.endDate.format('DD') + ' ' + picker.endDate.format('HH') + ":" + picker.endDate.format('mm'))
-                    container.parents('form').find('.refreshReport').trigger('click');
-                })
-
-            }
 
             $('.chartContainer').on('click', '.nav-charts a', function (e) {
                 e.preventDefault();
@@ -194,7 +125,7 @@
 
             $('table').DataTable();
             $('.nav-charts').find('a:first').trigger('click');
-            setDatePicker();
+            {#setDatePicker();#}
 
 
         })

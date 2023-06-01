@@ -15,7 +15,7 @@ from .app_settings import (
     SLICK_REPORTING_DEFAULT_START_DATE,
     SLICK_REPORTING_DEFAULT_CHARTS_ENGINE,
 )
-from .form_factory import (
+from .forms import (
     report_form_factory,
     get_crispy_helper,
     default_formfield_callback,
