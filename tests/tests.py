@@ -657,7 +657,7 @@ class TestView(BaseTestData, TestCase):
         response = self.client.get(
             reverse("crosstab-columns-on-fly-to-field-set"),
             data={
-                "client": [self.client1.name, self.client2.name],
+                "client_id": [self.client1.name, self.client2.name],
                 "crosstab_compute_remainder": True,
             },
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",

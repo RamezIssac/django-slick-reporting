@@ -206,7 +206,7 @@ class SlickReportViewBase(FormView):
         """
         return self.form_class or report_form_factory(
             self.get_report_model(),
-            crosstab_model=self.crosstab_model,
+            crosstab_model=self.crosstab_field,
             display_compute_remainder=self.crosstab_compute_remainder,
             excluded_fields=self.excluded_fields,
             initial=self.get_form_initial(),
@@ -243,7 +243,7 @@ class SlickReportViewBase(FormView):
 
     def get_report_generator(self, queryset, for_print):
         q_filters, kw_filters = self.form.get_filters()
-        if self.crosstab_model:
+        if self.crosstab_field:
             self.crosstab_ids = self.form.get_crosstab_ids()
 
         crosstab_compute_remainder = (
@@ -276,7 +276,6 @@ class SlickReportViewBase(FormView):
             group_by=self.group_by,
             time_series_pattern=time_series_pattern,
             time_series_columns=self.time_series_columns,
-            crosstab_model=self.crosstab_model,
             crosstab_field=self.crosstab_field,
             crosstab_ids=self.crosstab_ids,
             crosstab_columns=self.crosstab_columns,

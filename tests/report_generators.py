@@ -42,7 +42,7 @@ class GeneratorWithAttrAsColumn(GenericGenerator):
 class CrosstabOnClient(GenericGenerator):
     group_by = "product"
     columns = ["name", "__total_quantity__"]
-    crosstab_model = "client"
+    crosstab_field = "client"
     # crosstab_columns = ['__total_quantity__']
     crosstab_columns = [
         SlickReportField.create(
@@ -57,7 +57,7 @@ class CrosstabOnField(ReportGenerator):
 
     group_by = "product"
     columns = ["name"]
-    crosstab_model = "flag"
+    crosstab_field = "flag"
     crosstab_field = "flag"
     crosstab_ids = ["sales", "sales-return"]
 
@@ -321,7 +321,7 @@ class ProductClientSalesMatrix(ReportGenerator):
     group_by = "product"
     columns = ["slug", "name"]
 
-    crosstab_model = "client"
+    crosstab_field = "client"
     crosstab_columns = ["__total__"]
 
 
@@ -332,7 +332,7 @@ class ProductClientSalesMatrixToFieldSet(ReportGenerator):
     group_by = "product"
     columns = ["slug", "name"]
 
-    crosstab_model = "client"
+    crosstab_field = "client"
     crosstab_columns = ["__total__"]
 
 
@@ -343,7 +343,7 @@ class ProductClientSalesMatrix2(ReportGenerator):
     group_by = "product"
     columns = ["slug", "name"]
 
-    crosstab_model = "client"
+    crosstab_field = "client"
     crosstab_columns = [
         SlickReportField.create(
             Sum, "value", name="value__sum", verbose_name=_("Sales")

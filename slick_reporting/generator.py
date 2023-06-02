@@ -168,7 +168,6 @@ class ReportGenerator(object):
         time_series_pattern=None,
         time_series_columns=None,
         time_series_custom_dates=None,
-        crosstab_model=None,
         crosstab_field=None,
         crosstab_columns=None,
         crosstab_ids=None,
@@ -243,14 +242,6 @@ class ReportGenerator(object):
         self.q_filters = q_filters or []
         self.kwargs_filters = kwargs_filters or {}
         self.crosstab_field = self.crosstab_field or crosstab_field
-
-        self.crosstab_model = self.crosstab_model or crosstab_model
-        if self.crosstab_model:
-            warn(
-                "crosstab_model is deprecated; use crosstab_field instead",
-                DeprecationWarning,
-            )
-            self.crosstab_field = self.crosstab_field or self.crosstab_model
 
         self.crosstab_columns = crosstab_columns or self.crosstab_columns or []
         self.crosstab_ids = self.crosstab_ids or crosstab_ids or []
@@ -859,7 +850,6 @@ class ReportGenerator(object):
                         "ref": magic_field_class,
                         "id": id,
                         "crosstab_field": self.crosstab_field,
-                        # "model": self.crosstab_model,
                         "is_remainder": counter == ids_length
                         if self.crosstab_compute_remainder
                         else False,
