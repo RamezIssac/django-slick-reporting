@@ -562,10 +562,10 @@ class TestView(BaseTestData, TestCase):
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
         self.assertEqual(response.status_code, 200)
-        # breakpoint()
+
         self.assertTrue(len(data), 2)
 
-        view_report_data = response.json()
+        # view_report_data = response.json()
 
         # self.assertEqual(view_report_data['data'], data)
 
@@ -657,14 +657,14 @@ class TestView(BaseTestData, TestCase):
         response = self.client.get(
             reverse("crosstab-columns-on-fly-to-field-set"),
             data={
-                "client_id": [self.client1.name, self.client2.name],
+                "client": [self.client1.name, self.client2.name],
                 "crosstab_compute_remainder": True,
             },
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
         self.assertEqual(response.status_code, 200)
         view_report_data = response.json()
-        self.assertEqual(view_report_data["data"], data, view_report_data)
+        self.assertEqual(view_report_data["data"], data, view_report_data["data"])
 
     def test_chart_settings(self):
         response = self.client.get(

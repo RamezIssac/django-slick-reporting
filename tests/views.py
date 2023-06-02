@@ -96,7 +96,7 @@ class CrossTabColumnOnFlyToFieldSet(SlickReportView):
     group_by = "product"
     columns = ["slug", "name"]
 
-    crosstab_model = "client"
+    crosstab_field = "client"
     crosstab_columns = [
         SlickReportField.create(
             Sum, "value", name="value__sum", verbose_name=_("Sales")

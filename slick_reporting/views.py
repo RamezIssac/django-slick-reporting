@@ -4,6 +4,7 @@ import csv
 import simplejson as json
 from django import forms
 from django.conf import settings
+from django.db.models import Q
 from django.forms import modelform_factory
 from django.http import HttpResponse, StreamingHttpResponse
 from django.utils.encoding import force_str
@@ -78,6 +79,7 @@ class ExportToStreamingCSV(ExportToCSV):
 
 
 class SlickReportViewBase(FormView):
+    report_slug = None
     group_by = None
     columns = None
 
@@ -116,12 +118,31 @@ class SlickReportViewBase(FormView):
 
     csv_export_class = ExportToStreamingCSV
 
+    with_type = False
+    doc_type_field_name = "doc_type"
+    doc_type_plus_list = None
+    doc_type_minus_list = None
+
     """
     A list of chart settings objects instructing front end on how to plot the data.
     
     """
 
     template_name = "slick_reporting/simple_report.html"
+
+    def get_doc_types_q_filters(self):
+        if self.doc_type_plus_list or self.doc_type_minus_list:
+            return (
+                [Q(**{f"{self.doc_type_field_name}__in": self.doc_type_plus_list})]
+                if self.doc_type_plus_list
+                else []
+            ), (
+                [Q(**{f"{self.doc_type_field_name}__in": self.doc_type_minus_list})]
+                if self.doc_type_minus_list
+                else []
+            )
+
+        return [], []
 
     def get(self, request, *args, **kwargs):
         form_class = self.get_form_class()
@@ -235,6 +256,11 @@ class SlickReportViewBase(FormView):
         if self.time_series_selector:
             time_series_pattern = self.form.get_time_series_pattern()
 
+        doc_type_plus_list, doc_type_minus_list = [], []
+
+        if self.with_type:
+            doc_type_plus_list, doc_type_minus_list = self.get_doc_types_q_filters()
+
         return self.report_generator_class(
             self.get_report_model(),
             start_date=self.form.get_start_date(),
@@ -251,11 +277,14 @@ class SlickReportViewBase(FormView):
             time_series_pattern=time_series_pattern,
             time_series_columns=self.time_series_columns,
             crosstab_model=self.crosstab_model,
+            crosstab_field=self.crosstab_field,
             crosstab_ids=self.crosstab_ids,
             crosstab_columns=self.crosstab_columns,
             crosstab_compute_remainder=crosstab_compute_remainder,
             format_row_func=self.format_row,
             container_class=self,
+            doc_type_plus_list=doc_type_plus_list,
+            doc_type_minus_list=doc_type_minus_list,
         )
 
     def format_row(self, row_obj):
@@ -323,7 +352,7 @@ class SlickReportViewBase(FormView):
 
     @classmethod
     def get_report_slug(cls):
-        return cls.__name__.lower()
+        return cls.report_slug or cls.__name__.lower()
 
     @staticmethod
     def get_form_initial():

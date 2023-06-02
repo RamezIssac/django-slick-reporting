@@ -345,7 +345,6 @@ class ReportGenerator(object):
 
             else:
                 self.main_queryset = self._apply_queryset_options(main_queryset)
-                # breakpoint()
                 if type(self.group_by_field) is ForeignKey:
                     ids = self.main_queryset.values_list(
                         self.group_by_field_attname
@@ -411,7 +410,6 @@ class ReportGenerator(object):
                 col_data["crosstab_field"], self.report_model
             )
             column_name = field.column
-        # breakpoint()
         if col_data["is_remainder"]:
             filters = [~Q(**{f"{column_name}__in": self.crosstab_ids})]
         else:
