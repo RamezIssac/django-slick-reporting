@@ -245,6 +245,7 @@ class ReportGenerator(object):
         )
         # todo revise & move somewhere nicer, List Report need to override the resetting of order
         main_queryset = self._remove_order(main_queryset)
+        self.queryset = main_queryset
 
         self.columns = columns or self.columns or []
         self.group_by = group_by or self.group_by
@@ -447,7 +448,7 @@ class ReportGenerator(object):
                     group_by=self.group_by,
                     report_model=self.report_model,
                     date_field=self.date_field,
-                    queryset=self.main_queryset,
+                    queryset=self.queryset,
                 )
 
                 q_filters = None
