@@ -20,8 +20,17 @@ from .forms import (
     report_form_factory,
     get_crispy_helper,
     default_formfield_callback,
+    OrderByForm,
 )
 from .generator import ReportGenerator, ListViewReportGenerator, Chart
+
+
+def dictsort(value, arg, desc=False):
+    """
+    Takes a list of dicts, returns that list sorted by the property given in
+    the argument.
+    """
+    return sorted(value, key=lambda x: x[arg], reverse=desc)
 
 
 class ExportToCSV(object):
@@ -123,12 +132,30 @@ class SlickReportViewBase(FormView):
     doc_type_plus_list = None
     doc_type_minus_list = None
 
-    """
-    A list of chart settings objects instructing front end on how to plot the data.
-    
-    """
+    # default order by for the results.
+    # ordering can also be controlled on run time by passing order_by='field_name'
+    # For DESC order supply order_by='-field_name'
+    default_order_by = ""
 
     template_name = "slick_reporting/simple_report.html"
+
+    @staticmethod
+    def form_filter_func(fkeys_dict):
+        # todo revise
+        return fkeys_dict
+
+    def order_results(self, data):
+        """
+        order the results based on GET parameter or default_order_by
+        :param data: List of Dict to be ordered
+        :return: Ordered data
+        """
+        order_field, asc = OrderByForm(self.request.GET).get_order_by(
+            self.default_order_by
+        )
+        if order_field:
+            data = dictsort(data, order_field, asc)
+        return data
 
     def get_doc_types_q_filters(self):
         if self.doc_type_plus_list or self.doc_type_minus_list:
@@ -209,6 +236,7 @@ class SlickReportViewBase(FormView):
             crosstab_model=self.crosstab_field,
             display_compute_remainder=self.crosstab_compute_remainder,
             excluded_fields=self.excluded_fields,
+            fkeys_filter_func=self.form_filter_func,
             initial=self.get_form_initial(),
             show_time_series_selector=self.time_series_selector,
             time_series_selector_choices=self.time_series_selector_choices,
@@ -313,6 +341,7 @@ class SlickReportViewBase(FormView):
         report_generator = self.get_report_generator(queryset, for_print)
         data = report_generator.get_report_data()
         data = self.filter_results(data, for_print)
+        data = self.order_results(data)
 
         return report_generator.get_full_response(
             data=data,
@@ -338,7 +367,9 @@ class SlickReportViewBase(FormView):
         )
 
     def get_queryset(self):
-        return self.queryset or self.report_model.objects
+        if self.queryset is None:
+            return self.get_report_model()._default_manager.all()
+        return self.queryset
 
     def filter_results(self, data, for_print=False):
         """
@@ -402,9 +433,15 @@ class SlickReportView(SlickReportViewBase):
         return
 
 
-class SlickReportingListView(SlickReportViewBase):
+class SlickReportingListViewMixin:
     report_generator_class = ListViewReportGenerator
     filters = None
+
+    def get_queryset(self):
+        qs = self.queryset or self.report_model.objects
+        if self.default_order_by:
+            qs.order_by(self.default_order_by)
+        return qs
 
     def get_form_filters(self, form):
         if self.form_class:
@@ -480,3 +517,7 @@ class SlickReportingListView(SlickReportViewBase):
             chart_settings=self.chart_settings,
             default_chart_title=self.report_title,
         )
+
+
+class SlickReportingListView(SlickReportingListViewMixin, SlickReportViewBase):
+    pass

@@ -135,19 +135,6 @@ class ReportGenerator(object):
     crosstab_compute_remainder = True
     """Include an an extra crosstab_columns for the outer group ( ie: all expects those `crosstab_ids`) """
 
-    show_empty_records = True
-    """
-    If group_by is set, this option control if the report result will include all objects regardless of appearing in the report_model/qs.
-    If set False, only those objects which are found in the report_model/qs
-    Example: Say you group by client
-    show_empty_records = True will get the computation fields for all clients in the Client model (including those who 
-    didnt make a transaction.
-    
-    show_empty_records = False will get the computation fields for all clients in the Client model (including those who 
-    didnt make a transaction.
-     
-    """
-
     limit_records = None
     """Serves are a main limit to  the returned data of teh report_model.
     Can be beneficial if the results may be huge.
@@ -253,8 +240,11 @@ class ReportGenerator(object):
 
         self.format_row = format_row_func or self._default_format_row
 
-        main_queryset = main_queryset or self.report_model.objects
-        main_queryset = main_queryset.order_by()
+        main_queryset = (
+            self.report_model.objects if main_queryset is None else main_queryset
+        )
+        # todo revise & move somewhere nicer, List Report need to override the resetting of order
+        main_queryset = self._remove_order(main_queryset)
 
         self.columns = columns or self.columns or []
         self.group_by = group_by or self.group_by
@@ -325,39 +315,27 @@ class ReportGenerator(object):
         # Preparing actions
         self._parse()
         if self.group_by:
-            if self.show_empty_records:
-                pass
-                # group_by_filter = self.kwargs_filters.get(self.group_by, '')
-                # qs = self.group_by_field.related_model.objects
-                # if group_by_filter:
-                #     lookup = 'pk__in' if isinstance(group_by_filter, Iterable) else 'pk'
-                #     qs = qs.filter(**{lookup: group_by_filter})
-                # self.main_queryset = qs.values()
-
+            self.main_queryset = self._apply_queryset_options(main_queryset)
+            if type(self.group_by_field) is ForeignKey:
+                ids = self.main_queryset.values_list(
+                    self.group_by_field_attname
+                ).distinct()
+                # uses the same logic that is in Django's query.py when fields is empty in values() call
+                concrete_fields = [
+                    f.name
+                    for f in self.group_by_field.related_model._meta.concrete_fields
+                ]
+                # add database columns that are not already in concrete_fields
+                final_fields = concrete_fields + list(
+                    set(self.get_database_columns()) - set(concrete_fields)
+                )
+                self.main_queryset = self.group_by_field.related_model.objects.filter(
+                    **{f"{self.group_by_field.target_field.name}__in": ids}
+                ).values(*final_fields)
             else:
-                self.main_queryset = self._apply_queryset_options(main_queryset)
-                if type(self.group_by_field) is ForeignKey:
-                    ids = self.main_queryset.values_list(
-                        self.group_by_field_attname
-                    ).distinct()
-                    # uses the same logic that is in Django's query.py when fields is empty in values() call
-                    concrete_fields = [
-                        f.name
-                        for f in self.group_by_field.related_model._meta.concrete_fields
-                    ]
-                    # add database columns that are not already in concrete_fields
-                    final_fields = concrete_fields + list(
-                        set(self.get_database_columns()) - set(concrete_fields)
-                    )
-                    self.main_queryset = (
-                        self.group_by_field.related_model.objects.filter(
-                            **{f"{self.group_by_field.target_field.name}__in": ids}
-                        ).values(*final_fields)
-                    )
-                else:
-                    self.main_queryset = self.main_queryset.distinct().values(
-                        self.group_by_field_attname
-                    )
+                self.main_queryset = self.main_queryset.distinct().values(
+                    self.group_by_field_attname
+                )
         else:
             if self.time_series_pattern:
                 self.main_queryset = [{}]
@@ -366,6 +344,16 @@ class ReportGenerator(object):
                     main_queryset, self.get_database_columns()
                 )
         self._prepare_report_dependencies()
+
+    def _remove_order(self, main_queryset):
+        """
+        Remove order_by from the main queryset
+        :param main_queryset:
+        :return:
+        """
+        # if main_queryset.query.order_by:
+        main_queryset = main_queryset.order_by()
+        return main_queryset
 
     def _apply_queryset_options(self, query, fields=None):
         """
@@ -459,6 +447,7 @@ class ReportGenerator(object):
                     group_by=self.group_by,
                     report_model=self.report_model,
                     date_field=self.date_field,
+                    queryset=self.main_queryset,
                 )
 
                 q_filters = None
@@ -1034,3 +1023,6 @@ class ListViewReportGenerator(ReportGenerator):
                     else:
                         data[name] = getattr(obj, name, "")
         return data
+
+    def _remove_order(self, main_queryset):
+        return main_queryset
