@@ -326,6 +326,11 @@ class ReportTest(BaseTestData, TestCase):
 
         self.assertEqual(data[0].get("__balance__"), 300, data[0])
 
+    def test_compute_from_queryset(self):
+        report = report_generators.TotalBalanceWithQueryset()
+        data = report.get_report_data()
+        self.assertEqual(data, [])
+
     def test_product_total_sales(self):
         report = report_generators.ProductTotalSalesProductWithCustomID()
         data = report.get_report_data()

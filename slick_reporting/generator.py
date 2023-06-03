@@ -54,6 +54,9 @@ class ReportGenerator(object):
     report_model = None
     """The main model where data is """
 
+    queryset = None
+    """If set, the report will use this queryset instead of the report_model"""
+
     """
     Class to generate a Json Object containing report data.
     """
@@ -200,13 +203,20 @@ class ReportGenerator(object):
             SLICK_REPORTING_DEFAULT_END_DATE,
         )
 
-        super(ReportGenerator, self).__init__()
+        super().__init__()
 
         self.report_model = self.report_model or report_model
-        if not self.report_model:
+        if self.queryset is None:
+            self.queryset = main_queryset
+
+        if not self.report_model and self.queryset is None:
             raise ImproperlyConfigured(
-                "report_model must be set on a class level or via init"
+                "report_model or queryset must be set on a class level or via init"
             )
+
+        main_queryset = (
+            self.report_model.objects if self.queryset is None else self.queryset
+        )
 
         self.start_date = start_date or datetime.datetime.combine(
             SLICK_REPORTING_DEFAULT_START_DATE.date(),
@@ -245,7 +255,6 @@ class ReportGenerator(object):
         )
         # todo revise & move somewhere nicer, List Report need to override the resetting of order
         main_queryset = self._remove_order(main_queryset)
-        self.queryset = main_queryset
 
         self.columns = columns or self.columns or []
         self.group_by = group_by or self.group_by

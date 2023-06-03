@@ -92,6 +92,14 @@ class ClientTotalBalance(ReportGenerator):
     columns = ["slug", "name", "__balance__", "__total__"]
 
 
+class TotalBalanceWithQueryset(ReportGenerator):
+    report_model = SimpleSales
+    queryset = SimpleSales.objects.filter(product_id=0)
+    date_field = "doc_date"
+    group_by = "client"
+    columns = ["slug", "name", "__balance__", "__total__"]
+
+
 class ClientTotalBalance2(ReportGenerator):
     report_model = SimpleSales2
     date_field = "doc_date"
