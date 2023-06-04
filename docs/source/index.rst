@@ -73,7 +73,6 @@ Next step :ref:`structure`
    :maxdepth: 2
    :caption: Contents:
 
-   index
    concept
    the_view
    view_options

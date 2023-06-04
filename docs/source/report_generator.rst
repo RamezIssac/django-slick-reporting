@@ -13,6 +13,7 @@ ReportGenerator
 
     .. rubric:: Below are the basic needed attrs
     .. autoattribute:: report_model
+    .. autoattribute:: queryset
     .. autoattribute:: date_field
     .. autoattribute:: columns
     .. autoattribute:: group_by
@@ -24,7 +25,7 @@ ReportGenerator
     .. automethod:: get_time_series_field_verbose_name
 
     .. rubric:: Below are the needed attrs and methods for crosstab manipulation
-    .. autoattribute:: crosstab_model
+    .. autoattribute:: crosstab_field
     .. autoattribute:: crosstab_columns
     .. autoattribute:: crosstab_ids
     .. autoattribute:: crosstab_compute_reminder

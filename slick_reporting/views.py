@@ -1,5 +1,5 @@
-import datetime
 import csv
+import datetime
 
 import simplejson as json
 from django import forms
@@ -14,7 +14,6 @@ from django.views.generic import FormView
 from .app_settings import (
     SLICK_REPORTING_DEFAULT_END_DATE,
     SLICK_REPORTING_DEFAULT_START_DATE,
-    SLICK_REPORTING_DEFAULT_CHARTS_ENGINE,
 )
 from .forms import (
     report_form_factory,
@@ -22,7 +21,11 @@ from .forms import (
     default_formfield_callback,
     OrderByForm,
 )
-from .generator import ReportGenerator, ListViewReportGenerator, Chart
+from .generator import (
+    ReportGenerator,
+    ListViewReportGenerator,
+    ReportGeneratorAPI,
+)
 
 
 def dictsort(value, arg, desc=False):
@@ -87,39 +90,20 @@ class ExportToStreamingCSV(ExportToCSV):
         )
 
 
-class SlickReportViewBase(FormView):
+class SlickReportViewBase(ReportGeneratorAPI, FormView):
     report_slug = None
-    group_by = None
-    columns = None
 
     report_title = ""
-    time_series_pattern = ""
-    time_series_columns = None
 
-    date_field = "date"
-
-    swap_sign = False
+    report_title_context_key = "title"
 
     report_generator_class = ReportGenerator
 
-    report_model = None
-
     base_model = None
-    limit_records = None
-
-    queryset = None
 
     chart_settings = None
 
-    crosstab_model = None
-    crosstab_field = None
-
-    crosstab_ids = None
-    crosstab_columns = None
-    crosstab_compute_remainder = True
-
     excluded_fields = None
-    report_title_context_key = "title"
 
     time_series_selector = False
     time_series_selector_choices = None

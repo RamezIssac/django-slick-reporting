@@ -42,15 +42,7 @@ class Chart:
         )
 
 
-class ReportGenerator(object):
-    """
-    The main class responsible generating the report and managing the flow
-    """
-
-    field_registry_class = field_registry
-    """You can have a custom computation field locator! It only needs a `get_field_by_name(string)` 
-    and returns a ReportField`"""
-
+class ReportGeneratorAPI:
     report_model = None
     """The main model where data is """
 
@@ -60,7 +52,7 @@ class ReportGenerator(object):
     """
     Class to generate a Json Object containing report data.
     """
-    date_field = None
+    date_field = ""
     """Main date field to use whenever date filter is needed"""
 
     start_date_field_name = None
@@ -70,7 +62,6 @@ class ReportGenerator(object):
     """If set, the report will use this field to filter the end date, default to date_field"""
 
     print_flag = None
-    list_display_links = []
 
     group_by = None
     """The field to use for grouping, if not set then the report is expected to be a sub version of the report model"""
@@ -78,41 +69,41 @@ class ReportGenerator(object):
     columns = None
     """A list of column names.
     Columns names can be 
-    
+
     1. A Computation Field
-    
-    2. If group_by is set, then any field on teh group_by model
-    
+
+    2. If group_by is set, then any field on the group_by model
+
     3. If group_by is not set, then any field name on the report_model / queryset
-     
+
     4. A callable on the generator
-      
+
     5. Special __time_series__, and __crosstab__ 
        Those can be use to control the position of the time series inside the columns, defaults it's appended at the end
-       
+
        Example:
        columns = ['product_id', '__time_series__', 'col_b']
        Same is true with __crosstab__ 
-    
+
     You can customize aspects of the column by adding it as a tuple like this 
         ('field_name', dict(verbose_name=_('My Enhanced Verbose_name'))
-        
-         
+
+
      """
 
     time_series_pattern = ""
     """
     If set the Report will compute a time series.
-    
+
     Possible options are: daily, weekly, semimonthly, monthly, quarterly, semiannually, annually and custom.
-    
+
     if `custom` is set, you'd need to override  `get_custom_time_series_dates`
     """
     time_series_columns = None
     """
     a list of Calculation Field names which will be included in the series calculation.
      Example: ['__total__', '__total_quantity__'] with compute those 2 fields for all the series
-     
+
     """
 
     time_series_custom_dates = None
@@ -143,6 +134,16 @@ class ReportGenerator(object):
     Can be beneficial if the results may be huge.
     """
     swap_sign = False
+
+
+class ReportGenerator(ReportGeneratorAPI, object):
+    """
+    The main class responsible generating the report and managing the flow
+    """
+
+    field_registry_class = field_registry
+    """You can have a custom computation field locator! It only needs a `get_field_by_name(string)` 
+    and returns a ReportField`"""
 
     def __init__(
         self,

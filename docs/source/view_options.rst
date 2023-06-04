@@ -11,31 +11,55 @@ We can categorize the output of a report into 4 sections:
 
 
 
-General Options
----------------
+``ReportView`` Options
+----------------------
 
-* columns
+.. attribute:: ReportView.report_model
 
-Columns can be a list of column names , or a tuple of (column name, options dictionary) pairs.
+    the model where the relevant data is stored, in more complex reports, it's usually a database view / materialized view.
 
-example:
+.. attribute:: ReportView.queryset
 
-.. code-block:: python
-
-    class MyReport()
-        columns = [
-            'id',
-            ('name', {'verbose_name': "My verbose name", is_summable=False}),
-            'description',
-        ]
+        the queryset to be used in the report, if not specified, it will default to ``report_model._default_manager.all()``
 
 
+.. attribute:: ReportView.columns
 
-* date_field: the date field to be used in filtering and computing (ie: the time series report).
+    Columns can be a list of column names , or a tuple of (column name, options dictionary) pairs.
 
-* report_model: the model where the relevant data is stored, in more complex reports, it's usually a database view / materialized view.
+    Example:
 
-* report_title: the title of the report to be displayed in the report page.
+    .. code-block:: python
+
+        class MyReport()
+            columns = [
+                'id',
+                ('name', {'verbose_name': "My verbose name", is_summable=False}),
+                'description',
+            ]
+
+    .. autoattribute:: columns
+
+.. attribute:: ReportView.date_field
+
+    the date field to be used in filtering and computing
+
+.. attribute:: ReportView.start_date_field_name
+
+        the name of the start date field, if not specified, it will default to ``date_field``
+
+.. attribute:: ReportView.end_date_field_name
+
+        the name of the end date field, if not specified, it will default to ``date_field``
+
+
+.. attribute:: ReportView.report_title
+
+        the title of the report to be displayed in the report page.
+
+.. attribute:: ReportView.report_title_context_key
+
+        the context key to be used to pass the report title to the template, default to ``title``.
 
 * group_by : the group by field, if not specified, the report will be a list report.
 
