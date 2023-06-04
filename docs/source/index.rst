@@ -73,15 +73,17 @@ Next step :ref:`structure`
    :maxdepth: 2
    :caption: Contents:
 
+   index
    concept
    the_view
    view_options
    time_series_options
    crosstab_options
+   list_report_options
+   search_form
+   charts
    report_generator
    computation_field
-
-
 
 
 Indices and tables
