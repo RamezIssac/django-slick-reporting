@@ -77,6 +77,7 @@ Next step :ref:`structure`
    the_view
    view_options
    time_series_options
+   crosstab_options
    report_generator
    computation_field
 

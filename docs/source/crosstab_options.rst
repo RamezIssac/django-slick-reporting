@@ -1,0 +1,65 @@
+Crosstab Reports
+=================
+Use crosstab reports, also known as matrix reports, to show the relationships between three or more query items.
+Crosstab reports show data in rows and columns with information summarized at the intersection points.
+
+Here is a simple example of a crosstab report:
+
+.. code-block:: python
+
+    from django.utils.translation import gettext_lazy as _
+    from django.db.models import Sum
+    from slick_reporting.views import SlickReportView
+
+    class MyCrosstabReports(SlickReportView):
+
+        crosstab_field = "client"
+        # the column you want to make a crosstab on, can be a foreign key or a choice field
+
+        crosstab_columns = [
+            SlickReportField.create(Sum, "value", verbose_name=_("Value")),
+        ]
+
+        crosstab_ids = None
+        # the ids of the crosstab field you want to use. This will be passed on by the search form, or , if set here, values here will be used.
+        # crosstab_ids = [1,2,3]
+        # OR in case of a choice / text field
+        # crosstab_ids = ["my-choice-1", "my-choice-2", "my-choice-3"]
+
+        crosstab_compute_remainder = True
+        # Compute reminder will add a column with the remainder of the crosstab computed
+        # Example: if you choose to do a cross tab on clientIds 1 & 2 , cross tab remainder will add a column with the calculation of all clients except those set/passed in crosstab_ids
+
+        columns = ['some_optional_field',
+            '__crosstab__',
+            # You can customize where the crosstab columns are displayed in relation to the other columns
+
+            SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
+            # This is the same as the Same as the calculation in the crosstab, but this one will be on the whole set. IE total value
+
+        ]
+
+Customizing the verbose name of the crosstab columns
+----------------------------------------------------
+You can customize the verbose name of the crosstab columns by Customizing the ``ReportField`` and setting the ``crosstab_field_verbose_name`` attribute to your custom class.
+Default is that the verbose name will display the id of the crosstab field, and the remainder column will be called "The remainder".
+
+
+.. code-block:: python
+
+        class CustomCrossTabTotalField(SlickReportField):
+
+            calculation_field = "value"
+            calculation_method = Sum
+            verbose_name = _("Total Value")
+
+            @classmethod
+            def get_crosstab_field_verbose_name(cls, model, id):
+                from .models import Client
+                if id == "----": # the remainder column
+                    return _("Rest of clients")
+                name = Client.objects.get(pk=id).name
+                # OR if you crosstab on a choice field
+                # name = get_choice_name(model, "client", id)
+                return f"{cls.verbose_name} {name}"
+

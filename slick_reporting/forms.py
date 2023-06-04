@@ -289,7 +289,7 @@ def report_form_factory(
     )
 
     if show_time_series_selector:
-        time_series_choices = tuple(TIME_SERIES_CHOICES)
+        time_series_choices = list(TIME_SERIES_CHOICES)
         if time_series_selector_allow_empty:
             time_series_choices.insert(0, ("", "---------"))
 

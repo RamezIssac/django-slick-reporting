@@ -1,6 +1,7 @@
 Time Series Reports
 ==================
-
+A Time series report is a report that is generated for a periods of time.
+The period can be daily, weekly, monthly, yearly or custom, calculations will be performed for each period in the time series.
 
 Here is a quick recipe to what you want to do
 
@@ -39,16 +40,13 @@ Here is a quick recipe to what you want to do
 
         ]
 
-
-
-
         time_series_selector = True
         # This will display a selector to change the time series pattern
 
         # settings for the time series selector
         # ----------------------------------
 
-        time_series_selector_choices=None  # A list Choice tuple [(value, label), ...]
+        time_series_selector_choices = None  # A list Choice tuple [(value, label), ...]
         time_series_selector_default = "monthly"  # The initial value for the time series selector
         time_series_selector_label = _("Period Pattern)  # The label for the time series selector
         time_series_selector_allow_empty = False  # Allow the user to select an empty time series

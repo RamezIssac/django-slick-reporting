@@ -96,7 +96,7 @@ class SlickReportViewBase(FormView):
     time_series_pattern = ""
     time_series_columns = None
 
-    date_field = None
+    date_field = "date"
 
     swap_sign = False
 
@@ -117,6 +117,7 @@ class SlickReportViewBase(FormView):
     crosstab_ids = None
     crosstab_columns = None
     crosstab_compute_remainder = True
+
     excluded_fields = None
     report_title_context_key = "title"
 
