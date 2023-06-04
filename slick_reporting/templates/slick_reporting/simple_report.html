@@ -59,21 +59,10 @@
 {% endblock %}
 {% block extrajs %}
     {{ block.super }}
-{#    <script src="{% static 'slick_reporting/main.js' %}"></script>#}
-{#    <script src="{% static 'slick_reporting/erp_framework.chartsjs.js' %}"></script>#}
-{#    <script src="{% static 'slick_reporting/erp_framework.highchart.js' %}"></script>#}
-
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"
-            integrity="sha384-JnbsSLBmv2/R0fUmF2XYIcAEMPHEAO51Gitn9IjL4l89uFTIgtLF1+jqIqqd9FSk"
-            crossorigin="anonymous"></script>
-
 
     <script>
         $(document).ready(function () {
 
-
-            $('select').select2();
 
             let data = {{ report_data|jsonify }};
 

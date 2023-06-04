@@ -6,7 +6,7 @@ from django import forms
 from django.conf import settings
 from django.db.models import Q
 from django.forms import modelform_factory
-from django.http import HttpResponse, StreamingHttpResponse
+from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
@@ -176,8 +176,10 @@ class SlickReportViewBase(ReportGeneratorAPI, FormView):
             return self.render_to_response(
                 self.get_context_data(report_data=report_data)
             )
+        else:
+            return self.form_invalid(self.form)
 
-        return self.render_to_response(self.get_context_data())
+        # return self.render_to_response(self.get_context_data())
 
     def export_csv(self, report_data):
         return self.csv_export_class(
@@ -396,6 +398,11 @@ class SlickReportViewBase(ReportGeneratorAPI, FormView):
             # initialize empty form with initials if the no data is in the get or the post
             context["form"] = self.get_form_class()()
         return context
+
+    def form_invalid(self, form):
+        if self.request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest":
+            return JsonResponse(form.errors, status=400)
+        return super().form_invalid(form)
 
 
 class SlickReportView(SlickReportViewBase):
