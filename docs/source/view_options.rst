@@ -3,11 +3,10 @@ Report View Options
 
 We can categorize the output of a report into 4 sections:
 
+#. Grouped report: similar to what you'd so with a GROUP BY sql statement. We group by a field and do some kind of calculations over the grouped records.
+#. Time series report: a step up from the previous grouped report, where the calculations are done for each time period set in the time series options.
+#. Crosstab report: It's a report where the results shows the relationship between two or more variables. Example: Rows are the clients, columns are the products, and the values are the number of sales for each client/product combination.
 #. List report: Similar to a django changelist, it's a direct view of the report model records with some extra features like sorting, filtering, pagination, etc.
-#. Grouped report: similar to what you'd expect from a SQL group by query, it's a list of records grouped by a certain field
-#. Time series report: a step up from the grouped report, where the results are computed for each time period (day, week, month, year, etc) or you can specify a custom periods.
-#. Crosstab report: It's a report where a table showing the relationship between two or more variables. (like Client sales of each product comparison)
-
 
 
 In following sections we will explore the different options for each type of report.
@@ -49,19 +48,42 @@ Below is the general list of options that can be used to control the behavior of
 
     Columns names can be
 
-    * A Computation Field
+    * A Computation Field, as a class or by its name if its registered (see :ref:`computation_field`)
+        Example:
+
+            .. code-block:: python
+
+                    class MyTotalReportField(SlickReportField):
+                        pass
+
+                    class MyReport(ReportView):
+                        columns = [
+                            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
+                            # a computation field created on the fly
+
+                            MyTotalReportField,
+                            # A computation Field class
+
+                            "__total__",
+                            # a computation field registered in the computation field registry
+                            ]
+
+
+
 
     * If group_by is set and it's a foreign key, then any field on the grouped by model.
 
         Example:
 
         .. code-block:: python
+
                 class MyReport(ReportView):
                     report_model = MySales
                     group_by = 'client'
                     columns = [
                         'name', # field that exists on the Client Model
                         'date_of_birth', # field that exists on the Client Model
+                        "agent__name", # field that exists on the Agent Model related to the Client Model
 
                         # calculation fields
                     ]
@@ -72,16 +94,18 @@ Below is the general list of options that can be used to control the behavior of
     * If group_by is not set, then
         1. Any field name on the report_model / queryset
         2. A calculation field, in this case the calculation will be made on the whole set of records, not on each group.
-        Example:
-        .. code-block:: python
-            class MyReport(ReportView):
-                    report_model = MySales
-                    group_by = None
-                    columns = [
-                        SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value")
-                    ]
+           Example:
 
-        Above code will return the calculated sum of all values in the report_model / queryset
+                .. code-block:: python
+
+                    class MyReport(ReportView):
+                            report_model = MySales
+                            group_by = None
+                            columns = [
+                                SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value")
+                            ]
+
+            Above code will return the calculated sum of all values in the report_model / queryset
 
     * A callable on the view /or the generator, that takes the record as a parameter and returns a value.
 
@@ -203,4 +227,34 @@ Below is the general list of options that can be used to control the behavior of
             Set the doc_type minus list to be used in double sided calculations, default to ``None``
 
 
+
+Hooks and functions
+-------------------
+
+.. attribute:: ReportView.get_queryset()
+
+        Override this function to return a custom queryset to be used in the report.
+
+.. attribute:: ReportView.get_report_title()
+
+        Override this function to return a custom report title.
+
+.. attribute:: ReportView.ajax_render_to_response()
+
+            Override this function to return a custom response for ajax requests.
+
+.. attribute:: ReportView.format_row()
+
+        Override this function to return a custom row format.
+
+.. attribute:: ReportView.filter_results(data, for_print=False)
+
+        Hook to Filter results, usable if you want to do actions on the data set based on computed data (like eliminate __balance__ = 0, etc)
+        :param data: the data set , list of dictionaries
+        :param for_print: if the data is being filtered for printing or not
+        :return: the data set after filtering.
+
+.. attribute:: ReportView.get_form_crispy_helper()
+
+        Override this function to return a custom crispy form helper for the report form.
 

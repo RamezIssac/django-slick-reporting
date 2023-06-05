@@ -9,9 +9,9 @@ Here is a quick recipe to what you want to do
 
     from django.utils.translation import gettext_lazy as _
     from django.db.models import Sum
-    from slick_reporting.views import SlickReportView
+    from slick_reporting.views import ReportView
 
-    class MyReport(SlickReportView):
+    class MyReport(ReportView):
 
         time_series_pattern = "monthly"
         # options are : "daily", "weekly", "monthly", "yearly", "custom"

@@ -9,10 +9,10 @@ Here is a simple example of a crosstab report:
 
     from django.utils.translation import gettext_lazy as _
     from django.db.models import Sum
-    from slick_reporting.views import SlickReportView
+    from slick_reporting.views import ReportView
 
 
-    class MyCrosstabReport(SlickReportView):
+    class MyCrosstabReport(ReportView):
 
         crosstab_field = "client"
         # the column you want to make a crosstab on, can be a foreign key or a choice field
@@ -73,7 +73,7 @@ Example
     from .models import MySales
 
 
-    class MyCrosstabReport(SlickReportView):
+    class MyCrosstabReport(ReportView):
 
         date_field = "date"
         group_by = "product"

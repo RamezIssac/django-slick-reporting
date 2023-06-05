@@ -47,10 +47,10 @@ A ReportView like the below
     path("path-to-report", TransactionsReport.as_view())
 
     # in your views.py
-    from slick_reporting.views import SlickReportView
+    from slick_reporting.views import ReportView
 
 
-    class TransactionsReport(SlickReportView):
+    class TransactionsReport(ReportView):
         report_model = MySalesItem
         columns = [
             "order_date",
@@ -94,7 +94,7 @@ which can be written like this:
 
 .. code-block:: python
 
-        class TotalQuanAndValueReport(SlickReportView):
+        class TotalQuanAndValueReport(ReportView):
             report_model = MySalesItem
             group_by = "product"
             columns = ["name", "__total_quantity__", "__total__"]
@@ -121,7 +121,7 @@ can be written like this
 
 .. code-block:: python
 
-        class TotalQuantityMonthly(SlickReportView):
+        class TotalQuantityMonthly(ReportView):
             report_model = MySalesItem
             group_by = "product"
             columns = ["name", "sku"]
@@ -150,7 +150,7 @@ Which can be written like this
 
 .. code-block:: python
 
-    class CrosstabProductClientValue(SlickReportView):
+    class CrosstabProductClientValue(ReportView):
         report_model = MySalesItem
         group_by = "product"
         columns = ["name", "sku"]

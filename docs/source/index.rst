@@ -31,17 +31,17 @@ Options
 Quickstart
 ----------
 
-You can start by using ``SlickReportView`` which is a subclass of ``django.views.generic.FormView``
+You can start by using ``ReportView`` which is a subclass of ``django.views.generic.FormView``
 
 .. code-block:: python
 
     # in views.py
-    from slick_reporting.views import SlickReportView
+    from slick_reporting.views import ReportView
     from slick_reporting.fields import SlickReportField
     from .models import MySalesItems
 
 
-    class MonthlyProductSales(SlickReportView):
+    class MonthlyProductSales(ReportView):
         # The model where you have the data
         report_model = MySalesItems
 
@@ -80,6 +80,7 @@ Next step :ref:`structure`
    concept
    the_view
    view_options
+   group_by_report
    time_series_options
    crosstab_options
    list_report_options

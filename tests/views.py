@@ -1,11 +1,11 @@
-from slick_reporting.views import SlickReportView
+from slick_reporting.views import ReportView
 from slick_reporting.fields import SlickReportField, TotalReportField
 from django.db.models import Sum, Count
 from .models import SimpleSales, ComplexSales, SimpleSales2
 from django.utils.translation import gettext_lazy as _
 
 
-class MonthlyProductSales(SlickReportView):
+class MonthlyProductSales(ReportView):
     report_model = SimpleSales
     date_field = "doc_date"
     group_by = "client"
@@ -14,7 +14,7 @@ class MonthlyProductSales(SlickReportView):
     time_series_columns = ["__total__", "__balance__"]
 
 
-class MonthlyProductSalesToFIeldSet(SlickReportView):
+class MonthlyProductSalesToFIeldSet(ReportView):
     report_model = SimpleSales2
     date_field = "doc_date"
     group_by = "client"
@@ -23,7 +23,7 @@ class MonthlyProductSalesToFIeldSet(SlickReportView):
     time_series_columns = ["__total__", "__balance__"]
 
 
-class ProductClientSalesMatrix(SlickReportView):
+class ProductClientSalesMatrix(ReportView):
     report_title = "awesome report title"
     report_model = SimpleSales
     date_field = "doc_date"
@@ -43,7 +43,7 @@ class ProductClientSalesMatrix(SlickReportView):
     ]
 
 
-class ProductClientSalesMatrixToFieldSet(SlickReportView):
+class ProductClientSalesMatrixToFieldSet(ReportView):
     report_title = "awesome report title"
     report_model = SimpleSales2
     date_field = "doc_date"
@@ -63,7 +63,7 @@ class ProductClientSalesMatrixToFieldSet(SlickReportView):
     ]
 
 
-class CrossTabColumnOnFly(SlickReportView):
+class CrossTabColumnOnFly(ReportView):
     report_title = "awesome report title"
     report_model = SimpleSales
     date_field = "doc_date"
@@ -87,7 +87,7 @@ class CrossTabColumnOnFly(SlickReportView):
     ]
 
 
-class CrossTabColumnOnFlyToFieldSet(SlickReportView):
+class CrossTabColumnOnFlyToFieldSet(ReportView):
     report_title = "awesome report title"
     report_model = SimpleSales2
     date_field = "doc_date"
@@ -111,7 +111,7 @@ class CrossTabColumnOnFlyToFieldSet(SlickReportView):
     ]
 
 
-class MonthlyProductSalesWQS(SlickReportView):
+class MonthlyProductSalesWQS(ReportView):
     # report_model = SimpleSales
     queryset = SimpleSales.objects.all()
     date_field = "doc_date"
@@ -121,7 +121,7 @@ class MonthlyProductSalesWQS(SlickReportView):
     time_series_columns = [TotalReportField, "__balance__"]
 
 
-class TaxSales(SlickReportView):
+class TaxSales(ReportView):
     # report_model = SimpleSales
     queryset = ComplexSales.objects.all()
     date_field = "doc_date"
@@ -141,7 +141,7 @@ class TaxSales(SlickReportView):
     ]
 
 
-class MonthlyProductSalesToFIeldSet(SlickReportView):
+class MonthlyProductSalesToFIeldSet(ReportView):
     report_model = SimpleSales2
     date_field = "doc_date"
     group_by = "client"
@@ -150,7 +150,7 @@ class MonthlyProductSalesToFIeldSet(SlickReportView):
     time_series_columns = ["__total__", "__balance__"]
 
 
-class TaxSales(SlickReportView):
+class TaxSales(ReportView):
     # report_model = SimpleSales
     queryset = ComplexSales.objects.all()
     date_field = "doc_date"

@@ -3,10 +3,10 @@
 The Slick Report View
 =====================
 
-What is SlickReportView?
------------------------
+What is ReportView?
+--------------------
 
-SlickReportView is a CBV that inherits form ``FromView`` and expose the report generator needed attributes.
+ReportView is a CBV that inherits form ``FromView`` and expose the report generator needed attributes.
 It:
 
 * Auto generate the search form based on the report model (Or you can create you own)
@@ -42,19 +42,27 @@ Let's have a look
     response = {
         # the report slug, defaults to the class name all lower
         "report_slug": "",
+
         # a list of objects representing the actual results of the report
         "data": [
             {
-                "name": "Product 0",
+                "name": "Product 1",
                 "quantity__sum": "1774",
                 "value__sum": "8758",
-                "field_n": "value_n",
+                "field_x": "value_x",
             },
-            # .....
+            {
+                "name": "Product 2",
+                "quantity__sum": "1878",
+                "value__sum": "3000",
+                "field_x": "value_x",
+            },
+            # etc .....
         ],
+
         # A list explaining the columns/keys in the data results.
         # ie: len(response.columns) == len(response.data[i].keys())
-        # Contains needed information about the verbose name , if summable , hints about the data type.
+        # It contains needed information about verbose name , if summable and hints about the data type.
         "columns": [
             {
                 "name": "name",
@@ -91,8 +99,9 @@ Let's have a look
             "crosstab_column_names": [],
             "crosstab_column_verbose_names": [],
         },
-        # a mirror of the set charts_settings on the SlickReportView
-        # SlickReportView populates the id if missing and fill the `engine_name' if not set
+
+        # A mirror of the set charts_settings on the ReportView
+        # ``ReportView`` populates the id and the `engine_name' if not set
         "chart_settings": [
             {
                 "type": "pie",

@@ -362,6 +362,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
     def filter_results(self, data, for_print=False):
         """
         Hook to Filter results based on computed data (like eliminate __balance__ = 0, etc)
+        return None to remove the row from the results
         :param data: List of objects
         :param for_print: is print request
         :return: filtered data
