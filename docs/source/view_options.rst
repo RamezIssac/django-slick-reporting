@@ -1,15 +1,17 @@
-
 Report View Options
 ===================
 
 We can categorize the output of a report into 4 sections:
 
-* List report: Similar to a django changelist, it's a direct view of the report model records with some extra features like sorting, filtering, pagination, etc.
-* Grouped report: similar to what you'd expect from a SQL group by query, it's a list of records grouped by a certain field
-* Time series report: a step up from the grouped report, where the results are computed for each time period (day, week, month, year, etc) or you can specify a custom periods.
-* Crosstab report: It's a report where a table showing the relationship between two or more variables. (like Client sales of each product comparison)
+#. List report: Similar to a django changelist, it's a direct view of the report model records with some extra features like sorting, filtering, pagination, etc.
+#. Grouped report: similar to what you'd expect from a SQL group by query, it's a list of records grouped by a certain field
+#. Time series report: a step up from the grouped report, where the results are computed for each time period (day, week, month, year, etc) or you can specify a custom periods.
+#. Crosstab report: It's a report where a table showing the relationship between two or more variables. (like Client sales of each product comparison)
 
 
+
+In following sections we will explore the different options for each type of report.
+Below is the general list of options that can be used to control the behavior of the report view.
 
 ``ReportView`` Options
 ----------------------
@@ -31,25 +33,60 @@ We can categorize the output of a report into 4 sections:
 
     .. code-block:: python
 
-        class MyReport()
+        class MyReport(ReportView):
             columns = [
                 'id',
-                ('name', {'verbose_name': "My verbose name", is_summable=False}),
+                ('name', {'verbose_name': "My verbose name", "is_summable"=False}),
                 'description',
+
+                # A callable on the view /or the generator, that takes the record as a parameter and returns a value.
+                ('get_full_name', {"verbose_name"="Full Name", "is_summable"=False} ),
             ]
+
+            def get_full_name(self, record):
+                return record['first_name'] + " " + record['last_name']
 
 
     Columns names can be
 
-    *. A Computation Field
+    * A Computation Field
 
-    *. If group_by is set and it's a foreign key, then any field on the group_by model
+    * If group_by is set and it's a foreign key, then any field on the grouped by model.
 
-    *. If group_by is not set, then any field name on the report_model / queryset
+        Example:
 
-    *. A callable on the view /or the generator, that takes the record as a parameter and returns a value.
+        .. code-block:: python
+                class MyReport(ReportView):
+                    report_model = MySales
+                    group_by = 'client'
+                    columns = [
+                        'name', # field that exists on the Client Model
+                        'date_of_birth', # field that exists on the Client Model
 
-    *. A Special ``__time_series__``, and ``__crosstab__``
+                        # calculation fields
+                    ]
+
+
+
+
+    * If group_by is not set, then
+        1. Any field name on the report_model / queryset
+        2. A calculation field, in this case the calculation will be made on the whole set of records, not on each group.
+        Example:
+        .. code-block:: python
+            class MyReport(ReportView):
+                    report_model = MySales
+                    group_by = None
+                    columns = [
+                        SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value")
+                    ]
+
+        Above code will return the calculated sum of all values in the report_model / queryset
+
+    * A callable on the view /or the generator, that takes the record as a parameter and returns a value.
+
+    * A Special ``__time_series__``, and ``__crosstab__``
+
        Those are used to control the position of the time series inside the columns, defaults it's appended at the end
 
 
@@ -66,6 +103,23 @@ We can categorize the output of a report into 4 sections:
         the name of the end date field, if not specified, it will default to ``date_field``
 
 
+.. attribute:: ReportView.group_by
+
+        the group by field, it can be a foreign key, a text field, on the report model or traversing a foreign key.
+
+        Example:
+
+        .. code-block:: python
+
+            class MyReport(ReportView):
+                report_model = MySalesModel
+                group_by = 'client'
+                # OR
+                # group_by = 'client__agent__name'
+                # OR
+                # group_by = 'client__agent'
+
+
 .. attribute:: ReportView.report_title
 
         the title of the report to be displayed in the report page.
@@ -74,13 +128,79 @@ We can categorize the output of a report into 4 sections:
 
         the context key to be used to pass the report title to the template, default to ``title``.
 
-* group_by : the group by field, if not specified, the report will be a list report.
 
-* excluded_fields
+.. attribute:: ReportView.chart_settings
 
-* chart_settings : a list of dictionary (or Chart object) of charts you want to attach to the report.
+        A list of Chart objects representing the charts you want to attach to the report.
+
+        Example:
+
+        .. code-block:: python
+
+            class MyReport(ReportView):
+                report_model = Request
+                # ..
+                chart_settings = [
+                    Chart(
+                        "Browsers",
+                        Chart.PIE,
+                        title_source=["user_agent"],
+                        data_source=["count__id"],
+                        plot_total=True,
+                    ),
+                    Chart(
+                        "Browsers Bar Chart",
+                        Chart.BAR,
+                        title_source=["user_agent"],
+                        data_source=["count__id"],
+                        plot_total=True,
+                    ),
+                ]
 
 
+.. attribute:: ReportView.default_order_by
+
+        Default order by for the results. Ordering can also be controlled on run time by passing order_by='field_name' as a parameter to the view.
+        As you would expect, for DESC order: default_order_by (or order_by as a parameter) ='-field_name'
+
+.. attribute:: ReportView.template_name
+
+        The template to be used to render the report, default to ``slick_reporting/simple_report.html``
+        You can override this to customize the report look and feel.
+
+.. attribute:: ReportView.limit_records
+
+        Limit the number of records to be displayed in the report, default to ``None`` (no limit)
+
+.. attribute:: ReportView.swap_sign
+
+            Swap the sign of the values in the report, default to ``False``
+
+
+.. attribute:: ReportView.csv_export_class
+
+        Set the csv export class to be used to export the report, default to ``ExportToStreamingCSV``
+
+.. attribute:: ReportView.report_generator_class
+
+        Set the generator class to be used to generate the report, default to ``ReportGenerator``
+
+.. attribute:: ReportView.with_type
+
+        Set if double sided calculations should be taken into account, default to ``False``
+        Read more about double sided calculations here https://django-erp-framework.readthedocs.io/en/latest/topics/doc_types.html
+
+.. attribute:: ReportView.doc_type_field_name
+
+        Set the doc_type field name to be used in double sided calculations, default to ``doc_type``
+
+.. attribute:: ReportView.doc_type_plus_list
+
+        Set the doc_type plus list to be used in double sided calculations, default to ``None``
+
+.. attribute:: ReportView.doc_type_minus_list
+
+            Set the doc_type minus list to be used in double sided calculations, default to ``None``
 
 
 

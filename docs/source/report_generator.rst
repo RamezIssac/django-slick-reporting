@@ -28,7 +28,7 @@ ReportGenerator
     .. autoattribute:: crosstab_field
     .. autoattribute:: crosstab_columns
     .. autoattribute:: crosstab_ids
-    .. autoattribute:: crosstab_compute_reminder
+    .. autoattribute:: crosstab_compute_remainder
     .. automethod:: get_crosstab_field_verbose_name
 
     .. rubric:: Below are the magical attrs

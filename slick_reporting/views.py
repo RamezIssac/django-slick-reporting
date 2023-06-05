@@ -119,9 +119,6 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
     doc_type_plus_list = None
     doc_type_minus_list = None
 
-    # default order by for the results.
-    # ordering can also be controlled on run time by passing order_by='field_name'
-    # For DESC order supply order_by='-field_name'
     default_order_by = ""
 
     template_name = "slick_reporting/simple_report.html"

@@ -53,6 +53,36 @@ Here is a quick recipe to what you want to do
 
 
 
+Time Series Options
+-------------------
+
+.. attribute:: ReportView.time_series_pattern
+
+            the time series pattern to be used in the report, it can be one of the following:
+            Possible options are: daily, weekly, semimonthly, monthly, quarterly, semiannually, annually and custom.
+            if `custom` is set, you'd need to override  `time_series_custom_dates`
+
+.. attribute:: ReportView.time_series_custom_dates
+
+            A list of tuples of (start_date, end_date) pairs indicating the start and end of each period.
+
+.. attribute:: ReportView.time_series_columns
+
+            a list of Calculation Field names which will be included in the series calculation.
+
+            .. code-block:: python
+                    class MyReport(ReportView):
+
+                    time_series_columns = [
+                        SlickReportField.create(Sum, "value", verbose_name=_("Value"), is_summable=True, name="sum__value"),
+                        SlickReportField.create(Avg, "Price", verbose_name=_("Avg Price"), is_summable=False)
+
+                    ]
+
+
+
+
+
 Links to demo
 -------------
 

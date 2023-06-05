@@ -1,5 +1,5 @@
-SlickReportingListView
-======================
+List Report View
+================
 
 This is a simple ListView to display data in a model, like you would with an admin ChangeList view.
 It's quite similar to ReportView except there is no calculation, by default.

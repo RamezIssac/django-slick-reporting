@@ -130,7 +130,7 @@ class ReportGeneratorAPI:
     """Include an an extra crosstab_columns for the outer group ( ie: all expects those `crosstab_ids`) """
 
     limit_records = None
-    """Serves are a main limit to  the returned data of teh report_model.
+    """Serves are a main limit to  the returned data of the report_model.
     Can be beneficial if the results may be huge.
     """
     swap_sign = False

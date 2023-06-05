@@ -11,7 +11,8 @@ Here is a simple example of a crosstab report:
     from django.db.models import Sum
     from slick_reporting.views import SlickReportView
 
-    class MyCrosstabReports(SlickReportView):
+
+    class MyCrosstabReport(SlickReportView):
 
         crosstab_field = "client"
         # the column you want to make a crosstab on, can be a foreign key or a choice field
@@ -30,13 +31,12 @@ Here is a simple example of a crosstab report:
         # Compute reminder will add a column with the remainder of the crosstab computed
         # Example: if you choose to do a cross tab on clientIds 1 & 2 , cross tab remainder will add a column with the calculation of all clients except those set/passed in crosstab_ids
 
-        columns = ['some_optional_field',
-            '__crosstab__',
+        columns = [
+            "some_optional_field",
+            "__crosstab__",
             # You can customize where the crosstab columns are displayed in relation to the other columns
-
             SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
             # This is the same as the Same as the calculation in the crosstab, but this one will be on the whole set. IE total value
-
         ]
 
 Customizing the verbose name of the crosstab columns
@@ -56,13 +56,39 @@ Default is that the verbose name will display the id of the crosstab field, and 
             @classmethod
             def get_crosstab_field_verbose_name(cls, model, id):
                 from .models import Client
-                if id == "----": # the remainder column
+
+                if id == "----":  # the remainder column
                     return _("Rest of clients")
                 name = Client.objects.get(pk=id).name
                 # OR if you crosstab on a choice field
                 # name = get_choice_name(model, "client", id)
                 return f"{cls.verbose_name} {name}"
 
+
+Example
+-------
+
+.. code-block:: python
+
+    from .models import MySales
+
+
+    class MyCrosstabReport(SlickReportView):
+
+        date_field = "date"
+        group_by = "product"
+        report_model = MySales
+        crosstab_field = "client"
+
+        crosstab_columns = [
+            SlickReportField.create(Sum, "value", verbose_name=_("Value")),
+        ]
+
+        crosstab_ids = [1, 2]  # either set here via the filter form
+        crosstab_compute_remainder = True
+
+
+The above code would return a result like this:
 
 .. image:: _static/crosstab.png
   :width: 800
