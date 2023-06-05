@@ -1,7 +1,9 @@
-Search Form
+.. _filter_form:
+
+Filter Form
 ===========
 
-The search form is a form that is used to filter the data to be used in the report.
+The filter form is a form that is used to filter the data to be used in the report.
 
 
 How the search form is generated ?
@@ -15,6 +17,9 @@ You can customize the generated form:
 # Todo
 
 You can also override the form by providing a ``form_class`` attribute to the report view.
+
+
+.. _filter_form_customization:
 
 Override the Form
 ------------------

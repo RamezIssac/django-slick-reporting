@@ -516,6 +516,17 @@ class SlickReportingListViewMixin:
 
 
 class SlickReportingListView(SlickReportingListViewMixin, ReportViewBase):
+    def __init_subclass__(cls) -> None:
+        warnings.warn(
+            "slick_reporting.view.SlickReportingListView is"
+            "deprecated in favor of slick_reporting.view.ListReportView",
+            Warning,
+            stacklevel=2,
+        )
+        super().__init_subclass__()
+
+
+class ListReportView(SlickReportingListViewMixin, ReportViewBase):
     pass
 
 
