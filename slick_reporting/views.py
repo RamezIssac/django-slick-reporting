@@ -186,7 +186,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     @classmethod
     def get_report_model(cls):
-        if cls.queryset:
+        if cls.queryset is not None:
             return cls.queryset.model
         return cls.report_model
 
@@ -354,10 +354,11 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             self.chart_settings or [], self.report_title
         )
 
-    def get_queryset(self):
-        if self.queryset is None:
-            return self.get_report_model()._default_manager.all()
-        return self.queryset
+    @classmethod
+    def get_queryset(cls):
+        if cls.queryset is None:
+            return cls.get_report_model()._default_manager.all()
+        return cls.queryset
 
     def filter_results(self, data, for_print=False):
         """
@@ -413,10 +414,13 @@ class ReportView(ReportViewBase):
         #     raise TypeError(f'`date_field` is not set on {cls}')
         # cls.report_generator_class.check_columns([cls.date_field], False, cls.get_report_model())
 
-        # sanity check, raises error if the columns or date fields is not mapped
+        # sanity check, raises error if the columns or date fields is not set
         if cls.columns:
             cls.report_generator_class.check_columns(
-                cls.columns, cls.group_by, cls.get_report_model(), container_class=cls
+                cls.columns,
+                cls.group_by,
+                cls.get_report_model(),
+                container_class=cls,
             )
 
         super().__init_subclass__()

@@ -112,7 +112,6 @@ class CrossTabColumnOnFlyToFieldSet(ReportView):
 
 
 class MonthlyProductSalesWQS(ReportView):
-    # report_model = SimpleSales
     queryset = SimpleSales.objects.all()
     date_field = "doc_date"
     group_by = "client"

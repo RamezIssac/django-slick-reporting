@@ -571,7 +571,6 @@ class ReportGenerator(ReportGeneratorAPI, object):
         :param container_class: a class to search for custom columns attribute in, typically the ReportView
         :return: List of dict, each dict contains relevant data to the respective field in `columns`
         """
-        group_by_field = ""
         group_by_model = None
         if group_by:
             try:
