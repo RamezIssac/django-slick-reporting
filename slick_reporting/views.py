@@ -1,5 +1,6 @@
 import csv
 import datetime
+import warnings
 
 import simplejson as json
 from django import forms
@@ -91,7 +92,7 @@ class ExportToStreamingCSV(ExportToCSV):
         )
 
 
-class SlickReportViewBase(ReportGeneratorAPI, FormView):
+class ReportViewBase(ReportGeneratorAPI, FormView):
     report_slug = None
 
     report_title = ""
@@ -188,7 +189,9 @@ class SlickReportViewBase(ReportGeneratorAPI, FormView):
 
     @classmethod
     def get_report_model(cls):
-        return cls.report_model or cls.queryset.model
+        if cls.queryset:
+            return cls.queryset.model
+        return cls.report_model
 
     def ajax_render_to_response(self, report_data):
         return HttpResponse(
@@ -405,7 +408,7 @@ class SlickReportViewBase(ReportGeneratorAPI, FormView):
         return super().form_invalid(form)
 
 
-class SlickReportView(SlickReportViewBase):
+class ReportView(ReportViewBase):
     def __init_subclass__(cls) -> None:
         # date_field = getattr(cls, 'date_field', '')
         # if not date_field:
@@ -413,10 +416,10 @@ class SlickReportView(SlickReportViewBase):
         # cls.report_generator_class.check_columns([cls.date_field], False, cls.get_report_model())
 
         # sanity check, raises error if the columns or date fields is not mapped
-
-        cls.report_generator_class.check_columns(
-            cls.columns, cls.group_by, cls.get_report_model(), container_class=cls
-        )
+        if cls.columns:
+            cls.report_generator_class.check_columns(
+                cls.columns, cls.group_by, cls.get_report_model(), container_class=cls
+            )
 
         super().__init_subclass__()
 
@@ -512,5 +515,35 @@ class SlickReportingListViewMixin:
         )
 
 
-class SlickReportingListView(SlickReportingListViewMixin, SlickReportViewBase):
+class SlickReportingListView(SlickReportingListViewMixin, ReportViewBase):
     pass
+
+
+class SlickReportViewBase(ReportViewBase):
+    """
+    Deprecated in favor of slick_reporting.view.ReportViewBase
+    """
+
+    def __init_subclass__(cls) -> None:
+        warnings.warn(
+            "slick_reporting.view.SlickReportView and slick_reporting.view.SlickReportViewBase are "
+            "deprecated in favor of slick_reporting.view.ReportView and slick_reporting.view.BaseReportView",
+            Warning,
+            stacklevel=2,
+        )
+
+        super().__init_subclass__()
+
+
+class SlickReportView(ReportView):
+    def __init_subclass__(cls) -> None:
+        warnings.warn(
+            "slick_reporting.view.SlickReportView and slick_reporting.view.SlickReportViewBase are "
+            "deprecated in favor of slick_reporting.view.ReportView and slick_reporting.view.BaseReportView",
+            Warning,
+            stacklevel=2,
+        )
+
+        # cls.report_generator_class.check_columns(
+        #     cls.columns, cls.group_by, cls.get_report_model(), container_class=cls
+        # )

@@ -38,7 +38,20 @@ We can categorize the output of a report into 4 sections:
                 'description',
             ]
 
-    .. autoattribute:: columns
+
+    Columns names can be
+
+    *. A Computation Field
+
+    *. If group_by is set and it's a foreign key, then any field on the group_by model
+
+    *. If group_by is not set, then any field name on the report_model / queryset
+
+    *. A callable on the view /or the generator, that takes the record as a parameter and returns a value.
+
+    *. A Special ``__time_series__``, and ``__crosstab__``
+       Those are used to control the position of the time series inside the columns, defaults it's appended at the end
+
 
 .. attribute:: ReportView.date_field
 
