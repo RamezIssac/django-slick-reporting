@@ -63,3 +63,13 @@ Default is that the verbose name will display the id of the crosstab field, and 
                 # name = get_choice_name(model, "client", id)
                 return f"{cls.verbose_name} {name}"
 
+
+.. image:: _static/crosstab.png
+  :width: 800
+  :alt: crosstab
+  :align: center
+
+
+1. The Group By. In this example, it is the product field.
+2. The Crosstab. In this example, it is the client field. crosstab_ids were set to client 1 and client 2
+3. The remainder. In this example, it is the rest of the clients. crosstab_compute_remainder was set to True
