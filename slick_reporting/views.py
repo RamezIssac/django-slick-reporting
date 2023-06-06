@@ -425,11 +425,6 @@ class ReportView(ReportViewBase):
 
         super().__init_subclass__()
 
-    @staticmethod
-    def check_chart_settings(chart_settings=None):
-        # todo check on chart settings
-        return
-
 
 class SlickReportingListViewMixin:
     report_generator_class = ListViewReportGenerator
