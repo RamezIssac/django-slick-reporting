@@ -1,8 +1,5 @@
-from __future__ import unicode_literals
-
 import datetime
 import logging
-from warnings import warn
 from dataclasses import dataclass
 from inspect import isclass
 

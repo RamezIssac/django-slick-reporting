@@ -26,7 +26,7 @@ from .generator import (
     ReportGenerator,
     ListViewReportGenerator,
     ReportGeneratorAPI,
-    Chart,  # needed for easier importing in other apps
+    Chart,  # noqa # needed for easier importing in other apps
 )
 
 

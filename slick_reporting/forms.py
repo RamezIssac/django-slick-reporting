@@ -97,43 +97,43 @@ class OrderByForm(forms.Form):
 
 class BaseReportForm:
     def get_filters(self):
-        raise NotImplemented(
+        raise NotImplementedError(
             "get_filters() must be implemented in subclass,"
             "should return a tuple of (Q objects, kwargs filter) to be passed to QuerySet.filter()"
         )
 
     def get_start_date(self):
-        raise NotImplemented(
+        raise NotImplementedError(
             "get_start_date() must be implemented in subclass,"
             "should return a datetime object"
         )
 
     def get_end_date(self):
-        raise NotImplemented(
+        raise NotImplementedError(
             "get_end_date() must be implemented in subclass,"
             "should return a datetime object"
         )
 
     def get_crosstab_compute_remainder(self):
-        raise NotImplemented(
+        raise NotImplementedError(
             "get_crosstab_compute_remainder() must be implemented in subclass,"
             "should return a boolean value"
         )
 
     def get_crosstab_ids(self):
-        raise NotImplemented(
+        raise NotImplementedError(
             "get_crosstab_ids() must be implemented in subclass,"
             "should return a list of ids to be used for crosstab"
         )
 
     def get_time_series_pattern(self):
-        raise NotImplemented(
+        raise NotImplementedError(
             "get_time_series_pattern() must be implemented in subclass,"
             "should return a string value of a valid time series pattern"
         )
 
     def get_crispy_helper(self):
-        raise NotImplemented(
+        raise NotImplementedError(
             "get_crispy_helper() must be implemented in subclass,"
             "should return a crispy helper object"
         )

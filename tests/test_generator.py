@@ -135,7 +135,6 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
             end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone("utc")),
         )
 
-        report_field_class = TotalReportField
         dates = report._get_time_series_dates()
         self.assertEqual(len(dates), 12)
         self.assertIsNotNone(
@@ -182,7 +181,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         )
 
         def not_known_pattern():
-            dates = report._get_time_series_dates("each_spring")
+            report._get_time_series_dates("each_spring")
 
         self.assertRaises(Exception, not_known_pattern)
 

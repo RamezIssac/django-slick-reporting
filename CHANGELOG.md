@@ -3,11 +3,23 @@
 All notable changes to this project will be documented in this file.
 
 ## [unreleased]
-- Allow cross tab on fields & deprecate `crosstab_model` in favor of crosstab_field, to be removed next version.
-- Add support for start_date_field_name and end_date_field_name
-- Add support to crosstab on traversing fields
-- Fix an issue if a foreign key have a custom `to_field` in group_by and `crosstab_field`
-- Easy override to the search form, By creating you own form and subclass BaseReportForm and implement the mandatory method(s) 
+
+- Deprecated ``form_factory`` in favor of ``forms``, to be removed next version.
+- Deprecated `crosstab_model` in favor of ``crosstab_field``, to be removed next version.
+- Deprecated ``slick_reporting.view.SlickReportView`` and ``slick_reporting.view.SlickReportViewBase`` in favor of ``slick_reporting.view.ReportView`` and ``slick_reporting.view.BaseReportView``, to be removed next version.
+- Allowed cross tab on fields other than ForeignKey
+- Added support for start_date_field_name and end_date_field_name
+- Added support to crosstab on traversing fields
+- Added support for document types / debit and credit calculations
+- Added support for ordering via ``ReportView.default_order_by`` and/or passing the parameter ``order_by`` to the view
+- Added return of Ajax response in case of error and request is Ajax
+- Made it easy override to the search form. Create you own form and subclass BaseReportForm and implement the mandatory method(s).
+- Consolidated the needed resources in ``slick_reporting/js_resource.html`` template, so to use your own template you just need to include it.
+- Fixed an issue with report fields not respecting the queryset on the ReportView.
+- Fixed an issue if a foreign key have a custom `to_field` set either in ``group_by`` and/or `crosstab_field` .
+- Enhancing and adding to the documentation.
+- Black format the code and the documentation
+
 
 ## [0.8.0]
 
