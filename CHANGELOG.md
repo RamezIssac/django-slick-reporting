@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.9.0] - 2023-06-07
 
 - Deprecated ``form_factory`` in favor of ``forms``, to be removed next version.
 - Deprecated `crosstab_model` in favor of ``crosstab_field``, to be removed next version.
