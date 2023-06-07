@@ -35,7 +35,6 @@ from .models import (
     SimpleSales2,
 )
 
-
 User = get_user_model()
 SUPER_LOGIN = dict(username="superlogin", password="password")
 year = now().year
@@ -278,7 +277,7 @@ class BaseTestData:
             price=10,
             flag="sales-return",
         )
-        sale5 = ComplexSales.objects.create(
+        ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2),
             client=cls.client2,
             product=cls.product1,
@@ -454,7 +453,7 @@ class ReportTest(BaseTestData, TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-        view_report_data = response.json()
+        response.json()
         self.assertTrue(len(data), 2)
         # self.assertEqual(view_report_data['data'], data)
 
@@ -537,6 +536,7 @@ class TestView(BaseTestData, TestCase):
             columns=["slug", "name"],
             time_series_pattern="monthly",
             time_series_columns=["__total__", "__balance__"],
+            kwargs_filters={"client_id__in": [self.client1.pk, self.client2.pk]},
         )
         data = report_generator.get_report_data()
         response = self.client.get(
@@ -547,9 +547,9 @@ class TestView(BaseTestData, TestCase):
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
         self.assertEqual(response.status_code, 200)
-        view_report_data = response.json()
         self.assertTrue(len(data), 2)
-        # self.assertEqual(view_report_data['data'], data)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data["data"], data)
 
     def test_view_filter_to_field_set(self):
         report_generator = ReportGenerator(
@@ -557,24 +557,21 @@ class TestView(BaseTestData, TestCase):
             date_field="doc_date",
             group_by="client",
             columns=["slug", "name"],
-            # time_series_pattern="monthly",
-            # time_series_columns=["__total__", "__balance__"],
+            time_series_pattern="monthly",
+            time_series_columns=["__total__", "__balance__"],
         )
         data = report_generator.get_report_data()
         response = self.client.get(
             reverse("report-to-field-set"),
-            # data={
-            #     "client_id": [self.client2.name, self.client1.name],
-            # },
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
         self.assertEqual(response.status_code, 200)
 
         self.assertTrue(len(data), 2)
 
-        # view_report_data = response.json()
+        view_report_data = response.json()
 
-        # self.assertEqual(view_report_data['data'], data)
+        self.assertEqual(view_report_data["data"], data)
 
     def test_ajax(self):
         report_generator = ReportGenerator(
