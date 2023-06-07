@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import datetime
 import logging
 from dataclasses import dataclass
@@ -41,26 +39,26 @@ class Chart:
         )
 
 
-class ReportGenerator(object):
-    """
-    The main class responsible generating the report and managing the flow
-    """
-
-    field_registry_class = field_registry
-    """You can have a custom computation field locator! It only needs a `get_field_by_name(string)` 
-    and returns a ReportField`"""
-
+class ReportGeneratorAPI:
     report_model = None
     """The main model where data is """
+
+    queryset = None
+    """If set, the report will use this queryset instead of the report_model"""
 
     """
     Class to generate a Json Object containing report data.
     """
-    date_field = None
+    date_field = ""
     """Main date field to use whenever date filter is needed"""
 
+    start_date_field_name = None
+    """If set, the report will use this field to filter the start date, default to date_field"""
+
+    end_date_field_name = None
+    """If set, the report will use this field to filter the end date, default to date_field"""
+
     print_flag = None
-    list_display_links = []
 
     group_by = None
     """The field to use for grouping, if not set then the report is expected to be a sub version of the report model"""
@@ -68,41 +66,41 @@ class ReportGenerator(object):
     columns = None
     """A list of column names.
     Columns names can be 
-    
+
     1. A Computation Field
-    
-    2. If group_by is set, then any field on teh group_by model
-    
+
+    2. If group_by is set, then any field on the group_by model
+
     3. If group_by is not set, then any field name on the report_model / queryset
-     
+
     4. A callable on the generator
-      
+
     5. Special __time_series__, and __crosstab__ 
        Those can be use to control the position of the time series inside the columns, defaults it's appended at the end
-       
+
        Example:
        columns = ['product_id', '__time_series__', 'col_b']
        Same is true with __crosstab__ 
-    
+
     You can customize aspects of the column by adding it as a tuple like this 
         ('field_name', dict(verbose_name=_('My Enhanced Verbose_name'))
-        
-         
+
+
      """
 
     time_series_pattern = ""
     """
     If set the Report will compute a time series.
-    
+
     Possible options are: daily, weekly, semimonthly, monthly, quarterly, semiannually, annually and custom.
-    
+
     if `custom` is set, you'd need to override  `get_custom_time_series_dates`
     """
     time_series_columns = None
     """
     a list of Calculation Field names which will be included in the series calculation.
      Example: ['__total__', '__total_quantity__'] with compute those 2 fields for all the series
-     
+
     """
 
     time_series_custom_dates = None
@@ -112,10 +110,13 @@ class ReportGenerator(object):
     Example: [ (start_date_1, end_date_1), (start_date_2, end_date_2), ....]
     """
 
-    crosstab_model = None
+    crosstab_model = None  # deprecated
+
+    crosstab_field = None
     """
     If set, a cross tab over this model selected ids (via `crosstab_ids`)  
     """
+
     crosstab_columns = None
     """The computation fields which will be computed for each crosstab-ed ids """
 
@@ -125,24 +126,21 @@ class ReportGenerator(object):
     crosstab_compute_remainder = True
     """Include an an extra crosstab_columns for the outer group ( ie: all expects those `crosstab_ids`) """
 
-    show_empty_records = True
-    """
-    If group_by is set, this option control if the report result will include all objects regardless of appearing in the report_model/qs.
-    If set False, only those objects which are found in the report_model/qs
-    Example: Say you group by client
-    show_empty_records = True will get the computation fields for all clients in the Client model (including those who 
-    didnt make a transaction.
-    
-    show_empty_records = False will get the computation fields for all clients in the Client model (including those who 
-    didnt make a transaction.
-     
-    """
-
     limit_records = None
-    """Serves are a main limit to  the returned data of teh report_model.
+    """Serves are a main limit to  the returned data of the report_model.
     Can be beneficial if the results may be huge.
     """
     swap_sign = False
+
+
+class ReportGenerator(ReportGeneratorAPI, object):
+    """
+    The main class responsible generating the report and managing the flow
+    """
+
+    field_registry_class = field_registry
+    """You can have a custom computation field locator! It only needs a `get_field_by_name(string)` 
+    and returns a ReportField`"""
 
     def __init__(
         self,
@@ -158,7 +156,7 @@ class ReportGenerator(object):
         time_series_pattern=None,
         time_series_columns=None,
         time_series_custom_dates=None,
-        crosstab_model=None,
+        crosstab_field=None,
         crosstab_columns=None,
         crosstab_ids=None,
         crosstab_compute_remainder=None,
@@ -170,6 +168,8 @@ class ReportGenerator(object):
         limit_records=False,
         format_row_func=None,
         container_class=None,
+        start_date_field_name=None,
+        end_date_field_name=None,
     ):
         """
 
@@ -201,13 +201,20 @@ class ReportGenerator(object):
             SLICK_REPORTING_DEFAULT_END_DATE,
         )
 
-        super(ReportGenerator, self).__init__()
+        super().__init__()
 
         self.report_model = self.report_model or report_model
-        if not self.report_model:
+        if self.queryset is None:
+            self.queryset = main_queryset
+
+        if not self.report_model and self.queryset is None:
             raise ImproperlyConfigured(
-                "report_model must be set on a class level or via init"
+                "report_model or queryset must be set on a class level or via init"
             )
+
+        main_queryset = (
+            self.report_model.objects if self.queryset is None else self.queryset
+        )
 
         self.start_date = start_date or datetime.datetime.combine(
             SLICK_REPORTING_DEFAULT_START_DATE.date(),
@@ -220,10 +227,17 @@ class ReportGenerator(object):
         )
         self.date_field = self.date_field or date_field
 
+        self.start_date_field_name = (
+            self.start_date_field_name or start_date_field_name or self.date_field
+        )
+        self.end_date_field_name = (
+            self.end_date_field_name or end_date_field_name or self.date_field
+        )
+
         self.q_filters = q_filters or []
         self.kwargs_filters = kwargs_filters or {}
+        self.crosstab_field = self.crosstab_field or crosstab_field
 
-        self.crosstab_model = self.crosstab_model or crosstab_model
         self.crosstab_columns = crosstab_columns or self.crosstab_columns or []
         self.crosstab_ids = self.crosstab_ids or crosstab_ids or []
         self.crosstab_compute_remainder = (
@@ -234,8 +248,11 @@ class ReportGenerator(object):
 
         self.format_row = format_row_func or self._default_format_row
 
-        main_queryset = main_queryset or self.report_model.objects
-        main_queryset = main_queryset.order_by()
+        main_queryset = (
+            self.report_model.objects if main_queryset is None else main_queryset
+        )
+        # todo revise & move somewhere nicer, List Report need to override the resetting of order
+        main_queryset = self._remove_order(main_queryset)
 
         self.columns = columns or self.columns or []
         self.group_by = group_by or self.group_by
@@ -247,11 +264,11 @@ class ReportGenerator(object):
         )
         self.container_class = container_class
 
-        if not self.date_field and (
-            self.time_series_pattern or self.crosstab_model or self.group_by
-        ):
+        if not (
+            self.date_field or (self.start_date_field_name and self.end_date_field_name)
+        ) and (self.time_series_pattern or self.crosstab_field or self.group_by):
             raise ImproperlyConfigured(
-                "date_field must be set on a class level or via init"
+                f"date_field or [start_date_field_name and end_date_field_name] must be set for {self}"
             )
 
         self._prepared_results = {}
@@ -298,9 +315,6 @@ class ReportGenerator(object):
         self.swap_sign = self.swap_sign or swap_sign
         self.limit_records = self.limit_records or limit_records
 
-        # passed to the report fields
-        # self.date_field = date_field or self.date_field
-
         # in case of a group by, do we show a grouped by model data regardless of their appearance in the results
         # a client who didn't make a transaction during the date period.
         self.show_empty_records = False  # show_empty_records if show_empty_records else self.show_empty_records
@@ -309,39 +323,27 @@ class ReportGenerator(object):
         # Preparing actions
         self._parse()
         if self.group_by:
-            if self.show_empty_records:
-                pass
-                # group_by_filter = self.kwargs_filters.get(self.group_by, '')
-                # qs = self.group_by_field.related_model.objects
-                # if group_by_filter:
-                #     lookup = 'pk__in' if isinstance(group_by_filter, Iterable) else 'pk'
-                #     qs = qs.filter(**{lookup: group_by_filter})
-                # self.main_queryset = qs.values()
-
+            self.main_queryset = self._apply_queryset_options(main_queryset)
+            if type(self.group_by_field) is ForeignKey:
+                ids = self.main_queryset.values_list(
+                    self.group_by_field_attname
+                ).distinct()
+                # uses the same logic that is in Django's query.py when fields is empty in values() call
+                concrete_fields = [
+                    f.name
+                    for f in self.group_by_field.related_model._meta.concrete_fields
+                ]
+                # add database columns that are not already in concrete_fields
+                final_fields = concrete_fields + list(
+                    set(self.get_database_columns()) - set(concrete_fields)
+                )
+                self.main_queryset = self.group_by_field.related_model.objects.filter(
+                    **{f"{self.group_by_field.target_field.name}__in": ids}
+                ).values(*final_fields)
             else:
-                self.main_queryset = self._apply_queryset_options(main_queryset)
-                if type(self.group_by_field) is ForeignKey:
-                    ids = self.main_queryset.values_list(
-                        self.group_by_field_attname
-                    ).distinct()
-                    # uses the same logic that is in Django's query.py when fields is empty in values() call
-                    concrete_fields = [
-                        f.name
-                        for f in self.group_by_field.related_model._meta.concrete_fields
-                    ]
-                    # add database columns that are not already in concrete_fields
-                    final_fields = concrete_fields + list(
-                        set(self.get_database_columns()) - set(concrete_fields)
-                    )
-                    self.main_queryset = (
-                        self.group_by_field.related_model.objects.filter(
-                            pk__in=ids
-                        ).values(*final_fields)
-                    )
-                else:
-                    self.main_queryset = self.main_queryset.distinct().values(
-                        self.group_by_field_attname
-                    )
+                self.main_queryset = self.main_queryset.distinct().values(
+                    self.group_by_field_attname
+                )
         else:
             if self.time_series_pattern:
                 self.main_queryset = [{}]
@@ -350,6 +352,16 @@ class ReportGenerator(object):
                     main_queryset, self.get_database_columns()
                 )
         self._prepare_report_dependencies()
+
+    def _remove_order(self, main_queryset):
+        """
+        Remove order_by from the main queryset
+        :param main_queryset:
+        :return:
+        """
+        # if main_queryset.query.order_by:
+        main_queryset = main_queryset.order_by()
+        return main_queryset
 
     def _apply_queryset_options(self, query, fields=None):
         """
@@ -361,8 +373,8 @@ class ReportGenerator(object):
         filters = {}
         if self.date_field:
             filters = {
-                f"{self.date_field}__gt": self.start_date,
-                f"{self.date_field}__lte": self.end_date,
+                f"{self.start_date_field_name}__gt": self.start_date,
+                f"{self.end_date_field_name}__lte": self.end_date,
             }
         filters.update(self.kwargs_filters)
 
@@ -378,10 +390,17 @@ class ReportGenerator(object):
         :param col_data:
         :return:
         """
-        if col_data["is_remainder"]:
-            filters = [~Q(**{f"{col_data['model']}_id__in": self.crosstab_ids})]
+        if "__" in col_data["crosstab_field"]:
+            column_name = col_data["crosstab_field"]
         else:
-            filters = [Q(**{f"{col_data['model']}_id": col_data["id"]})]
+            field = get_field_from_query_text(
+                col_data["crosstab_field"], self.report_model
+            )
+            column_name = field.column
+        if col_data["is_remainder"]:
+            filters = [~Q(**{f"{column_name}__in": self.crosstab_ids})]
+        else:
+            filters = [Q(**{f"{column_name}": col_data["id"]})]
         return filters
 
     def _prepare_report_dependencies(self):
@@ -436,6 +455,7 @@ class ReportGenerator(object):
                     group_by=self.group_by,
                     report_model=self.report_model,
                     date_field=self.date_field,
+                    queryset=self.queryset,
                 )
 
                 q_filters = None
@@ -545,10 +565,9 @@ class ReportGenerator(object):
         :param columns: List of columns
         :param group_by: group by field if any
         :param report_model: the report model
-        :param container_class: a class to search for custom columns attribute in, typically the SlickReportView
+        :param container_class: a class to search for custom columns attribute in, typically the ReportView
         :return: List of dict, each dict contains relevant data to the respective field in `columns`
         """
-        group_by_field = ""
         group_by_model = None
         if group_by:
             try:
@@ -685,7 +704,7 @@ class ReportGenerator(object):
             except ValueError:
                 columns += time_series_columns
 
-        if self.crosstab_model:
+        if self.crosstab_field:
             crosstab_columns = self.get_crosstab_parsed_columns()
 
             try:
@@ -822,11 +841,11 @@ class ReportGenerator(object):
                         "name": f"{magic_field_class.name}CT{id}",
                         "original_name": magic_field_class.name,
                         "verbose_name": self.get_crosstab_field_verbose_name(
-                            magic_field_class, self.crosstab_model, id
+                            magic_field_class, self.crosstab_field, id
                         ),
                         "ref": magic_field_class,
                         "id": id,
-                        "model": self.crosstab_model,
+                        "crosstab_field": self.crosstab_field,
                         "is_remainder": counter == ids_length
                         if self.crosstab_compute_remainder
                         else False,
@@ -860,7 +879,7 @@ class ReportGenerator(object):
             "time_series_column_verbose_names": [
                 x["verbose_name"] for x in time_series_columns
             ],
-            "crosstab_model": self.crosstab_model or "",
+            "crosstab_model": self.crosstab_field or "",
             "crosstab_column_names": [x["name"] for x in crosstab_columns],
             "crosstab_column_verbose_names": [
                 x["verbose_name"] for x in crosstab_columns
@@ -1011,3 +1030,6 @@ class ListViewReportGenerator(ReportGenerator):
                     else:
                         data[name] = getattr(obj, name, "")
         return data
+
+    def _remove_order(self, main_queryset):
+        return main_queryset

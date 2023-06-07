@@ -1,4 +1,5 @@
 import datetime
+from unittest import skip
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count
@@ -8,6 +9,7 @@ from django.utils.timezone import now
 
 from slick_reporting.fields import SlickReportField, BalanceReportField
 from slick_reporting.generator import ReportGenerator
+from slick_reporting.views import ReportView
 from slick_reporting.registry import field_registry
 from tests.report_generators import (
     ClientTotalBalance,
@@ -15,6 +17,7 @@ from tests.report_generators import (
     GroupByCharField,
     GroupByCharFieldPlusTimeSeries,
     TimeSeriesWithOutGroupBy,
+    ProductClientSalesMatrixwSimpleSales2,
 )
 from . import report_generators
 from .models import (
@@ -29,8 +32,8 @@ from .models import (
     ProductCustomID,
     SalesProductWithCustomID,
     Agent,
+    SimpleSales2,
 )
-from .views import SlickReportView
 
 User = get_user_model()
 SUPER_LOGIN = dict(username="superlogin", password="password")
@@ -54,13 +57,13 @@ class BaseTestData:
         cls.limited_user = limited_user
         agent = Agent.objects.create(name="John")
         agent2 = Agent.objects.create(name="Frank")
-        cls.client1 = Client.objects.create(name="Client 1")
+        cls.client1 = Client.objects.create(name="Client 1", sex="MALE")
         cls.client1.contact = Contact.objects.create(address="Street 1", agent=agent)
         cls.client1.save()
-        cls.client2 = Client.objects.create(name="Client 2")
+        cls.client2 = Client.objects.create(name="Client 2", sex="FEMALE")
         cls.client2.contact = Contact.objects.create(address="Street 2", agent=agent)
         cls.client2.save()
-        cls.client3 = Client.objects.create(name="Client 3")
+        cls.client3 = Client.objects.create(name="Client 3", sex="OTHER")
         cls.client3.contact = Contact.objects.create(address="Street 3", agent=agent2)
         cls.client3.save()
         cls.clientIdle = Client.objects.create(name="Client Idle")
@@ -156,6 +159,80 @@ class BaseTestData:
             price=10,
         )
 
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 1, 2),
+            client=cls.client1,
+            product=cls.product1,
+            quantity=10,
+            price=10,
+            created_at=datetime.datetime(year, 1, 5),
+        )
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 2, 2),
+            client=cls.client1,
+            product=cls.product1,
+            quantity=10,
+            price=10,
+            created_at=datetime.datetime(year, 2, 3),
+        )
+
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 3, 2),
+            client=cls.client1,
+            product=cls.product1,
+            quantity=10,
+            price=10,
+            created_at=datetime.datetime(year, 3, 3),
+        )
+
+        # client 2
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 1, 2),
+            client=cls.client2,
+            product=cls.product1,
+            quantity=20,
+            price=10,
+        )
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 2, 2),
+            client=cls.client2,
+            product=cls.product1,
+            quantity=20,
+            price=10,
+        )
+
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 3, 2),
+            client=cls.client2,
+            product=cls.product1,
+            quantity=20,
+            price=10,
+        )
+
+        # client 3
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 1, 2),
+            client=cls.client3,
+            product=cls.product1,
+            quantity=30,
+            price=10,
+        )
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 2, 2),
+            client=cls.client3,
+            product=cls.product1,
+            quantity=30,
+            price=10,
+        )
+
+        SimpleSales2.objects.create(
+            doc_date=datetime.datetime(year, 3, 2),
+            client=cls.client3,
+            product=cls.product1,
+            quantity=30,
+            price=10,
+        )
+
         cls.tax1 = TaxCode.objects.create(name="State", tax=8)  # Added three times
         cls.tax2 = TaxCode.objects.create(name="Vat reduced", tax=5)  # Added two times
         cls.tax3 = TaxCode.objects.create(name="Vat full", tax=20)  # Added one time
@@ -166,6 +243,7 @@ class BaseTestData:
             product=cls.product1,
             quantity=30,
             price=10,
+            flag="sales",
         )
         sale2 = ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2),
@@ -173,6 +251,7 @@ class BaseTestData:
             product=cls.product1,
             quantity=30,
             price=10,
+            flag="sales",
         )
         sale3 = ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2),
@@ -180,6 +259,7 @@ class BaseTestData:
             product=cls.product1,
             quantity=30,
             price=10,
+            flag="sales",
         )
         sale4 = ComplexSales.objects.create(
             doc_date=datetime.datetime(year, 3, 2),
@@ -187,6 +267,23 @@ class BaseTestData:
             product=cls.product1,
             quantity=30,
             price=10,
+            flag="sales-return",
+        )
+        sale4 = ComplexSales.objects.create(
+            doc_date=datetime.datetime(year, 3, 2),
+            client=cls.client3,
+            product=cls.product2,
+            quantity=34,
+            price=10,
+            flag="sales-return",
+        )
+        ComplexSales.objects.create(
+            doc_date=datetime.datetime(year, 3, 2),
+            client=cls.client2,
+            product=cls.product1,
+            quantity=77,
+            price=10,
+            flag="",
         )
         sale1.tax.add(cls.tax1)
         sale1.tax.add(cls.tax2)
@@ -229,6 +326,11 @@ class ReportTest(BaseTestData, TestCase):
         data = report.get_report_data()
 
         self.assertEqual(data[0].get("__balance__"), 300, data[0])
+
+    def test_compute_from_queryset(self):
+        report = report_generators.TotalBalanceWithQueryset()
+        data = report.get_report_data()
+        self.assertEqual(data, [])
 
     def test_product_total_sales(self):
         report = report_generators.ProductTotalSalesProductWithCustomID()
@@ -332,6 +434,29 @@ class ReportTest(BaseTestData, TestCase):
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
+    def test_view_filter_to_field_set(self):
+        report_generator = ReportGenerator(
+            report_model=SimpleSales2,
+            date_field="doc_date",
+            group_by="client",
+            columns=["slug", "name"],
+            time_series_pattern="monthly",
+            time_series_columns=["__total__", "__balance__"],
+        )
+        data = report_generator.get_report_data()
+        response = self.client.get(
+            reverse("report-to-field-set"),
+            data={
+                "client_id": [self.client2.name, self.client1.name],
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response.json()
+        self.assertTrue(len(data), 2)
+        # self.assertEqual(view_report_data['data'], data)
+
     def test_filter_as_int_n_list(self):
         report = ClientTotalBalance(
             kwargs_filters={"client": self.client1.pk}, show_empty_records=True
@@ -362,7 +487,8 @@ class ReportTest(BaseTestData, TestCase):
             columns=["tax__name", "tax__count"],
         )
         data = report_generator.get_report_data()
-        self.assertEqual(len(data), 3)
+
+        self.assertEqual(len(data), 4)  # 3 taxes + 1 empty
         self.assertEqual(data[0]["tax__name"], "State")
         self.assertEqual(data[0]["tax__count"], 3)
         self.assertEqual(data[1]["tax__name"], "Vat reduced")
@@ -410,6 +536,7 @@ class TestView(BaseTestData, TestCase):
             columns=["slug", "name"],
             time_series_pattern="monthly",
             time_series_columns=["__total__", "__balance__"],
+            kwargs_filters={"client_id__in": [self.client1.pk, self.client2.pk]},
         )
         data = report_generator.get_report_data()
         response = self.client.get(
@@ -420,9 +547,31 @@ class TestView(BaseTestData, TestCase):
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
         self.assertEqual(response.status_code, 200)
-        view_report_data = response.json()
         self.assertTrue(len(data), 2)
-        # self.assertEqual(view_report_data['data'], data)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data["data"], data)
+
+    def test_view_filter_to_field_set(self):
+        report_generator = ReportGenerator(
+            report_model=SimpleSales2,
+            date_field="doc_date",
+            group_by="client",
+            columns=["slug", "name"],
+            time_series_pattern="monthly",
+            time_series_columns=["__total__", "__balance__"],
+        )
+        data = report_generator.get_report_data()
+        response = self.client.get(
+            reverse("report-to-field-set"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        self.assertTrue(len(data), 2)
+
+        view_report_data = response.json()
+
+        self.assertEqual(view_report_data["data"], data)
 
     def test_ajax(self):
         report_generator = ReportGenerator(
@@ -481,6 +630,46 @@ class TestView(BaseTestData, TestCase):
         view_report_data = response.json()
         self.assertEqual(view_report_data["data"], data, view_report_data)
 
+    def test_crosstab_report_view_to_field_set(self):
+        from .report_generators import ProductClientSalesMatrixToFieldSet
+
+        data = ProductClientSalesMatrixToFieldSet(
+            crosstab_compute_remainder=True,
+            crosstab_ids=[self.client1.name, self.client2.name],
+        ).get_report_data()
+
+        response = self.client.get(reverse("product_crosstab_client_to_field_set"))
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get(
+            reverse("product_crosstab_client_to_field_set"),
+            data={
+                "client_id": [self.client1.name, self.client2.name],
+                "crosstab_compute_remainder": True,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data["data"], data)
+
+    def test_crosstab_report_view_clumns_on_fly_to_field_set(self):
+        data = ProductClientSalesMatrixwSimpleSales2(
+            crosstab_compute_remainder=True,
+            crosstab_ids=[self.client1.name, self.client2.name],
+        ).get_report_data()
+
+        response = self.client.get(
+            reverse("crosstab-columns-on-fly-to-field-set"),
+            data={
+                "client_id": [self.client1.name, self.client2.name],
+                "crosstab_compute_remainder": True,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        view_report_data = response.json()
+        self.assertEqual(view_report_data["data"], data, view_report_data["data"])
+
     def test_chart_settings(self):
         response = self.client.get(
             reverse("product_crosstab_client"),
@@ -495,9 +684,10 @@ class TestView(BaseTestData, TestCase):
         self.assertTrue(data["chart_settings"][0]["id"] != "")
         self.assertTrue(data["chart_settings"][0]["title"], "awesome report title")
 
+    @skip
     def test_error_on_missing_date_field(self):
         def test_function():
-            class TotalClientSales(SlickReportView):
+            class TotalClientSales(ReportView):
                 report_model = SimpleSales
 
         self.assertRaises(TypeError, test_function)

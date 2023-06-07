@@ -12,20 +12,20 @@ register = template.Library()
 
 @register.simple_tag
 def get_data(row, column):
-    return row[column['name']]
+    return row[column["name"]]
 
 
 def jsonify(object):
     def date_handler(obj):
-        if hasattr(obj, 'isoformat'):
+        if hasattr(obj, "isoformat"):
             return obj.isoformat()
         elif isinstance(obj, Promise):
             return force_str(obj)
 
     if isinstance(object, QuerySet):
-        return serialize('json', object)
+        return serialize("json", object)
 
     return mark_safe(json.dumps(object, use_decimal=True, default=date_handler))
 
 
-register.filter('jsonify', jsonify)
+register.filter("jsonify", jsonify)

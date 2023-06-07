@@ -51,32 +51,36 @@ You can simply use a code like this
 .. code-block:: python
 
     # in your urls.py
-    path('path-to-report', TotalProductSales.as_view())
+    path("path-to-report", TotalProductSales.as_view())
 
 
     # in views.py
     from django.db.models import Sum
-    from slick_reporting.views import SlickReportView
+    from slick_reporting.views import ReportView
     from slick_reporting.fields import SlickReportField
     from .models import MySalesItems
 
-    class TotalProductSales(SlickReportView):
+
+    class TotalProductSales(ReportView):
 
         report_model = MySalesItems
-        date_field = 'date_placed'
-        group_by = 'product'
-        columns = ['title',
-                    SlickReportField.create(Sum, 'quantity') ,
-                    SlickReportField.create(Sum, 'value', name='sum__value') ]
+        date_field = "date_placed"
+        group_by = "product"
+        columns = [
+            "title",
+            SlickReportField.create(Sum, "quantity"),
+            SlickReportField.create(Sum, "value", name="sum__value"),
+        ]
 
-        chart_settings = [{
-            'type': 'column',
-            'data_source': ['sum__value'],
-            'plot_total': False,
-            'title_source': 'title',
-            'title': _('Detailed Columns'),
-
-        }, ]
+        chart_settings = [
+            {
+                "type": "column",
+                "data_source": ["sum__value"],
+                "plot_total": False,
+                "title_source": "title",
+                "title": _("Detailed Columns"),
+            },
+        ]
 
 
 To get something like this
@@ -92,19 +96,22 @@ You can do a monthly time series :
 .. code-block:: python
 
     # in views.py
-    from slick_reporting.views import SlickReportView
+    from slick_reporting.views import ReportView
     from slick_reporting.fields import SlickReportField
     from .models import MySalesItems
 
-    class MonthlyProductSales(SlickReportView):
+
+    class MonthlyProductSales(ReportView):
         report_model = MySalesItems
-        date_field = 'date_placed'
-        group_by = 'product'
-        columns = ['name', 'sku']
+        date_field = "date_placed"
+        group_by = "product"
+        columns = ["name", "sku"]
 
         # Analogy for time series
-        time_series_pattern = 'monthly'
-        time_series_columns = [SlickReportField.create(Sum, 'quantity', name='sum__quantity') ]
+        time_series_pattern = "monthly"
+        time_series_columns = [
+            SlickReportField.create(Sum, "quantity", name="sum__quantity")
+        ]
 
 
 This would return a table looking something like this:
@@ -127,18 +134,17 @@ This would return a table looking something like this:
 
 **On a low level**
 
-You can interact with the `ReportGenerator` using same syntax as used with the `SlickReportView` .
+You can interact with the `ReportGenerator` using same syntax as used with the `ReportView` .
 
 .. code-block:: python
 
     from slick_reporting.generator import ReportGenerator
-    from . models import MySalesModel
+    from .models import MySalesModel
 
-    report = ReportGenerator(report_model=MySalesModel,
-                            group_by='product',
-                            columns=['title', '__total__']
+    report = ReportGenerator(
+        report_model=MySalesModel, group_by="product", columns=["title", "__total__"]
     )
-    report.get_report_data() #-> [{'title':'Product 1', '__total__: 56}, {'title':'Product 2', '__total__: 43}, ]
+    report.get_report_data()  # -> [{'title':'Product 1', '__total__: 56}, {'title':'Product 2', '__total__: 43}, ]
 
 
 This is just a scratch, for more please visit the documentation 

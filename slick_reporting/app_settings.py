@@ -1,10 +1,8 @@
-import pytz
 from django.conf import settings
 from django.utils.functional import lazy
 
 import datetime
 
-from django.utils.timezone import now
 
 
 def get_first_of_this_year():

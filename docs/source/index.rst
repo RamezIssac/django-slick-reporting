@@ -31,39 +31,43 @@ Options
 Quickstart
 ----------
 
-You can start by using ``SlickReportView`` which is a subclass of ``django.views.generic.FormView``
+You can start by using ``ReportView`` which is a subclass of ``django.views.generic.FormView``
 
 .. code-block:: python
 
     # in views.py
-    from slick_reporting.views import SlickReportView
+    from slick_reporting.views import ReportView
     from slick_reporting.fields import SlickReportField
     from .models import MySalesItems
 
-    class MonthlyProductSales(SlickReportView):
+
+    class MonthlyProductSales(ReportView):
         # The model where you have the data
         report_model = MySalesItems
 
         # the main date field used for the model.
-        date_field = 'date_placed' # or 'order__date_placed'
+        date_field = "date_placed"  # or 'order__date_placed'
         # this support traversing, like so
         # date_field = 'order__date_placed'
 
         # A foreign key to group calculation on
-        group_by = 'product'
+        group_by = "product"
 
         # The columns you want to display
-        columns = ['title',
-                    SlickReportField.create(method=Sum, field='value', name='value__sum', verbose_name=_('Total sold $'))
-                    ]
+        columns = [
+            "title",
+            SlickReportField.create(
+                method=Sum, field="value", name="value__sum", verbose_name=_("Total sold $")
+            ),
+        ]
 
         # Charts
         charts_settings = [
-         {
-            'type': 'bar',
-            'data_source': 'value__sum',
-            'title_source': 'title',
-         },
+            {
+                "type": "bar",
+                "data_source": "value__sum",
+                "title_source": "title",
+            },
         ]
 
 
@@ -76,11 +80,14 @@ Next step :ref:`structure`
    concept
    the_view
    view_options
+   group_by_report
    time_series_options
+   crosstab_options
+   list_report_options
+   search_form
+   charts
    report_generator
    computation_field
-
-
 
 
 Indices and tables

@@ -1,5 +1,3 @@
-import uuid
-
 from django.db.models import Sum
 from django.template.defaultfilters import date as date_filter
 from django.utils.translation import gettext_lazy as _
@@ -39,6 +37,11 @@ class SlickReportField(object):
     """Indicate if this computation can be summed over. Useful to be passed to frontend or whenever needed"""
 
     report_model = None
+    """The model on which the computation would occur"""
+
+    queryset = None
+    """The queryset on which the computation would occur"""
+
     group_by = None
     plus_side_q = None
     minus_side_q = None
@@ -75,7 +78,6 @@ class SlickReportField(object):
         :return:
         """
         if not name:
-            identifier = str(uuid.uuid4()).split("-")[-1]
             name = name or f"{method.name.lower()}__{field}"
             assert name not in cls._field_registry.get_all_report_fields_names()
 
@@ -98,7 +100,7 @@ class SlickReportField(object):
         plus_side_q=None,
         minus_side_q=None,
         report_model=None,
-        qs=None,
+        queryset=None,
         calculation_field=None,
         calculation_method=None,
         date_field="",
@@ -107,6 +109,13 @@ class SlickReportField(object):
         super(SlickReportField, self).__init__()
         self.date_field = date_field
         self.report_model = self.report_model or report_model
+        self.queryset = self.queryset or queryset
+        self.queryset = (
+            self.report_model._default_manager.all()
+            if self.queryset is None
+            else self.queryset
+        )
+
         self.calculation_field = (
             calculation_field if calculation_field else self.calculation_field
         )
@@ -201,7 +210,7 @@ class SlickReportField(object):
         return debit_results, credit_results
 
     def get_queryset(self):
-        queryset = self.report_model.objects
+        queryset = self.queryset
         if self.base_q_filters:
             queryset = queryset.filter(*self.base_q_filters)
         if self.base_kwargs_filters:

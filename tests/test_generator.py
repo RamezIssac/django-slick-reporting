@@ -15,13 +15,15 @@ from .report_generators import (
     GenericGenerator,
     GroupByCharField,
     TimeSeriesCustomDates,
+    CrosstabOnField,
+    CrosstabOnTraversingField,
 )
 
 from .tests import BaseTestData, year
 from .models import SimpleSales, Client
 
 
-class MatrixTests(BaseTestData, TestCase):
+class CrosstabTests(BaseTestData, TestCase):
     def test_matrix_column_included(self):
         report = CrosstabOnClient(
             crosstab_ids=[self.client1.pk], crosstab_compute_remainder=False
@@ -75,6 +77,24 @@ class MatrixTests(BaseTestData, TestCase):
         for col in columns:
             self.assertTrue("is_summable" in col.keys(), col)
 
+    def test_crosstab_on_field(self):
+        report = CrosstabOnField()
+        data = report.get_report_data()
+        self.assertEqual(len(data), 2, data)
+        self.assertEqual(data[0]["value__sumCTsales"], 90, data)
+        self.assertEqual(data[0]["value__sumCTsales-return"], 30, data)
+        self.assertEqual(data[0]["value__sumCT----"], 77, data)
+        self.assertEqual(data[1]["value__sumCTsales-return"], 34, data)
+
+    def test_crosstab_on_traversing_field(self):
+        report = CrosstabOnTraversingField()
+        data = report.get_report_data()
+        self.assertEqual(len(data), 2, data)
+        self.assertEqual(data[0]["value__sumCTOTHER"], 120, data)
+        self.assertEqual(data[0]["value__sumCTFEMALE"], 77, data)
+        self.assertEqual(data[0]["value__sumCT----"], 0, data)
+        self.assertEqual(data[1]["value__sumCTOTHER"], 34, data)
+
 
 class GeneratorReportStructureTest(BaseTestData, TestCase):
     @classmethod
@@ -115,7 +135,6 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
             end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone("utc")),
         )
 
-        report_field_class = TotalReportField
         dates = report._get_time_series_dates()
         self.assertEqual(len(dates), 12)
         self.assertIsNotNone(
@@ -162,7 +181,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         )
 
         def not_known_pattern():
-            dates = report._get_time_series_dates("each_spring")
+            report._get_time_series_dates("each_spring")
 
         self.assertRaises(Exception, not_known_pattern)
 

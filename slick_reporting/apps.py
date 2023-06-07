@@ -7,5 +7,4 @@ class ReportAppConfig(apps.AppConfig):
 
     def ready(self):
         super().ready()
-
-        from . import fields
+        from . import fields  # noqa

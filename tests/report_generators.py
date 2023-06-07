@@ -11,6 +11,8 @@ from .models import (
     Product,
     SalesWithFlag,
     SalesProductWithCustomID,
+    ComplexSales,
+    SimpleSales2,
 )
 from .models import OrderLine
 
@@ -40,7 +42,7 @@ class GeneratorWithAttrAsColumn(GenericGenerator):
 class CrosstabOnClient(GenericGenerator):
     group_by = "product"
     columns = ["name", "__total_quantity__"]
-    crosstab_model = "client"
+    crosstab_field = "client"
     # crosstab_columns = ['__total_quantity__']
     crosstab_columns = [
         SlickReportField.create(
@@ -49,11 +51,57 @@ class CrosstabOnClient(GenericGenerator):
     ]
 
 
-#
+class CrosstabOnField(ReportGenerator):
+    report_model = ComplexSales
+    date_field = "doc_date"
+
+    group_by = "product"
+    columns = ["name"]
+    crosstab_field = "flag"
+    crosstab_field = "flag"
+    crosstab_ids = ["sales", "sales-return"]
+
+    crosstab_columns = [
+        SlickReportField.create(
+            Sum, "quantity", name="value__sum", verbose_name=_("Sales")
+        )
+    ]
+
+
+class CrosstabOnTraversingField(ReportGenerator):
+    report_model = ComplexSales
+    date_field = "doc_date"
+
+    group_by = "product"
+    columns = ["name"]
+
+    crosstab_field = "client__sex"
+    crosstab_ids = ["FEMALE", "MALE", "OTHER"]
+
+    crosstab_columns = [
+        SlickReportField.create(
+            Sum, "quantity", name="value__sum", verbose_name=_("Sales")
+        )
+    ]
 
 
 class ClientTotalBalance(ReportGenerator):
     report_model = SimpleSales
+    date_field = "doc_date"
+    group_by = "client"
+    columns = ["slug", "name", "__balance__", "__total__"]
+
+
+class TotalBalanceWithQueryset(ReportGenerator):
+    report_model = SimpleSales
+    queryset = SimpleSales.objects.filter(product_id=0)
+    date_field = "doc_date"
+    group_by = "client"
+    columns = ["slug", "name", "__balance__", "__total__"]
+
+
+class ClientTotalBalance2(ReportGenerator):
+    report_model = SimpleSales2
     date_field = "doc_date"
     group_by = "client"
     columns = ["slug", "name", "__balance__", "__total__"]
@@ -281,7 +329,18 @@ class ProductClientSalesMatrix(ReportGenerator):
     group_by = "product"
     columns = ["slug", "name"]
 
-    crosstab_model = "client"
+    crosstab_field = "client"
+    crosstab_columns = ["__total__"]
+
+
+class ProductClientSalesMatrixToFieldSet(ReportGenerator):
+    report_model = SimpleSales2
+    date_field = "doc_date"
+
+    group_by = "product"
+    columns = ["slug", "name"]
+
+    crosstab_field = "client"
     crosstab_columns = ["__total__"]
 
 
@@ -292,12 +351,31 @@ class ProductClientSalesMatrix2(ReportGenerator):
     group_by = "product"
     columns = ["slug", "name"]
 
-    crosstab_model = "client"
+    crosstab_field = "client"
     crosstab_columns = [
         SlickReportField.create(
             Sum, "value", name="value__sum", verbose_name=_("Sales")
         )
     ]
+
+
+class ProductClientSalesMatrixwSimpleSales2(ReportGenerator):
+    report_model = SimpleSales2
+    date_field = "doc_date"
+
+    group_by = "product"
+    columns = ["slug", "name"]
+
+    crosstab_field = "client"
+    crosstab_columns = [
+        SlickReportField.create(
+            Sum, "value", name="value__sum", verbose_name=_("Sales")
+        )
+    ]
+
+
+class GeneratorClassWithAttrsAs(ReportGenerator):
+    columns = ["get_icon", "slug", "name"]
 
 
 class ClientTotalBalancesWithShowEmptyFalse(ClientTotalBalance):

@@ -1,11 +1,13 @@
-import datetime
 import csv
+import datetime
+import warnings
 
 import simplejson as json
 from django import forms
 from django.conf import settings
+from django.db.models import Q
 from django.forms import modelform_factory
-from django.http import HttpResponse, StreamingHttpResponse
+from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
@@ -13,14 +15,27 @@ from django.views.generic import FormView
 from .app_settings import (
     SLICK_REPORTING_DEFAULT_END_DATE,
     SLICK_REPORTING_DEFAULT_START_DATE,
-    SLICK_REPORTING_DEFAULT_CHARTS_ENGINE,
 )
-from .form_factory import (
+from .forms import (
     report_form_factory,
     get_crispy_helper,
     default_formfield_callback,
+    OrderByForm,
 )
-from .generator import ReportGenerator, ListViewReportGenerator, Chart
+from .generator import (
+    ReportGenerator,
+    ListViewReportGenerator,
+    ReportGeneratorAPI,
+    Chart,  # noqa # needed for easier importing in other apps
+)
+
+
+def dictsort(value, arg, desc=False):
+    """
+    Takes a list of dicts, returns that list sorted by the property given in
+    the argument.
+    """
+    return sorted(value, key=lambda x: x[arg], reverse=desc)
 
 
 class ExportToCSV(object):
@@ -77,35 +92,20 @@ class ExportToStreamingCSV(ExportToCSV):
         )
 
 
-class SlickReportViewBase(FormView):
-    group_by = None
-    columns = None
+class ReportViewBase(ReportGeneratorAPI, FormView):
+    report_slug = None
 
     report_title = ""
-    time_series_pattern = ""
-    time_series_columns = None
 
-    date_field = None
-
-    swap_sign = False
+    report_title_context_key = "title"
 
     report_generator_class = ReportGenerator
 
-    report_model = None
-
     base_model = None
-    limit_records = None
-
-    queryset = None
 
     chart_settings = None
 
-    crosstab_model = None
-    crosstab_ids = None
-    crosstab_columns = None
-    crosstab_compute_remainder = True
     excluded_fields = None
-    report_title_context_key = "title"
 
     time_series_selector = False
     time_series_selector_choices = None
@@ -114,12 +114,46 @@ class SlickReportViewBase(FormView):
 
     csv_export_class = ExportToStreamingCSV
 
-    """
-    A list of chart settings objects instructing front end on how to plot the data.
-    
-    """
+    with_type = False
+    doc_type_field_name = "doc_type"
+    doc_type_plus_list = None
+    doc_type_minus_list = None
+
+    default_order_by = ""
 
     template_name = "slick_reporting/simple_report.html"
+
+    @staticmethod
+    def form_filter_func(fkeys_dict):
+        # todo revise
+        return fkeys_dict
+
+    def order_results(self, data):
+        """
+        order the results based on GET parameter or default_order_by
+        :param data: List of Dict to be ordered
+        :return: Ordered data
+        """
+        order_field, asc = OrderByForm(self.request.GET).get_order_by(
+            self.default_order_by
+        )
+        if order_field:
+            data = dictsort(data, order_field, asc)
+        return data
+
+    def get_doc_types_q_filters(self):
+        if self.doc_type_plus_list or self.doc_type_minus_list:
+            return (
+                [Q(**{f"{self.doc_type_field_name}__in": self.doc_type_plus_list})]
+                if self.doc_type_plus_list
+                else []
+            ), (
+                [Q(**{f"{self.doc_type_field_name}__in": self.doc_type_minus_list})]
+                if self.doc_type_minus_list
+                else []
+            )
+
+        return [], []
 
     def get(self, request, *args, **kwargs):
         form_class = self.get_form_class()
@@ -140,8 +174,10 @@ class SlickReportViewBase(FormView):
             return self.render_to_response(
                 self.get_context_data(report_data=report_data)
             )
+        else:
+            return self.form_invalid(self.form)
 
-        return self.render_to_response(self.get_context_data())
+        # return self.render_to_response(self.get_context_data())
 
     def export_csv(self, report_data):
         return self.csv_export_class(
@@ -150,7 +186,9 @@ class SlickReportViewBase(FormView):
 
     @classmethod
     def get_report_model(cls):
-        return cls.report_model or cls.queryset.model
+        if cls.queryset is not None:
+            return cls.queryset.model
+        return cls.report_model
 
     def ajax_render_to_response(self, report_data):
         return HttpResponse(
@@ -183,9 +221,10 @@ class SlickReportViewBase(FormView):
         """
         return self.form_class or report_form_factory(
             self.get_report_model(),
-            crosstab_model=self.crosstab_model,
+            crosstab_model=self.crosstab_field,
             display_compute_remainder=self.crosstab_compute_remainder,
             excluded_fields=self.excluded_fields,
+            fkeys_filter_func=self.form_filter_func,
             initial=self.get_form_initial(),
             show_time_series_selector=self.time_series_selector,
             time_series_selector_choices=self.time_series_selector_choices,
@@ -220,7 +259,7 @@ class SlickReportViewBase(FormView):
 
     def get_report_generator(self, queryset, for_print):
         q_filters, kw_filters = self.form.get_filters()
-        if self.crosstab_model:
+        if self.crosstab_field:
             self.crosstab_ids = self.form.get_crosstab_ids()
 
         crosstab_compute_remainder = (
@@ -231,12 +270,17 @@ class SlickReportViewBase(FormView):
 
         time_series_pattern = self.time_series_pattern
         if self.time_series_selector:
-            time_series_pattern = self.form.cleaned_data["time_series_pattern"]
+            time_series_pattern = self.form.get_time_series_pattern()
+
+        doc_type_plus_list, doc_type_minus_list = [], []
+
+        if self.with_type:
+            doc_type_plus_list, doc_type_minus_list = self.get_doc_types_q_filters()
 
         return self.report_generator_class(
             self.get_report_model(),
-            start_date=self.form.cleaned_data["start_date"],
-            end_date=self.form.cleaned_data["end_date"],
+            start_date=self.form.get_start_date(),
+            end_date=self.form.get_end_date(),
             q_filters=q_filters,
             kwargs_filters=kw_filters,
             date_field=self.date_field,
@@ -248,12 +292,14 @@ class SlickReportViewBase(FormView):
             group_by=self.group_by,
             time_series_pattern=time_series_pattern,
             time_series_columns=self.time_series_columns,
-            crosstab_model=self.crosstab_model,
+            crosstab_field=self.crosstab_field,
             crosstab_ids=self.crosstab_ids,
             crosstab_columns=self.crosstab_columns,
             crosstab_compute_remainder=crosstab_compute_remainder,
             format_row_func=self.format_row,
             container_class=self,
+            doc_type_plus_list=doc_type_plus_list,
+            doc_type_minus_list=doc_type_minus_list,
         )
 
     def format_row(self, row_obj):
@@ -283,6 +329,7 @@ class SlickReportViewBase(FormView):
         report_generator = self.get_report_generator(queryset, for_print)
         data = report_generator.get_report_data()
         data = self.filter_results(data, for_print)
+        data = self.order_results(data)
 
         return report_generator.get_full_response(
             data=data,
@@ -307,12 +354,16 @@ class SlickReportViewBase(FormView):
             self.chart_settings or [], self.report_title
         )
 
-    def get_queryset(self):
-        return self.queryset or self.report_model.objects
+    @classmethod
+    def get_queryset(cls):
+        if cls.queryset is None:
+            return cls.get_report_model()._default_manager.all()
+        return cls.queryset
 
     def filter_results(self, data, for_print=False):
         """
         Hook to Filter results based on computed data (like eliminate __balance__ = 0, etc)
+        return None to remove the row from the results
         :param data: List of objects
         :param for_print: is print request
         :return: filtered data
@@ -321,7 +372,7 @@ class SlickReportViewBase(FormView):
 
     @classmethod
     def get_report_slug(cls):
-        return cls.__name__.lower()
+        return cls.report_slug or cls.__name__.lower()
 
     @staticmethod
     def get_form_initial():
@@ -332,7 +383,13 @@ class SlickReportViewBase(FormView):
         }
 
     def get_form_crispy_helper(self):
-        return self.form.get_crispy_helper()
+        """
+        A hook retuning crispy helper for the form
+        :return:
+        """
+        if hasattr(self, "form"):
+            return self.form.get_crispy_helper()
+        return None
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -344,33 +401,45 @@ class SlickReportViewBase(FormView):
             context["form"] = self.get_form_class()()
         return context
 
+    def form_invalid(self, form):
+        if self.request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest":
+            return JsonResponse(form.errors, status=400)
+        return super().form_invalid(form)
 
-class SlickReportView(SlickReportViewBase):
+
+class ReportView(ReportViewBase):
     def __init_subclass__(cls) -> None:
         # date_field = getattr(cls, 'date_field', '')
         # if not date_field:
         #     raise TypeError(f'`date_field` is not set on {cls}')
         # cls.report_generator_class.check_columns([cls.date_field], False, cls.get_report_model())
 
-        # sanity check, raises error if the columns or date fields is not mapped
-
-        cls.report_generator_class.check_columns(
-            cls.columns, cls.group_by, cls.get_report_model(), container_class=cls
-        )
+        # sanity check, raises error if the columns or date fields is not set
+        if cls.columns:
+            cls.report_generator_class.check_columns(
+                cls.columns,
+                cls.group_by,
+                cls.get_report_model(),
+                container_class=cls,
+            )
 
         super().__init_subclass__()
 
-    @staticmethod
-    def check_chart_settings(chart_settings=None):
-        # todo check on chart settings
-        return
 
-
-class SlickReportingListView(SlickReportViewBase):
+class SlickReportingListViewMixin:
     report_generator_class = ListViewReportGenerator
     filters = None
 
+    def get_queryset(self):
+        qs = self.queryset or self.report_model.objects
+        if self.default_order_by:
+            qs.order_by(self.default_order_by)
+        return qs
+
     def get_form_filters(self, form):
+        if self.form_class:
+            return form.get_filters()
+
         kw_filters = {}
 
         for name, field in form.base_fields.items():
@@ -413,11 +482,16 @@ class SlickReportingListView(SlickReportViewBase):
         )
 
     def get_form_class(self):
-        return modelform_factory(
-            self.get_report_model(),
-            fields=self.filters,
-            formfield_callback=default_formfield_callback,
-        )
+        if self.form_class:
+            return self.form_class
+
+        elif self.filters:
+            return modelform_factory(
+                self.get_report_model(),
+                fields=self.filters,
+                formfield_callback=default_formfield_callback,
+            )
+        return forms.Form
 
     def get_report_results(self, for_print=False):
         """
@@ -436,3 +510,48 @@ class SlickReportingListView(SlickReportViewBase):
             chart_settings=self.chart_settings,
             default_chart_title=self.report_title,
         )
+
+
+class SlickReportingListView(SlickReportingListViewMixin, ReportViewBase):
+    def __init_subclass__(cls) -> None:
+        warnings.warn(
+            "slick_reporting.view.SlickReportingListView is"
+            "deprecated in favor of slick_reporting.view.ListReportView",
+            Warning,
+            stacklevel=2,
+        )
+        super().__init_subclass__()
+
+
+class ListReportView(SlickReportingListViewMixin, ReportViewBase):
+    pass
+
+
+class SlickReportViewBase(ReportViewBase):
+    """
+    Deprecated in favor of slick_reporting.view.ReportViewBase
+    """
+
+    def __init_subclass__(cls) -> None:
+        warnings.warn(
+            "slick_reporting.view.SlickReportView and slick_reporting.view.SlickReportViewBase are "
+            "deprecated in favor of slick_reporting.view.ReportView and slick_reporting.view.BaseReportView",
+            Warning,
+            stacklevel=2,
+        )
+
+        super().__init_subclass__()
+
+
+class SlickReportView(ReportView):
+    def __init_subclass__(cls) -> None:
+        warnings.warn(
+            "slick_reporting.view.SlickReportView and slick_reporting.view.SlickReportViewBase are "
+            "deprecated in favor of slick_reporting.view.ReportView and slick_reporting.view.BaseReportView",
+            Warning,
+            stacklevel=2,
+        )
+
+        # cls.report_generator_class.check_columns(
+        #     cls.columns, cls.group_by, cls.get_report_model(), container_class=cls
+        # )

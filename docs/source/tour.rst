@@ -44,14 +44,22 @@ A ReportView like the below
 .. code-block:: python
 
     # in your urls.py
-    path('path-to-report', TransactionsReport.as_view())
+    path("path-to-report", TransactionsReport.as_view())
 
     # in your views.py
-    from slick_reporting.views import SlickReportView
+    from slick_reporting.views import ReportView
 
-    class TransactionsReport(SlickReportView):
+
+    class TransactionsReport(ReportView):
         report_model = MySalesItem
-        columns = ['order_date', 'product__name' , 'client__name', 'quantity', 'price', 'value' ]
+        columns = [
+            "order_date",
+            "product__name",
+            "client__name",
+            "quantity",
+            "price",
+            "value",
+        ]
 
 
 will yield a Page with a nice filter form with
@@ -86,10 +94,10 @@ which can be written like this:
 
 .. code-block:: python
 
-        class TotalQuanAndValueReport(SlickReportView):
+        class TotalQuanAndValueReport(ReportView):
             report_model = MySalesItem
-            group_by = 'product'
-            columns = ['name', '__total_quantity__', '__total__' ]
+            group_by = "product"
+            columns = ["name", "__total_quantity__", "__total__"]
 
 
 
@@ -113,13 +121,13 @@ can be written like this
 
 .. code-block:: python
 
-        class TotalQuantityMonthly(SlickReportView):
+        class TotalQuantityMonthly(ReportView):
             report_model = MySalesItem
-            group_by = 'product'
-            columns = ['name', 'sku']
+            group_by = "product"
+            columns = ["name", "sku"]
 
-            time_series_pattern = 'monthly'
-            time_series_columns = ['__total_quantity__']
+            time_series_pattern = "monthly"
+            time_series_columns = ["__total_quantity__"]
 
 
 4. Cross tab report
@@ -142,15 +150,15 @@ Which can be written like this
 
 .. code-block:: python
 
-    class CrosstabProductClientValue(SlickReportView):
-            report_model = MySalesItem
-            group_by = 'product'
-            columns = ['name', 'sku']
+    class CrosstabProductClientValue(ReportView):
+        report_model = MySalesItem
+        group_by = "product"
+        columns = ["name", "sku"]
 
-            crosstab_model = 'client'
-            crosstab_columns = ['__total_value__']
-            crosstab_ids = [client1.pk, client2.pk, client3.pk]
-            crosstab_compute_reminder = True
+        crosstab_model = "client"
+        crosstab_columns = ["__total_value__"]
+        crosstab_ids = [client1.pk, client2.pk, client3.pk]
+        crosstab_compute_remainder = True
 
 
 

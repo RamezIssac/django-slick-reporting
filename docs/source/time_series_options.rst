@@ -1,6 +1,7 @@
 Time Series Reports
 ==================
-
+A Time series report is a report that is generated for a periods of time.
+The period can be daily, weekly, monthly, yearly or custom, calculations will be performed for each period in the time series.
 
 Here is a quick recipe to what you want to do
 
@@ -8,9 +9,9 @@ Here is a quick recipe to what you want to do
 
     from django.utils.translation import gettext_lazy as _
     from django.db.models import Sum
-    from slick_reporting.views import SlickReportView
+    from slick_reporting.views import ReportView
 
-    class MyReport(SlickReportView):
+    class MyReport(ReportView):
 
         time_series_pattern = "monthly"
         # options are : "daily", "weekly", "monthly", "yearly", "custom"
@@ -39,19 +40,46 @@ Here is a quick recipe to what you want to do
 
         ]
 
-
-
-
         time_series_selector = True
         # This will display a selector to change the time series pattern
 
         # settings for the time series selector
         # ----------------------------------
 
-        time_series_selector_choices=None  # A list Choice tuple [(value, label), ...]
+        time_series_selector_choices = None  # A list Choice tuple [(value, label), ...]
         time_series_selector_default = "monthly"  # The initial value for the time series selector
         time_series_selector_label = _("Period Pattern)  # The label for the time series selector
         time_series_selector_allow_empty = False  # Allow the user to select an empty time series
+
+
+
+Time Series Options
+-------------------
+
+.. attribute:: ReportView.time_series_pattern
+
+            the time series pattern to be used in the report, it can be one of the following:
+            Possible options are: daily, weekly, semimonthly, monthly, quarterly, semiannually, annually and custom.
+            if `custom` is set, you'd need to override  `time_series_custom_dates`
+
+.. attribute:: ReportView.time_series_custom_dates
+
+            A list of tuples of (start_date, end_date) pairs indicating the start and end of each period.
+
+.. attribute:: ReportView.time_series_columns
+
+            a list of Calculation Field names which will be included in the series calculation.
+
+            .. code-block:: python
+                    class MyReport(ReportView):
+
+                    time_series_columns = [
+                        SlickReportField.create(Sum, "value", verbose_name=_("Value"), is_summable=True, name="sum__value"),
+                        SlickReportField.create(Avg, "Price", verbose_name=_("Avg Price"), is_summable=False)
+
+                    ]
+
+
 
 
 
