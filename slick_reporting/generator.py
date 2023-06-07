@@ -63,6 +63,10 @@ class ReportGeneratorAPI:
     group_by = None
     """The field to use for grouping, if not set then the report is expected to be a sub version of the report model"""
 
+    group_by_custom_querysets = None
+    """A List of querysets representing different group by options"""
+    group_by_custom_querysets_verbose_name = ""
+
     columns = None
     """A list of column names.
     Columns names can be 
@@ -152,6 +156,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         q_filters=None,
         kwargs_filters=None,
         group_by=None,
+        group_by_custom_querysets=None,
         columns=None,
         time_series_pattern=None,
         time_series_columns=None,
@@ -257,6 +262,10 @@ class ReportGenerator(ReportGeneratorAPI, object):
         self.columns = columns or self.columns or []
         self.group_by = group_by or self.group_by
 
+        self.group_by_custom_querysets = (
+            group_by_custom_querysets or self.group_by_custom_querysets or []
+        )
+
         self.time_series_pattern = self.time_series_pattern or time_series_pattern
         self.time_series_columns = self.time_series_columns or time_series_columns
         self.time_series_custom_dates = (
@@ -322,8 +331,13 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         # Preparing actions
         self._parse()
-        if self.group_by:
+        if self.group_by_custom_querysets:
+            self.main_queryset = [
+                {"__index__": i} for i, v in enumerate(self.group_by_custom_querysets)
+            ]
+        elif self.group_by:
             self.main_queryset = self._apply_queryset_options(main_queryset)
+
             if type(self.group_by_field) is ForeignKey:
                 ids = self.main_queryset.values_list(
                     self.group_by_field_attname
@@ -456,14 +470,17 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     report_model=self.report_model,
                     date_field=self.date_field,
                     queryset=self.queryset,
+                    group_by_custom_querysets=self.group_by_custom_querysets,
                 )
 
                 q_filters = None
                 date_filter = {
-                    f"{self.date_field}__gte": col_data.get(
+                    f"{self.start_date_field_name}__gte": col_data.get(
                         "start_date", self.start_date
                     ),
-                    f"{self.date_field}__lt": col_data.get("end_date", self.end_date),
+                    f"{self.end_date_field_name}__lt": col_data.get(
+                        "end_date", self.end_date
+                    ),
                 }
                 date_filter.update(self.kwargs_filters)
                 if window == "crosstab":
@@ -472,8 +489,10 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 report_class.init_preparation(q_filters, date_filter)
                 self.report_fields_classes[name] = report_class
 
-    @staticmethod
-    def get_primary_key_name(model):
+    # @staticmethod
+    def get_primary_key_name(self, model):
+        if self.group_by_custom_querysets:
+            return "__index__"
         for field in model._meta.fields:
             if field.primary_key:
                 return field.attname
@@ -489,7 +508,10 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         data = {}
         group_by_val = None
-        if self.group_by:
+        if self.group_by_custom_querysets:
+            group_by_val = str(obj["__index__"])
+
+        elif self.group_by:
             if self.group_by_field.related_model and "__" not in self.group_by:
                 primary_key_name = self.get_primary_key_name(
                     self.group_by_field.related_model
@@ -510,7 +532,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     data[name] = col_data["ref"](obj, data)
 
                 elif (
-                    col_data.get("source", "") == "magic_field" and self.group_by
+                    col_data.get("source", "") == "magic_field"
+                    and (self.group_by or self.group_by_custom_querysets)
                 ) or (self.time_series_pattern and not self.group_by):
                     source = self._report_fields_dependencies[window].get(name, False)
                     if source:
@@ -559,7 +582,14 @@ class ReportGenerator(ReportGeneratorAPI, object):
         return row_obj
 
     @classmethod
-    def check_columns(cls, columns, group_by, report_model, container_class=None):
+    def check_columns(
+        cls,
+        columns,
+        group_by,
+        report_model,
+        container_class=None,
+        group_by_custom_querysets=None,
+    ):
         """
         Check and parse the columns, throw errors in case an item in the columns cant not identified
         :param columns: List of columns
@@ -569,6 +599,10 @@ class ReportGenerator(ReportGeneratorAPI, object):
         :return: List of dict, each dict contains relevant data to the respective field in `columns`
         """
         group_by_model = None
+        if group_by_custom_querysets:
+            if "__index__" not in columns:
+                columns.insert(0, "__index__")
+
         if group_by:
             try:
                 group_by_field = [
@@ -637,6 +671,20 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 }
             else:
                 # A database field
+                # breakpoint()
+                if group_by_custom_querysets and col == "__index__":
+                    # group by custom queryset special case: which is the index
+                    col_data = {
+                        "name": col,
+                        "verbose_name": cls.group_by_custom_querysets_verbose_name,
+                        "source": "database",
+                        "ref": "",
+                        "type": "text",
+                    }
+                    col_data.update(options)
+                    parsed_columns.append(col_data)
+                    continue
+
                 model_to_use = (
                     group_by_model
                     if group_by and "__" not in group_by
@@ -678,7 +726,11 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
     def _parse(self):
         self.parsed_columns = self.check_columns(
-            self.columns, self.group_by, self.report_model, self.container_class
+            self.columns,
+            self.group_by,
+            self.report_model,
+            self.container_class,
+            self.group_by_custom_querysets,
         )
         self._parsed_columns = list(self.parsed_columns)
         self._time_series_parsed_columns = self.get_time_series_parsed_columns()

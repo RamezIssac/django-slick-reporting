@@ -421,6 +421,7 @@ class ReportView(ReportViewBase):
                 cls.group_by,
                 cls.get_report_model(),
                 container_class=cls,
+                group_by_custom_querysets=cls.group_by_custom_querysets,
             )
 
         super().__init_subclass__()
