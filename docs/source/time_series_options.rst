@@ -1,3 +1,5 @@
+.. _time_series:
+
 Time Series Reports
 ==================
 A Time series report is a report that is generated for a periods of time.
@@ -52,6 +54,7 @@ Here is a quick recipe to what you want to do
         time_series_selector_allow_empty = False  # Allow the user to select an empty time series
 
 
+.. time_series_options:
 
 Time Series Options
 -------------------
