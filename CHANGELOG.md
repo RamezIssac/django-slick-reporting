@@ -5,7 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [1.0.0]
 
 - Added crosstab_ids_custom_filters to allow custom filters on crosstab ids
-- 
+- Added ``group_by_querysets`` to allow custom querysets as group 
+- Added ability to have crosstab report in a time series report
 
 ## [0.9.0] - 2023-06-07
 
