@@ -52,7 +52,7 @@ A Sample group by report would look like this:
 Custom Group By querysets
 -------------------------
 
-Grouping do not have to be over a specific field in the database , it can be over a queryset.
+Grouping can also be over a curated queryset(s)
 
 Example:
 
@@ -77,4 +77,6 @@ This report will create two groups, one for pending sales and another for paid a
 
 The ``__index__`` column is a "magic" column, it will added automatically to the report if it's not added.
 It just hold the index of the row in the group.
+its verbose name (ie the one on the table header) can be customized via ``group_by_custom_querysets_column_verbose_name``
 
+You can then customize the *value* of the __index__ column via ``filter_results`` hook
