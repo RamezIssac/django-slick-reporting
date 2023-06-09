@@ -324,10 +324,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
         self.swap_sign = self.swap_sign or swap_sign
         self.limit_records = self.limit_records or limit_records
 
-        # in case of a group by, do we show a grouped by model data regardless of their appearance in the results
-        # a client who didn't make a transaction during the date period.
+        # todo delete this
         self.show_empty_records = False  # show_empty_records if show_empty_records else self.show_empty_records
-        # Looks like this options is harder then what i thought as it interfere with the usual filtering of the report
 
         # Preparing actions
         self._parse()
@@ -483,7 +481,10 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     ),
                 }
                 date_filter.update(self.kwargs_filters)
-                if window == "crosstab":
+                if (
+                    window == "crosstab"
+                    or col_data.get("computation_flag", "") == "crosstab"
+                ):
                     q_filters = self._construct_crosstab_filter(col_data)
 
                 report_class.init_preparation(q_filters, date_filter)
@@ -536,6 +537,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     and (self.group_by or self.group_by_custom_querysets)
                 ) or (self.time_series_pattern and not self.group_by):
                     source = self._report_fields_dependencies[window].get(name, False)
+
                     if source:
                         computation_class = self.report_fields_classes[source]
                         value = computation_class.get_dependency_value(
@@ -671,7 +673,6 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 }
             else:
                 # A database field
-                # breakpoint()
                 if group_by_custom_querysets and col == "__index__":
                     # group by custom queryset special case: which is the index
                     col_data = {
@@ -733,8 +734,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
             self.group_by_custom_querysets,
         )
         self._parsed_columns = list(self.parsed_columns)
-        self._time_series_parsed_columns = self.get_time_series_parsed_columns()
         self._crosstab_parsed_columns = self.get_crosstab_parsed_columns()
+        self._time_series_parsed_columns = self.get_time_series_parsed_columns()
 
     def get_database_columns(self):
         return [
@@ -803,6 +804,18 @@ class ReportGenerator(ReportGeneratorAPI, object):
                         "is_summable": magic_field_class.is_summable,
                     }
                 )
+
+            # append the crosstab fields, if they exist, on the time_series
+            if self._crosstab_parsed_columns:
+                for parsed_col in self._crosstab_parsed_columns:
+                    parsed_col = parsed_col.copy()
+                    parsed_col["name"] = (
+                        parsed_col["name"] + "TS" + dt[1].strftime("%Y%m%d")
+                    )
+                    parsed_col["start_date"] = dt[0]
+                    parsed_col["end_date"] = dt[1]
+                    _values.append(parsed_col)
+
         return _values
 
     def get_time_series_field_verbose_name(
@@ -903,6 +916,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                         else False,
                         "source": "magic_field" if magic_field_class else "",
                         "is_summable": magic_field_class.is_summable,
+                        "computation_flag": "crosstab",  # a flag, todo find a better way probably
                     }
                 )
 

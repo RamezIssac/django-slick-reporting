@@ -7,7 +7,8 @@ from django.test import TestCase
 from slick_reporting.fields import SlickReportField
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import get_foreign_keys
-from .models import OrderLine
+from .models import OrderLine, ComplexSales
+from django.utils.translation import gettext_lazy as _
 
 from .report_generators import (
     GeneratorWithAttrAsColumn,
@@ -17,6 +18,7 @@ from .report_generators import (
     TimeSeriesCustomDates,
     CrosstabOnField,
     CrosstabOnTraversingField,
+    CrosstabTimeSeries,
 )
 
 from .tests import BaseTestData, year
@@ -94,6 +96,33 @@ class CrosstabTests(BaseTestData, TestCase):
         self.assertEqual(data[0]["value__sumCTFEMALE"], 77, data)
         self.assertEqual(data[0]["value__sumCT----"], 0, data)
         self.assertEqual(data[1]["value__sumCTOTHER"], 34, data)
+
+    def test_crosstab_time_series(self):
+        report = ReportGenerator(
+            report_model=ComplexSales,
+            date_field="doc_date",
+            group_by="product",
+            columns=["name", "__total_quantity__"],
+            time_series_pattern="monthly",
+            crosstab_field="client",
+            crosstab_columns=[
+                SlickReportField.create(
+                    Sum, "quantity", name="value__sum", verbose_name=_("Sales")
+                )
+            ],
+            crosstab_ids=[self.client2.pk, self.client3.pk],
+            crosstab_compute_remainder=False,
+        )
+        columns = report.get_list_display_columns()
+        data = report.get_report_data()
+
+        self.assertEqual(len(columns), 3, columns)
+
+        report = CrosstabOnClient(
+            crosstab_ids=[self.client1.pk], crosstab_compute_remainder=True
+        )
+        columns = report.get_list_display_columns()
+        self.assertEqual(len(columns), 4, columns)
 
 
 class GeneratorReportStructureTest(BaseTestData, TestCase):

@@ -51,13 +51,27 @@ class CrosstabOnClient(GenericGenerator):
     ]
 
 
+class CrosstabTimeSeries(GenericGenerator):
+    group_by = "product"
+    columns = ["name", "__total_quantity__"]
+    # crosstab_field = "client"
+    # crosstab_columns = [
+    #     SlickReportField.create(
+    #         Sum, "quantity", name="value__sum", verbose_name=_("Sales")
+    #     )
+    # ]
+    # crosstab_compute_remainder = False
+
+    # time_series_pattern = "monthly"
+    # time_series_columns = ["__total_quantity__"]
+
+
 class CrosstabOnField(ReportGenerator):
     report_model = ComplexSales
     date_field = "doc_date"
 
     group_by = "product"
     columns = ["name"]
-    crosstab_field = "flag"
     crosstab_field = "flag"
     crosstab_ids = ["sales", "sales-return"]
 
