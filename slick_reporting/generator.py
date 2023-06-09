@@ -65,7 +65,7 @@ class ReportGeneratorAPI:
 
     group_by_custom_querysets = None
     """A List of querysets representing different group by options"""
-    group_by_custom_querysets_verbose_name = ""
+    group_by_custom_querysets_column_verbose_name = ""
 
     columns = None
     """A list of column names.
@@ -676,7 +676,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     # group by custom queryset special case: which is the index
                     col_data = {
                         "name": col,
-                        "verbose_name": cls.group_by_custom_querysets_verbose_name,
+                        "verbose_name": cls.group_by_custom_querysets_column_verbose_name,
                         "source": "database",
                         "ref": "",
                         "type": "text",
