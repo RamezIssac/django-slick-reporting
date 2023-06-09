@@ -11,32 +11,17 @@ Components
 ----------
 These are the main components of Django Slick Reporting, ordered from low level to high level:
 
-1. Report Field: represent a calculation unit, for example: a Sum or a Count of a certain field.
-   The report field identifies how the calculation should be done. ReportFields can depend on each other.
+1. :ref:`Computation Field <computation_field>`: a calculation unit,like a Sum or a Count of a certain field.
+   Computation field class set how the calculation should be done. ComputationFields can also depend on each other.
 
-2. Generator: The heart of the reporting engine , It's responsible for computing and generating the data and provides low level access.
+2. :ref:`Generator <report_generator>`: Responsible for generating report and orchestrating and calculating the computation fields values and mapping them to the results.
+   It has an intuitive API that allows you to define the report structure and the computation fields to be calculated.
 
-3. View: A wrapper around the generator exposing the generator options in a FormView that you can hook straight to your urls.
-   It also provide a Search Form to filter the report on.
+3. :ref:`Report View : A wrapper around the generator exposing the generator API in a ``FormView`` subclass that you can hook straight to your urls.
+   It provide a :ref:`Filter Form <filter_form>` to filter the report on.
    It mimics the Generator API interface, so knowing one is enough to work with the other.
 
 4. Charting JS helpers: Django slick Reporting comes with highcharts and Charts js helpers libraries to plot the data generated.
-
-
-Types of Reports
-----------------
-
-1. Time Series: A report that is grouped by a date field, and the report fields are calculated on each group.
-   For example: Sum of sales per month, Count of sales per day, etc..
-
-2. Cross Tab: shows data in rows and columns with information summarized at the intersection points.
-    For example: Sum of product sales per month, crosstab by client would show Products as rows, clients included in the crosstab_ids as columns.
-
-3. Grouped: A report that is grouped by a field, and the report fields are calculated on each group.
-   For example: Sum of sales per product, Count of sales per product, etc..
-
-4. Flat: A report that is not grouped, similar to what an admin list view would show.
-   For example: Sales Transactions log
 
 
 

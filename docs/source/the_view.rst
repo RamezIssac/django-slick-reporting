@@ -3,20 +3,36 @@
 The Slick Report View
 =====================
 
+Types of reports
+----------------
+We can categorize the output of a report into 4 sections:
+
+#. Grouped report: similar to what you'd so with a GROUP BY sql statement. We group by a field and do some kind of calculations over the grouped records.
+#. Time series report: a step up from the previous grouped report, where the calculations are done for each time period set in the time series options.
+#. Crosstab report: It's a report where the results shows the relationship between two or more variables. Example: Rows are the clients, columns are the products, and the intersection values are the sum of sales for each client and product combination. This report can be created in time series as well. Example: Rows are the clients, columns are the products, and the intersection values are the sum of sales for each client and product combination, for each month.
+#. List report: Similar to a django changelist, it's a direct view of the report model records with some extra features like sorting, filtering, pagination, etc.
+
+
 What is ReportView?
 --------------------
 
-ReportView is a CBV that inherits form ``FromView`` and expose the report generator needed attributes.
-It:
-
-* Auto generate the search form based on the report model (Or you can create you own)
+ReportView is a ``FromView`` subclass that exposes the report generator API allowing you to create a report in view.
+It also
+* Auto generate the filter form based on the report model
 * return the results as a json response if it's ajax request.
 * Export to CSV (extendable to apply other exporting method)
 * Print the report in a dedicated format
 
-
-Export to CSV
+How to use it?
 --------------
+You can import it from ``django_slick_reporting.views``
+``from django_slick_reporting.views import ReportView``
+
+In the next section we will go over the options and methods available on the ReportView class in regard to each of the types of reports listed above.
+
+
+Exporting to CSV
+-----------------
 To trigger an export to CSV, just add ``?_export=csv`` to the url.
 This will call the export_csv on the view class, engaging a `ExportToStreamingCSV`
 

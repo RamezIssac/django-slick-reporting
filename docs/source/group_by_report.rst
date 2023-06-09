@@ -2,7 +2,11 @@
 Group By Reports
 ================
 
-Group by reports are reports that group the data by a specific field. For example, a report that groups the expenses by the expense type.
+General
+-------
+
+Group by reports are reports that group the data by a specific field, while doing some kind of calculation on the grouped fields. For example, a report that groups the expenses by the expense type.
+
 
 Example:
 
@@ -18,13 +22,20 @@ Example:
             SlickReportField.create(Sum, "value", verbose_name=_("Total Expenditure"), name="value"),
         ]
 
+A Sample group by report would look like this:
 
-Group by can also be a traversing field
+.. image:: _static/group_report.png
+  :width: 800
+  :alt: Group Report
+  :align: center
 
+In the columns you can access to fields on the model that is being grouped by, in this case the Expense model, and the computation fields.
 
-.. note::
-    If the group by field is a traversing field, the report will be grouped by the last field in the traversing path.
-    and the columns available will be the fields on the last model in the traversing path.
+Group by a traversing field
+---------------------------
+
+``group_by`` value can be a traversing field. If set, the report will be grouped by the last field in the traversing path,
+    and, the columns available will be those of the last model in the traversing path.
 
 
 Example:
@@ -41,12 +52,6 @@ Example:
             SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
         ]
 
-A Sample group by report would look like this:
-
-.. image:: _static/group_report.png
-  :width: 800
-  :alt: Group Report
-  :align: center
 
 
 Custom Group By querysets

@@ -84,7 +84,7 @@ Next step :ref:`structure`
    time_series_options
    crosstab_options
    list_report_options
-   search_form
+   filter_form
    charts
    report_generator
    computation_field

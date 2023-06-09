@@ -6,8 +6,8 @@ Filter Form
 The filter form is a form that is used to filter the data to be used in the report.
 
 
-How the search form is generated ?
------------------------------------
+Customizing the generated form
+------------------------------
 Behind the scene, The view calls ``slick_reporting.form_factory.report_form_factory`` in ``get_form_class`` method.
 ``report_form_factory`` is a helper method which generates a form containing start date and end date, as well as all foreign keys on the report_model.
 
