@@ -114,15 +114,20 @@ class CrosstabTests(BaseTestData, TestCase):
             crosstab_compute_remainder=False,
         )
         columns = report.get_list_display_columns()
+        time_series_columns = report.get_time_series_parsed_columns()
+        expected_num_of_columns = (
+            2 * datetime.today().month
+        )  # 2 client + 1 remainder * months since start of year
+
+        self.assertEqual(len(time_series_columns), expected_num_of_columns, columns)
         data = report.get_report_data()
+        self.assertEqual(data[0]["__total_quantity__"], 197, data)
+        sum_o_product_1 = 0
+        for col in data[0]:
+            if col.startswith("value__") and "TS" in col:
+                sum_o_product_1 += data[0][col]
 
-        self.assertEqual(len(columns), 3, columns)
-
-        report = CrosstabOnClient(
-            crosstab_ids=[self.client1.pk], crosstab_compute_remainder=True
-        )
-        columns = report.get_list_display_columns()
-        self.assertEqual(len(columns), 4, columns)
+        self.assertEqual(sum_o_product_1, 197, data)
 
 
 class GeneratorReportStructureTest(BaseTestData, TestCase):
