@@ -75,6 +75,10 @@ Example:
 
 
 
+Having Time Series Crosstab Reports
+-----------------------------------
+You can have a crosstab report in a time series by setting the :ref:`time_series_options` in addition to the crosstab options.
+
 
 Customizing the verbose name of the crosstab columns
 ----------------------------------------------------

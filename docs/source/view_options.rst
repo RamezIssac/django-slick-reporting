@@ -5,7 +5,7 @@ We can categorize the output of a report into 4 sections:
 
 #. Grouped report: similar to what you'd so with a GROUP BY sql statement. We group by a field and do some kind of calculations over the grouped records.
 #. Time series report: a step up from the previous grouped report, where the calculations are done for each time period set in the time series options.
-#. Crosstab report: It's a report where the results shows the relationship between two or more variables. Example: Rows are the clients, columns are the products, and the values are the number of sales for each client/product combination.
+#. Crosstab report: It's a report where the results shows the relationship between two or more variables. Example: Rows are the clients, columns are the products, and the intersection values are the sum of sales for each client and product combination. This report can be created in time series as well. Example: Rows are the clients, columns are the products, and the intersection values are the sum of sales for each client and product combination, for each month.
 #. List report: Similar to a django changelist, it's a direct view of the report model records with some extra features like sorting, filtering, pagination, etc.
 
 
