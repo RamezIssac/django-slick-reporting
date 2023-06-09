@@ -82,6 +82,27 @@ class CrosstabOnField(ReportGenerator):
     ]
 
 
+class CrosstabCustomQueryset(ReportGenerator):
+    report_model = ComplexSales
+    date_field = "doc_date"
+
+    group_by = "product"
+    columns = ["name"]
+    crosstab_field = "flag"
+    # crosstab_ids = ["sales", "sales-return"]
+
+    crosstab_ids_custom_filters = [
+        (None, dict(flag="sales")),
+        (None, dict(flag="sales-return")),
+    ]
+
+    crosstab_columns = [
+        SlickReportField.create(
+            Sum, "quantity", name="value__sum", verbose_name=_("Sales")
+        )
+    ]
+
+
 class CrosstabOnTraversingField(ReportGenerator):
     report_model = ComplexSales
     date_field = "doc_date"

@@ -127,6 +127,8 @@ class ReportGeneratorAPI:
     crosstab_ids = None
     """A list is the ids to create a crosstab report on"""
 
+    crosstab_ids_custom_filters = None
+
     crosstab_compute_remainder = True
     """Include an an extra crosstab_columns for the outer group ( ie: all expects those `crosstab_ids`) """
 
@@ -164,6 +166,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         crosstab_field=None,
         crosstab_columns=None,
         crosstab_ids=None,
+        crosstab_ids_custom_filters=None,
         crosstab_compute_remainder=None,
         swap_sign=False,
         show_empty_records=None,
@@ -245,6 +248,10 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         self.crosstab_columns = crosstab_columns or self.crosstab_columns or []
         self.crosstab_ids = self.crosstab_ids or crosstab_ids or []
+        self.crosstab_ids_custom_filters = (
+            self.crosstab_ids_custom_filters or crosstab_ids_custom_filters or []
+        )
+
         self.crosstab_compute_remainder = (
             self.crosstab_compute_remainder
             if crosstab_compute_remainder is None
@@ -396,12 +403,15 @@ class ReportGenerator(ReportGeneratorAPI, object):
             return query.values(*fields)
         return query.values()
 
-    def _construct_crosstab_filter(self, col_data):
+    def _construct_crosstab_filter(self, col_data, queryset_filters=None):
         """
         In charge of adding the needed crosstab filter, specific to the case of is_remainder or not
         :param col_data:
         :return:
         """
+        if queryset_filters:
+            return queryset_filters[0], queryset_filters[1]
+
         if "__" in col_data["crosstab_field"]:
             column_name = col_data["crosstab_field"]
         else:
@@ -409,11 +419,11 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 col_data["crosstab_field"], self.report_model
             )
             column_name = field.column
-        if col_data["is_remainder"]:
+        if col_data["is_remainder"] and not queryset_filters:
             filters = [~Q(**{f"{column_name}__in": self.crosstab_ids})]
         else:
             filters = [Q(**{f"{column_name}": col_data["id"]})]
-        return filters
+        return filters, {}
 
     def _prepare_report_dependencies(self):
         from .fields import SlickReportField
@@ -485,7 +495,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     window == "crosstab"
                     or col_data.get("computation_flag", "") == "crosstab"
                 ):
-                    q_filters = self._construct_crosstab_filter(col_data)
+                    q_filters, kw_filters = col_data["queryset_filters"]
+                    date_filter.update(kw_filters)
 
                 report_class.init_preparation(q_filters, date_filter)
                 self.report_fields_classes[name] = report_class
@@ -888,12 +899,20 @@ class ReportGenerator(ReportGeneratorAPI, object):
         :return:
         """
         report_columns = self.crosstab_columns or []
-        ids = list(self.crosstab_ids)
-        if self.crosstab_compute_remainder:
+
+        ids = list(self.crosstab_ids) or list(self.crosstab_ids_custom_filters)
+        if self.crosstab_compute_remainder and not self.crosstab_ids_custom_filters:
             ids.append("----")
         output_cols = []
+
         ids_length = len(ids) - 1
-        for counter, id in enumerate(ids):
+        for counter, crosstab_id in enumerate(ids):
+            queryset_filters = None
+
+            if self.crosstab_ids_custom_filters:
+                queryset_filters = crosstab_id
+                crosstab_id = counter
+
             for col in report_columns:
                 magic_field_class = None
                 if type(col) is str:
@@ -901,24 +920,27 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 elif issubclass(col, SlickReportField):
                     magic_field_class = col
 
-                output_cols.append(
-                    {
-                        "name": f"{magic_field_class.name}CT{id}",
-                        "original_name": magic_field_class.name,
-                        "verbose_name": self.get_crosstab_field_verbose_name(
-                            magic_field_class, self.crosstab_field, id
-                        ),
-                        "ref": magic_field_class,
-                        "id": id,
-                        "crosstab_field": self.crosstab_field,
-                        "is_remainder": counter == ids_length
-                        if self.crosstab_compute_remainder
-                        else False,
-                        "source": "magic_field" if magic_field_class else "",
-                        "is_summable": magic_field_class.is_summable,
-                        "computation_flag": "crosstab",  # a flag, todo find a better way probably
-                    }
+                crosstab_column = {
+                    "name": f"{magic_field_class.name}CT{crosstab_id}",
+                    "original_name": magic_field_class.name,
+                    "verbose_name": self.get_crosstab_field_verbose_name(
+                        magic_field_class, self.crosstab_field, crosstab_id
+                    ),
+                    "ref": magic_field_class,
+                    "id": crosstab_id,
+                    "crosstab_field": self.crosstab_field,
+                    "is_remainder": counter == ids_length
+                    if self.crosstab_compute_remainder
+                    else False,
+                    "source": "magic_field" if magic_field_class else "",
+                    "is_summable": magic_field_class.is_summable,
+                    "computation_flag": "crosstab",  # a flag, todo find a better way probably
+                }
+                crosstab_column["queryset_filters"] = self._construct_crosstab_filter(
+                    crosstab_column, queryset_filters
                 )
+
+                output_cols.append(crosstab_column)
 
         return output_cols
 

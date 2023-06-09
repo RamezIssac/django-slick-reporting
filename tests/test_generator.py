@@ -19,6 +19,7 @@ from .report_generators import (
     CrosstabOnField,
     CrosstabOnTraversingField,
     CrosstabTimeSeries,
+    CrosstabCustomQueryset,
 )
 
 from .tests import BaseTestData, year
@@ -87,6 +88,15 @@ class CrosstabTests(BaseTestData, TestCase):
         self.assertEqual(data[0]["value__sumCTsales-return"], 30, data)
         self.assertEqual(data[0]["value__sumCT----"], 77, data)
         self.assertEqual(data[1]["value__sumCTsales-return"], 34, data)
+
+    def test_crosstab_ids_queryset(self):
+        # same test values as above, tests that crosstab_ids_custom_filters
+        report = CrosstabCustomQueryset()
+        data = report.get_report_data()
+        self.assertEqual(len(data), 2, data)
+        self.assertEqual(data[0]["value__sumCT0"], 90, data)
+        self.assertEqual(data[0]["value__sumCT1"], 30, data)
+        self.assertEqual(data[1]["value__sumCT1"], 34, data)
 
     def test_crosstab_on_traversing_field(self):
         report = CrosstabOnTraversingField()

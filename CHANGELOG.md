@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0]
+
+- Added crosstab_ids_custom_filters to allow custom filters on crosstab ids
+- 
+
 ## [0.9.0] - 2023-06-07
 
 - Deprecated ``form_factory`` in favor of ``forms``, to be removed next version.
