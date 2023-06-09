@@ -49,3 +49,34 @@ A Sample group by report would look like this:
   :align: center
 
 
+Custom Group By querysets
+-------------------------
+
+Grouping can also be over a curated queryset(s)
+
+Example:
+
+.. code-block:: python
+
+        class MyReport(ReportView):
+        report_model = MySales
+
+        group_by_querysets = [
+            MySales.objects.filter(status="pending"),
+            MySales.objects.filter(status__in=["paid", "overdue"]),
+        ]
+        group_by_custom_querysets_column_verbose_name = _("Status")
+
+
+        columns = [
+            "__index__",
+            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
+        ]
+
+This report will create two groups, one for pending sales and another for paid and overdue together.
+
+The ``__index__`` column is a "magic" column, it will added automatically to the report if it's not added.
+It just hold the index of the row in the group.
+its verbose name (ie the one on the table header) can be customized via ``group_by_custom_querysets_column_verbose_name``
+
+You can then customize the *value* of the __index__ column via ``filter_results`` hook
