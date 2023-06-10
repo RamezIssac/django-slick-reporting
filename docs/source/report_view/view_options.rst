@@ -1,13 +1,11 @@
-Report View Options
-===================
+Report View General Options
+===========================
 
 
 
 In following sections we will explore the different options for each type of report.
 Below is the general list of options that can be used to control the behavior of the report view.
 
-General Options
----------------
 
 .. attribute:: ReportView.report_model
 

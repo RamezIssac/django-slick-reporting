@@ -1,7 +1,12 @@
 Django Slick Reporting
 ======================
 
-**Django Slick Reporting** a report engine allowing you to create & display diverse analytics. Batteries like a ready to use View and Highcharts & Charts.js integration are included.
+**Django Slick Reporting** a reporting engine allowing you to create & display diverse analytics. Batteries like a ready to use View and Highcharts & Charts.js integration are included.
+
+* Create group by , crosstab , timeseries, crosstab in timeseries and list reports in handful line with intuitive syntax
+* Highcharts & Charts.js integration ready to use with the shipped in View, easily extendable to use with your own charts.
+* Export to CSV
+* Easily extendable to add your own computation fields,
 
 
 Installation
@@ -11,21 +16,10 @@ To install django-slick-reporting:
 
 1.  Install with pip: `pip install django-slick-reporting`.
 2.  Add ``slick_reporting`` to ``INSTALLED_APPS``.
-3. For the shipped in View, add ``'crispy_forms'`` to ``INSTALLED_APPS`` and add ``CRISPY_TEMPLATE_PACK = 'bootstrap4'`` to your ``settings.py``
+3. For the shipped in View, add ``'crispy_forms'`` to ``INSTALLED_APPS``
+   and add ``CRISPY_TEMPLATE_PACK = 'bootstrap4'`` to your ``settings.py``
 4. Execute `python manage.py collectstatic` so the JS helpers are collected and served.
 
-Demo site
-----------
-
-https://django-slick-reporting.com is a quick walk-though with live code examples
-
-Options
--------
-* Compute different types of fields (Sum, Avg, Count, Min, Max, StdDev, Variance) on a model
-* Group by a foreign key, date, or any other field
-* Display the results in a table
-* Display the results in a chart (Highcharts or Charts.js)
-* Export the results to CSV , extendable easily
 
 
 Quickstart
@@ -37,23 +31,16 @@ You can start by using ``ReportView`` which is a subclass of ``django.views.gene
 
     # in views.py
     from slick_reporting.views import ReportView
-    from slick_reporting.fields import SlickReportField
+    from slick_reporting.fields import SlickReportField, Chart
     from .models import MySalesItems
 
 
     class MonthlyProductSales(ReportView):
-        # The model where you have the data
+
         report_model = MySalesItems
-
-        # the main date field used for the model.
-        date_field = "date_placed"  # or 'order__date_placed'
-        # this support traversing, like so
-        # date_field = 'order__date_placed'
-
-        # A foreign key to group calculation on
+        date_field = "date_placed"
         group_by = "product"
 
-        # The columns you want to display
         columns = [
             "title",
             SlickReportField.create(
@@ -63,12 +50,24 @@ You can start by using ``ReportView`` which is a subclass of ``django.views.gene
 
         # Charts
         charts_settings = [
-            {
-                "type": "bar",
-                "data_source": "value__sum",
-                "title_source": "title",
-            },
+            Chart(
+                "Total sold $",
+                Chart.BAR,
+                data_source="value__sum",
+                title_source="title",
+            ),
         ]
+
+
+    # in urls.py
+    from django.urls import path
+    from .views import MonthlyProductSales
+
+Demo site
+----------
+
+https://django-slick-reporting.com is a quick walk-though with live code examples
+
 
 
 Next step :ref:`structure`
@@ -78,14 +77,9 @@ Next step :ref:`structure`
    :caption: Contents:
 
    concept
-   the_view
-   view_options
-   group_by_report
-   time_series_options
-   crosstab_options
-   list_report_options
-   filter_form
+   report_view/index
    charts
+   exporting
    report_generator
    computation_field
 

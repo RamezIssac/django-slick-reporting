@@ -13,7 +13,7 @@ Here is a simple example of a crosstab report:
 
 
     class MyCrosstabReport(ReportView):
-
+        group_by = "product"
         crosstab_field = "client"
         # the column you want to make a crosstab on, can be a foreign key or a choice field
 
@@ -21,9 +21,7 @@ Here is a simple example of a crosstab report:
             SlickReportField.create(Sum, "value", verbose_name=_("Value")),
         ]
 
-        crosstab_ids = None
-        # the ids of the crosstab field you want to use. This will be passed on by the search form, or , if set here, values here will be used.
-        # crosstab_ids = [1,2,3]
+        crosstab_ids = [1, 2] # a list of ids of the crosstab field you want to use. This will be passed on by the filter form, or , if set here, values here will be used.
         # OR in case of a choice / text field
         # crosstab_ids = ["my-choice-1", "my-choice-2", "my-choice-3"]
 
@@ -32,7 +30,8 @@ Here is a simple example of a crosstab report:
         # Example: if you choose to do a cross tab on clientIds 1 & 2 , cross tab remainder will add a column with the calculation of all clients except those set/passed in crosstab_ids
 
         columns = [
-            "some_optional_field",
+            "name",
+            "sku",
             "__crosstab__",
             # You can customize where the crosstab columns are displayed in relation to the other columns
             SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),

@@ -2,8 +2,8 @@
 Group By Reports
 ================
 
-General
--------
+General use case
+----------------
 
 Group by reports are reports that group the data by a specific field, while doing some kind of calculation on the grouped fields. For example, a report that groups the expenses by the expense type.
 
@@ -54,10 +54,10 @@ Example:
 
 
 
-Custom Group By querysets
+Group by custom querysets
 -------------------------
 
-Grouping can also be over a curated queryset(s)
+Grouping can also be over a curated queryset(s).
 
 Example:
 

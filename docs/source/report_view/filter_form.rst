@@ -1,7 +1,7 @@
 .. _filter_form:
 
-Filter Form
-===========
+Customizing Filter Form
+=======================
 
 The filter form is a form that is used to filter the data to be used in the report.
 
@@ -21,8 +21,8 @@ You can also override the form by providing a ``form_class`` attribute to the re
 
 .. _filter_form_customization:
 
-Override the Form
-------------------
+Overriding the Form
+--------------------
 
 The system expect that the form used with the ``ReportView`` to implement the ``slick_reporting.forms.BaseReportForm`` interface.
 
@@ -125,4 +125,4 @@ Example a full example of a custom form:
         class RequestCountByPath(ReportView):
             form_class = RequestLogForm
 
-You can view this code snippet in action on the demo project
+You can view this code snippet in action on the demo project https://my-shop.django-erp-framework.com/requests-dashboard/reports/request_analytics/requestlog/

@@ -1,8 +1,9 @@
-List Report View
-================
+List Reports
+============
 
-This is a simple ListView to display data in a model, like you would with an admin ChangeList view.
-It's quite similar to ReportView except there is no calculation, by default.
+
+It's a simple ListView / admin changelist like report to display data in a model.
+It's quite similar to ReportView except there is no calculation by default.
 
 Options:
 --------

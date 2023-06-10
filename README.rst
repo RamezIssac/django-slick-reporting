@@ -29,7 +29,7 @@ Features
 - Effortlessly create Simple, Grouped, Time series and Crosstab reports in a handful of code lines.
 - Create your Custom Calculation easily, which will be integrated with the above reports types
 - Optimized for speed.
-- Batteries included! Highcharts & Chart.js charting capabilities , DataTable.net & easily customizable Bootstrap form.
+- Batteries included! Highcharts & Chart.js charting capabilities , DataTable.net & a Bootstrap form. all easily customizable and plugable.
 
 Installation
 ------------
@@ -56,7 +56,7 @@ You can simply use a code like this
 
     # in views.py
     from django.db.models import Sum
-    from slick_reporting.views import ReportView
+    from slick_reporting.views import ReportView, Chart
     from slick_reporting.fields import SlickReportField
     from .models import MySalesItems
 
@@ -73,24 +73,24 @@ You can simply use a code like this
         ]
 
         chart_settings = [
-            {
-                "type": "column",
-                "data_source": ["sum__value"],
-                "plot_total": False,
-                "title_source": "title",
-                "title": _("Detailed Columns"),
-            },
+            Chart(
+                "Total sold $",
+                Chart.BAR,
+                data_source="value__sum",
+                title_source="title",
+            ),
         ]
 
 
-To get something like this
+To get something this
 
 .. image:: https://i.ibb.co/SvxTM23/Selection-294.png
     :target: https://i.ibb.co/SvxTM23/Selection-294.png
     :alt: Shipped in View Page
 
 
-You can do a monthly time series :
+Time Series
+-----------
 
 
 .. code-block:: python
@@ -107,33 +107,68 @@ You can do a monthly time series :
         group_by = "product"
         columns = ["name", "sku"]
 
-        # Analogy for time series
-        time_series_pattern = "monthly"
+        # Settings for creating time series report
+        time_series_pattern = "monthly" # or "yearly" , "weekly" , "daily" , others and custom patterns
         time_series_columns = [
-            SlickReportField.create(Sum, "quantity", name="sum__quantity")
+            SlickReportField.create(
+                Sum, "value", verbose_name=_("Sales Value"), name="value"
+            )
+        ]
+
+        chart_settings = [
+            Chart(
+                _("Total Sales Monthly"),
+                Chart.PIE,
+                data_source=["value"],
+                title_source=["name"],
+                plot_total=True,
+            ),
         ]
 
 
-This would return a table looking something like this:
+.. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/report_view/_static/timeseries.png?raw=true
+    :alt: Time Series Report
+    :align: center
 
-+--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
-| Product Name | SKU                  | Total Quantity  | Total Quantity | Total Quantity in ... | Total Quantity in December 20 |
-|              |                      | in Jan 20       | in Feb 20      |                       |                               |
-+--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
-| Product 1    | <from product model> | 10              | 15             | ...                   | 14                            |
-+--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
-| Product 2    | <from product model> | 11              | 12             | ...                   | 12                            |
-+--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
-| Product 3    | <from product model> | 17              | 12             | ...                   | 17                            |
-+--------------+----------------------+-----------------+----------------+-----------------------+-------------------------------+
+Cross Tab
+---------
 
-*This example code assumes your "MySalesItems" model contains the fields `product` as foreign key,  `quantity` as number , and `date_placed` as a date field. It also assumes your `Product` model has an SKU field.. Change those to better suit your structure.*
+.. code-block:: python
+
+    # in views.py
+    from slick_reporting.views import ReportView
+    from slick_reporting.fields import SlickReportField
+    from .models import MySalesItems
+
+    class MyCrosstabReport(ReportView):
+
+    crosstab_field = "client"
+    crosstab_ids = [ 1, 2, 3 ]
+    crosstab_columns = [
+        SlickReportField.create(Sum, "value", verbose_name=_("Value for")),
+    ]
+    crosstab_compute_remainder = True
+
+    columns = [
+        "some_optional_field",
+        # You can customize where the crosstab columns are displayed in relation to the other columns
+        "__crosstab__",
+
+        # This is the same as the Same as the calculation in the crosstab, but this one will be on the whole set. IE total value
+        SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
+
+    ]
 
 
---
+ .. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/report_view/_static/crosstab.png?raw=true
+    :alt: Homepage
+    :align: center
 
-**On a low level**
 
+Low level
+---------
+
+The view is a wrapper over the `ReportGenerator` class, which is the core of the reporting engine.
 You can interact with the `ReportGenerator` using same syntax as used with the `ReportView` .
 
 .. code-block:: python
@@ -141,10 +176,16 @@ You can interact with the `ReportGenerator` using same syntax as used with the `
     from slick_reporting.generator import ReportGenerator
     from .models import MySalesModel
 
-    report = ReportGenerator(
+    class MyReport(ReportGenerator):
+        report_model = MySalesModel
+        group_by = "product"
+        columns = ["title", "__total__"]
+
+    # OR
+    my_report = ReportGenerator(
         report_model=MySalesModel, group_by="product", columns=["title", "__total__"]
     )
-    report.get_report_data()  # -> [{'title':'Product 1', '__total__: 56}, {'title':'Product 2', '__total__: 43}, ]
+    my_report.get_report_data()  # -> [{'title':'Product 1', '__total__: 56}, {'title':'Product 2', '__total__: 43}, ]
 
 
 This is just a scratch, for more please visit the documentation 
@@ -183,7 +224,6 @@ This project is young and can use your support.
 Some of the ideas / features that ought be added
 
 * Support Other backends like SQL Alchemy & Pandas
-* Support Time Series and Crosstab at the same time
 
 
 Running tests

@@ -9,19 +9,30 @@ And now, Let's explore the main components of Django Slick Reporting and what se
 
 Components
 ----------
-These are the main components of Django Slick Reporting, ordered from low level to high level:
+These are the main components of Django Slick Reporting
 
-1. :ref:`Computation Field <computation_field>`: a calculation unit,like a Sum or a Count of a certain field.
-   Computation field class set how the calculation should be done. ComputationFields can also depend on each other.
-
-2. :ref:`Generator <report_generator>`: Responsible for generating report and orchestrating and calculating the computation fields values and mapping them to the results.
-   It has an intuitive API that allows you to define the report structure and the computation fields to be calculated.
-
-3. :ref:`Report View : A wrapper around the generator exposing the generator API in a ``FormView`` subclass that you can hook straight to your urls.
-   It provide a :ref:`Filter Form <filter_form>` to filter the report on.
+#. :ref:`Report View <report_view>`: A ``FormView`` CBV subclass with reporting capabilities allowing you to create different types of reports in the view.
+   It provide a default :ref:`Filter Form <filter_form>` to filter the report on.
    It mimics the Generator API interface, so knowing one is enough to work with the other.
 
-4. Charting JS helpers: Django slick Reporting comes with highcharts and Charts js helpers libraries to plot the data generated.
+#. :ref:`Generator <report_generator>`: Responsible for generating report and orchestrating and calculating the computation fields values and mapping them to the results.
+   It has an intuitive API that allows you to define the report structure and the computation fields to be calculated.
+
+#. :ref:`Computation Field <computation_field>`: a calculation unit,like a Sum or a Count of a certain field.
+   Computation field class set how the calculation should be done. ComputationFields can also depend on each other.
+
+#. Charting JS helpers: Highcharts and Charts js helpers libraries to plot the data generated. so you can create the chart in 1 line in the view
+
+
+Types of reports
+----------------
+We can categorize the output of the reports in this package into 4 sections:
+
+#. Grouped report: similar to what we'd do with a GROUP BY sql statement. We group by a field and do some kind of calculations over the grouped records.
+#. Time series report: a step up from the grouped report, where the calculations are computed for each time period (day, week, month, etc).
+#. Crosstab report: a report where the results shows the relationship between two or more variables. Example: Rows are the clients, columns are the products, and the intersection values are the sum of sales for each client and product combination. This report can be created in time series as well. Example: Rows are the clients, columns are the products, and the intersection values are the sum of sales for each client and product combination, for each month.
+#. List report: Similar to a django changelist, it's a direct view of the report model records with some extra features like sorting, filtering, pagination, etc.
+
 
 
 
