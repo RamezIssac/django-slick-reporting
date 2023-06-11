@@ -44,6 +44,7 @@ Like:
 You can create a report for each of these questions using the following code:
 
 .. code-block:: python
+
             # in views.py
             from django.db.models import Sum
             from slick_reporting.views import ReportView, Chart
@@ -73,6 +74,7 @@ You can create a report for each of these questions using the following code:
                         title_source="title",
                     ),
                 ]
+
 Then in your urls.py add the following:
 
 .. code-block:: python
