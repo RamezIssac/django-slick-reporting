@@ -76,6 +76,7 @@ Next step :ref:`structure`
    :maxdepth: 2
    :caption: Contents:
 
+   tutorial
    concept
    report_view/index
    charts

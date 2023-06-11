@@ -21,15 +21,14 @@ Django Slick Reporting
 
 A one stop reports engine with batteries included.
 
-This is project is an extract of the reporting engine of `Django ERP Framework <https://github.com/RamezIssac/django-erp-framework>`_
-
 Features
 --------
 
 - Effortlessly create Simple, Grouped, Time series and Crosstab reports in a handful of code lines.
-- Create your Custom Calculation easily, which will be integrated with the above reports types
+- Create Chart(s) for your reports with a single line of code.
+- Create Custom complex Calculation.
 - Optimized for speed.
-- Batteries included! Highcharts & Chart.js charting capabilities , DataTable.net & a Bootstrap form. all easily customizable and plugable.
+- Easily extendable.
 
 Installation
 ------------
@@ -108,7 +107,9 @@ Time Series
         columns = ["name", "sku"]
 
         # Settings for creating time series report
-        time_series_pattern = "monthly" # or "yearly" , "weekly" , "daily" , others and custom patterns
+        time_series_pattern = (
+            "monthly"  # or "yearly" , "weekly" , "daily" , others and custom patterns
+        )
         time_series_columns = [
             SlickReportField.create(
                 Sum, "value", verbose_name=_("Sales Value"), name="value"
@@ -135,34 +136,33 @@ Cross Tab
 
 .. code-block:: python
 
-    # in views.py
-    from slick_reporting.views import ReportView
-    from slick_reporting.fields import SlickReportField
-    from .models import MySalesItems
-
-    class MyCrosstabReport(ReportView):
-
-    crosstab_field = "client"
-    crosstab_ids = [ 1, 2, 3 ]
-    crosstab_columns = [
-        SlickReportField.create(Sum, "value", verbose_name=_("Value for")),
-    ]
-    crosstab_compute_remainder = True
-
-    columns = [
-        "some_optional_field",
-        # You can customize where the crosstab columns are displayed in relation to the other columns
-        "__crosstab__",
-
-        # This is the same as the Same as the calculation in the crosstab, but this one will be on the whole set. IE total value
-        SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
-
-    ]
+        # in views.py
+        from slick_reporting.views import ReportView
+        from slick_reporting.fields import SlickReportField
+        from .models import MySalesItems
 
 
- .. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/report_view/_static/crosstab.png?raw=true
-    :alt: Homepage
-    :align: center
+        class MyCrosstabReport(ReportView):
+
+            crosstab_field = "client"
+            crosstab_ids = [1, 2, 3]
+            crosstab_columns = [
+                SlickReportField.create(Sum, "value", verbose_name=_("Value for")),
+            ]
+            crosstab_compute_remainder = True
+
+            columns = [
+                "some_optional_field",
+                # You can customize where the crosstab columns are displayed in relation to the other columns
+                "__crosstab__",
+                # This is the same as the Same as the calculation in the crosstab, but this one will be on the whole set. IE total value
+                SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
+            ]
+
+
+.. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/report_view/_static/crosstab.png?raw=true
+   :alt: Homepage
+   :align: center
 
 
 Low level
@@ -176,10 +176,12 @@ You can interact with the `ReportGenerator` using same syntax as used with the `
     from slick_reporting.generator import ReportGenerator
     from .models import MySalesModel
 
+
     class MyReport(ReportGenerator):
         report_model = MySalesModel
         group_by = "product"
         columns = ["title", "__total__"]
+
 
     # OR
     my_report = ReportGenerator(

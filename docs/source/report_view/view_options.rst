@@ -26,16 +26,15 @@ Below is the general list of options that can be used to control the behavior of
 
         class MyReport(ReportView):
             columns = [
-                'id',
-                ('name', {'verbose_name': "My verbose name", "is_summable"=False}),
-                'description',
-
+                "id",
+                ("name", {"verbose_name": "My verbose name", "is_summable": False}),
+                "description",
                 # A callable on the view /or the generator, that takes the record as a parameter and returns a value.
-                ('get_full_name', {"verbose_name"="Full Name", "is_summable"=False} ),
+                ("get_full_name", {"verbose_name": "Full Name", "is_summable": False}),
             ]
 
             def get_full_name(self, record):
-                return record['first_name'] + " " + record['last_name']
+                return record["first_name"] + " " + record["last_name"]
 
 
     Columns names can be
@@ -48,17 +47,16 @@ Below is the general list of options that can be used to control the behavior of
                     class MyTotalReportField(SlickReportField):
                         pass
 
+
                     class MyReport(ReportView):
                         columns = [
                             SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
                             # a computation field created on the fly
-
                             MyTotalReportField,
                             # A computation Field class
-
                             "__total__",
                             # a computation field registered in the computation field registry
-                            ]
+                        ]
 
 
 
@@ -71,12 +69,11 @@ Below is the general list of options that can be used to control the behavior of
 
                 class MyReport(ReportView):
                     report_model = MySales
-                    group_by = 'client'
+                    group_by = "client"
                     columns = [
-                        'name', # field that exists on the Client Model
-                        'date_of_birth', # field that exists on the Client Model
-                        "agent__name", # field that exists on the Agent Model related to the Client Model
-
+                        "name",  # field that exists on the Client Model
+                        "date_of_birth",  # field that exists on the Client Model
+                        "agent__name",  # field that exists on the Agent Model related to the Client Model
                         # calculation fields
                     ]
 
@@ -91,11 +88,11 @@ Below is the general list of options that can be used to control the behavior of
                 .. code-block:: python
 
                     class MyReport(ReportView):
-                            report_model = MySales
-                            group_by = None
-                            columns = [
-                                SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value")
-                            ]
+                        report_model = MySales
+                        group_by = None
+                        columns = [
+                            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value")
+                        ]
 
             Above code will return the calculated sum of all values in the report_model / queryset
 
@@ -129,7 +126,7 @@ Below is the general list of options that can be used to control the behavior of
 
             class MyReport(ReportView):
                 report_model = MySalesModel
-                group_by = 'client'
+                group_by = "client"
                 # OR
                 # group_by = 'client__agent__name'
                 # OR

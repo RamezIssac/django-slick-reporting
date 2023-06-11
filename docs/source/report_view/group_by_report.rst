@@ -18,8 +18,10 @@ Example:
         group_by = "expense"
 
         columns = [
-            "name", # name field on the expense model
-            SlickReportField.create(Sum, "value", verbose_name=_("Total Expenditure"), name="value"),
+            "name",  # name field on the expense model
+            SlickReportField.create(
+                Sum, "value", verbose_name=_("Total Expenditure"), name="value"
+            ),
         ]
 
 A Sample group by report would look like this:
@@ -45,10 +47,10 @@ Example:
     class ExpenseTotal(ReportView):
         report_model = ExpenseTransaction
         report_title = _("Expenses Daily")
-        group_by = "expense__expensecategory" # Note the traversing
+        group_by = "expense__expensecategory"  # Note the traversing
 
         columns = [
-            "name", # name field on the ExpenseCategory model
+            "name",  # name field on the ExpenseCategory model
             SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
         ]
 
@@ -64,19 +66,18 @@ Example:
 .. code-block:: python
 
         class MyReport(ReportView):
-        report_model = MySales
+            report_model = MySales
 
-        group_by_querysets = [
-            MySales.objects.filter(status="pending"),
-            MySales.objects.filter(status__in=["paid", "overdue"]),
-        ]
-        group_by_custom_querysets_column_verbose_name = _("Status")
+            group_by_querysets = [
+                MySales.objects.filter(status="pending"),
+                MySales.objects.filter(status__in=["paid", "overdue"]),
+            ]
+            group_by_custom_querysets_column_verbose_name = _("Status")
 
-
-        columns = [
-            "__index__",
-            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
-        ]
+            columns = [
+                "__index__",
+                SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
+            ]
 
 This report will create two groups, one for pending sales and another for paid and overdue together.
 

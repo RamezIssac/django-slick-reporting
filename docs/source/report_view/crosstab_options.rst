@@ -21,7 +21,10 @@ Here is a simple example of a crosstab report:
             SlickReportField.create(Sum, "value", verbose_name=_("Value")),
         ]
 
-        crosstab_ids = [1, 2] # a list of ids of the crosstab field you want to use. This will be passed on by the filter form, or , if set here, values here will be used.
+        crosstab_ids = [
+            1,
+            2,
+        ]  # a list of ids of the crosstab field you want to use. This will be passed on by the filter form, or , if set here, values here will be used.
         # OR in case of a choice / text field
         # crosstab_ids = ["my-choice-1", "my-choice-2", "my-choice-3"]
 
@@ -49,28 +52,31 @@ Example:
 
 .. code-block:: python
 
-    from .models import MySales
+        from .models import MySales
+
 
         class MyCrosstabReport(ReportView):
 
-        date_field = "date"
-        group_by = "product"
-        report_model = MySales
+            date_field = "date"
+            group_by = "product"
+            report_model = MySales
 
-        crosstab_columns = [
-            SlickReportField.create(Sum, "value", verbose_name=_("Value")),
-        ]
+            crosstab_columns = [
+                SlickReportField.create(Sum, "value", verbose_name=_("Value")),
+            ]
 
-        crosstab_ids_custom_filters = [
-                (~Q(special_field="something"), dict(flag="sales")), # special_field and flag are fields on the report_model .
+            crosstab_ids_custom_filters = [
+                (
+                    ~Q(special_field="something"),
+                    dict(flag="sales"),
+                ),  # special_field and flag are fields on the report_model .
                 (None, dict(flag="sales-return")),
+            ]
 
-        ]
-
-        # These settings has NO EFFECT if crosstab_ids_custom_filters is set
-        crosstab_field = "client"
-        crosstab_ids = [1, 2]
-        crosstab_compute_remainder = True
+            # These settings has NO EFFECT if crosstab_ids_custom_filters is set
+            crosstab_field = "client"
+            crosstab_ids = [1, 2]
+            crosstab_compute_remainder = True
 
 
 

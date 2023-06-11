@@ -34,7 +34,6 @@ Let's have a look
     response = {
         # the report slug, defaults to the class name all lower
         "report_slug": "",
-
         # a list of objects representing the actual results of the report
         "data": [
             {
@@ -51,7 +50,6 @@ Let's have a look
             },
             # etc .....
         ],
-
         # A list explaining the columns/keys in the data results.
         # ie: len(response.columns) == len(response.data[i].keys())
         # It contains needed information about verbose name , if summable and hints about the data type.
@@ -91,7 +89,6 @@ Let's have a look
             "crosstab_column_names": [],
             "crosstab_column_verbose_names": [],
         },
-
         # A mirror of the set charts_settings on the ReportView
         # ``ReportView`` populates the id and the `engine_name' if not set
         "chart_settings": [
