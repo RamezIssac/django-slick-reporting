@@ -7,7 +7,8 @@ from django.test import TestCase
 from slick_reporting.fields import SlickReportField
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import get_foreign_keys
-from .models import OrderLine
+from .models import OrderLine, ComplexSales
+from django.utils.translation import gettext_lazy as _
 
 from .report_generators import (
     GeneratorWithAttrAsColumn,
@@ -17,6 +18,8 @@ from .report_generators import (
     TimeSeriesCustomDates,
     CrosstabOnField,
     CrosstabOnTraversingField,
+    CrosstabTimeSeries,
+    CrosstabCustomQueryset,
 )
 
 from .tests import BaseTestData, year
@@ -86,6 +89,15 @@ class CrosstabTests(BaseTestData, TestCase):
         self.assertEqual(data[0]["value__sumCT----"], 77, data)
         self.assertEqual(data[1]["value__sumCTsales-return"], 34, data)
 
+    def test_crosstab_ids_queryset(self):
+        # same test values as above, tests that crosstab_ids_custom_filters
+        report = CrosstabCustomQueryset()
+        data = report.get_report_data()
+        self.assertEqual(len(data), 2, data)
+        self.assertEqual(data[0]["value__sumCT0"], 90, data)
+        self.assertEqual(data[0]["value__sumCT1"], 30, data)
+        self.assertEqual(data[1]["value__sumCT1"], 34, data)
+
     def test_crosstab_on_traversing_field(self):
         report = CrosstabOnTraversingField()
         data = report.get_report_data()
@@ -94,6 +106,38 @@ class CrosstabTests(BaseTestData, TestCase):
         self.assertEqual(data[0]["value__sumCTFEMALE"], 77, data)
         self.assertEqual(data[0]["value__sumCT----"], 0, data)
         self.assertEqual(data[1]["value__sumCTOTHER"], 34, data)
+
+    def test_crosstab_time_series(self):
+        report = ReportGenerator(
+            report_model=ComplexSales,
+            date_field="doc_date",
+            group_by="product",
+            columns=["name", "__total_quantity__"],
+            time_series_pattern="monthly",
+            crosstab_field="client",
+            crosstab_columns=[
+                SlickReportField.create(
+                    Sum, "quantity", name="value__sum", verbose_name=_("Sales")
+                )
+            ],
+            crosstab_ids=[self.client2.pk, self.client3.pk],
+            crosstab_compute_remainder=False,
+        )
+        columns = report.get_list_display_columns()
+        time_series_columns = report.get_time_series_parsed_columns()
+        expected_num_of_columns = (
+            2 * datetime.today().month
+        )  # 2 client + 1 remainder * months since start of year
+
+        self.assertEqual(len(time_series_columns), expected_num_of_columns, columns)
+        data = report.get_report_data()
+        self.assertEqual(data[0]["__total_quantity__"], 197, data)
+        sum_o_product_1 = 0
+        for col in data[0]:
+            if col.startswith("value__") and "TS" in col:
+                sum_o_product_1 += data[0][col]
+
+        self.assertEqual(sum_o_product_1, 197, data)
 
 
 class GeneratorReportStructureTest(BaseTestData, TestCase):
@@ -325,6 +369,29 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         self.assertEqual(data[0]["contact__address"], "Street 1")
         self.assertEqual(data[1]["contact__address"], "Street 2")
         self.assertEqual(data[2]["contact__address"], "Street 3")
+
+    def test_custom_group_by(self):
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            group_by_custom_querysets=[
+                SimpleSales.objects.filter(
+                    client_id__in=[self.client1.pk, self.client2.pk]
+                ),
+                SimpleSales.objects.filter(client_id__in=[self.client3.pk]),
+            ],
+            columns=[
+                # "__index__", is added automatically
+                SlickReportField.create(Sum, "value"),
+                "__total__",
+            ],
+            date_field="doc_date",
+        )
+
+        data = report.get_report_data()
+        self.assertEqual(len(data), 2)
+        self.assertEqual(data[0]["sum__value"], 900)
+        self.assertEqual(data[1]["sum__value"], 1200)
+        self.assertIn("__index__", data[0].keys())
 
     def test_traversing_group_by_and_foreign_key_field(self):
         report = ReportGenerator(

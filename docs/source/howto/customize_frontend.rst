@@ -1,37 +1,29 @@
-.. _customization:
+Charting and Front End Customization
+=====================================
 
-The Slick Report View
-=====================
+Charts Configuration
+---------------------
 
-What is ReportView?
---------------------
+Charts settings is a list of objects which each object represent a chart configurations.
 
-ReportView is a CBV that inherits form ``FromView`` and expose the report generator needed attributes.
-It:
+* type: what kind of chart it is: Possible options are bar, pie, line and others subject of the underlying charting engine.
+  Hats off to : `Charts.js <https://www.chartjs.org/>`_.
+* engine_name: String, default to ``SLICK_REPORTING_DEFAULT_CHARTS_ENGINE``. Passed to front end in order to use the appropriate chart engine.
+  By default supports `highcharts` & `chartsjs`.
+* data_source: Field name containing the numbers we want to plot.
+* title_source: Field name containing labels of the data_source
+* title: the Chart title. Defaults to the `report_title`.
+* plot_total if True the chart will plot the total of the columns. Useful with time series and crosstab reports.
 
-* Auto generate the search form based on the report model (Or you can create you own)
-* return the results as a json response if it's ajax request.
-* Export to CSV (extendable to apply other exporting method)
-* Print the report in a dedicated format
+On front end, for each chart needed we pass the whole response to the relevant chart helper function and it handles the rest.
 
-
-Export to CSV
---------------
-To trigger an export to CSV, just add ``?_export=csv`` to the url.
-This will call the export_csv on the view class, engaging a `ExportToStreamingCSV`
-
-You can extend the functionality, say you want to export to pdf.
-Add a ``export_pdf`` method to the view class, accepting the report_data json response and return the response you want.
-This ``export_pdf` will be called automatically when url parameter contain ``?_export=pdf``
-
-Having an `_export` parameter not implemented, ie the view class do not implement ``export_{parameter_name}``,  will be ignored.
 
 
 
 The ajax response structure
 ---------------------------
 
-Understanding how the response is structured is imperative in order to customize how the report is displayed on the front end.
+Understanding how the response is structured is imperative in order to customize how the report is displayed on the front end
 
 Let's have a look
 
@@ -42,7 +34,6 @@ Let's have a look
     response = {
         # the report slug, defaults to the class name all lower
         "report_slug": "",
-
         # a list of objects representing the actual results of the report
         "data": [
             {
@@ -59,7 +50,6 @@ Let's have a look
             },
             # etc .....
         ],
-
         # A list explaining the columns/keys in the data results.
         # ie: len(response.columns) == len(response.data[i].keys())
         # It contains needed information about verbose name , if summable and hints about the data type.
@@ -99,7 +89,6 @@ Let's have a look
             "crosstab_column_names": [],
             "crosstab_column_verbose_names": [],
         },
-
         # A mirror of the set charts_settings on the ReportView
         # ``ReportView`` populates the id and the `engine_name' if not set
         "chart_settings": [

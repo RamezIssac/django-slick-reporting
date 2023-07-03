@@ -1,3 +1,5 @@
+.. _crosstab_reports:
+
 Crosstab Reports
 =================
 Use crosstab reports, also known as matrix reports, to show the relationships between three or more query items.
@@ -13,7 +15,7 @@ Here is a simple example of a crosstab report:
 
 
     class MyCrosstabReport(ReportView):
-
+        group_by = "product"
         crosstab_field = "client"
         # the column you want to make a crosstab on, can be a foreign key or a choice field
 
@@ -21,9 +23,10 @@ Here is a simple example of a crosstab report:
             SlickReportField.create(Sum, "value", verbose_name=_("Value")),
         ]
 
-        crosstab_ids = None
-        # the ids of the crosstab field you want to use. This will be passed on by the search form, or , if set here, values here will be used.
-        # crosstab_ids = [1,2,3]
+        crosstab_ids = [
+            1,
+            2,
+        ]  # a list of ids of the crosstab field you want to use. This will be passed on by the filter form, or , if set here, values here will be used.
         # OR in case of a choice / text field
         # crosstab_ids = ["my-choice-1", "my-choice-2", "my-choice-3"]
 
@@ -32,12 +35,57 @@ Here is a simple example of a crosstab report:
         # Example: if you choose to do a cross tab on clientIds 1 & 2 , cross tab remainder will add a column with the calculation of all clients except those set/passed in crosstab_ids
 
         columns = [
-            "some_optional_field",
+            "name",
+            "sku",
             "__crosstab__",
             # You can customize where the crosstab columns are displayed in relation to the other columns
             SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
             # This is the same as the Same as the calculation in the crosstab, but this one will be on the whole set. IE total value
         ]
+
+
+Customizing the crosstab ids
+----------------------------
+
+For more fine tuned report, You can customize the ids of the crosstab report by suppling a list of tuples to the ``crosstab_ids_custom_filters`` attribute.
+the tuple should have 2 items, the first is a Q object(s) -if any- , and the second is a dict of kwargs filters that will be passed to the filter method of the ``report_model``.
+
+Example:
+
+.. code-block:: python
+
+        from .models import MySales
+
+
+        class MyCrosstabReport(ReportView):
+
+            date_field = "date"
+            group_by = "product"
+            report_model = MySales
+
+            crosstab_columns = [
+                SlickReportField.create(Sum, "value", verbose_name=_("Value")),
+            ]
+
+            crosstab_ids_custom_filters = [
+                (
+                    ~Q(special_field="something"),
+                    dict(flag="sales"),
+                ),  # special_field and flag are fields on the report_model .
+                (None, dict(flag="sales-return")),
+            ]
+
+            # These settings has NO EFFECT if crosstab_ids_custom_filters is set
+            crosstab_field = "client"
+            crosstab_ids = [1, 2]
+            crosstab_compute_remainder = True
+
+
+
+Having Time Series Crosstab Reports
+-----------------------------------
+You can have a crosstab report in a time series by setting the :ref:`time_series_options` in addition to the crosstab options.
+
 
 Customizing the verbose name of the crosstab columns
 ----------------------------------------------------

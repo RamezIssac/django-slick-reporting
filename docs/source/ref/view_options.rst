@@ -1,27 +1,20 @@
-Report View Options
-===================
+.. _report_view_options:
 
-We can categorize the output of a report into 4 sections:
-
-#. Grouped report: similar to what you'd so with a GROUP BY sql statement. We group by a field and do some kind of calculations over the grouped records.
-#. Time series report: a step up from the previous grouped report, where the calculations are done for each time period set in the time series options.
-#. Crosstab report: It's a report where the results shows the relationship between two or more variables. Example: Rows are the clients, columns are the products, and the values are the number of sales for each client/product combination.
-#. List report: Similar to a django changelist, it's a direct view of the report model records with some extra features like sorting, filtering, pagination, etc.
+General Options
+================
 
 
-In following sections we will explore the different options for each type of report.
-Below is the general list of options that can be used to control the behavior of the report view.
 
-``ReportView`` Options
-----------------------
+Below is the list of general options that is used across all types of reports.
+
 
 .. attribute:: ReportView.report_model
 
-    the model where the relevant data is stored, in more complex reports, it's usually a database view / materialized view.
+    The model where the relevant data is stored, in more complex reports, it's usually a database view / materialized view.
 
 .. attribute:: ReportView.queryset
 
-        the queryset to be used in the report, if not specified, it will default to ``report_model._default_manager.all()``
+        The queryset to be used in the report, if not specified, it will default to ``report_model._default_manager.all()``
 
 
 .. attribute:: ReportView.columns
@@ -34,21 +27,21 @@ Below is the general list of options that can be used to control the behavior of
 
         class MyReport(ReportView):
             columns = [
-                'id',
-                ('name', {'verbose_name': "My verbose name", "is_summable"=False}),
-                'description',
-
+                "id",
+                ("name", {"verbose_name": "My verbose name", "is_summable": False}),
+                "description",
                 # A callable on the view /or the generator, that takes the record as a parameter and returns a value.
-                ('get_full_name', {"verbose_name"="Full Name", "is_summable"=False} ),
+                ("get_full_name", {"verbose_name": "Full Name", "is_summable": False}),
             ]
 
             def get_full_name(self, record):
-                return record['first_name'] + " " + record['last_name']
+                return record["first_name"] + " " + record["last_name"]
 
 
-    Columns names can be
+    Here is a list of all available column options available. A column can be
 
-    * A Computation Field, as a class or by its name if its registered (see :ref:`computation_field`)
+    * A Computation Field. Added as a class or by its name if its registered see :ref:`computation_field`
+
         Example:
 
             .. code-block:: python
@@ -56,17 +49,18 @@ Below is the general list of options that can be used to control the behavior of
                     class MyTotalReportField(SlickReportField):
                         pass
 
+
                     class MyReport(ReportView):
                         columns = [
-                            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
                             # a computation field created on the fly
+                            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
 
-                            MyTotalReportField,
                             # A computation Field class
+                            MyTotalReportField,
 
-                            "__total__",
                             # a computation field registered in the computation field registry
-                            ]
+                            "__total__",
+                        ]
 
 
 
@@ -79,12 +73,11 @@ Below is the general list of options that can be used to control the behavior of
 
                 class MyReport(ReportView):
                     report_model = MySales
-                    group_by = 'client'
+                    group_by = "client"
                     columns = [
-                        'name', # field that exists on the Client Model
-                        'date_of_birth', # field that exists on the Client Model
-                        "agent__name", # field that exists on the Agent Model related to the Client Model
-
+                        "name",  # field that exists on the Client Model
+                        "date_of_birth",  # field that exists on the Client Model
+                        "agent__name",  # field that exists on the Agent Model related to the Client Model
                         # calculation fields
                     ]
 
@@ -99,11 +92,11 @@ Below is the general list of options that can be used to control the behavior of
                 .. code-block:: python
 
                     class MyReport(ReportView):
-                            report_model = MySales
-                            group_by = None
-                            columns = [
-                                SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value")
-                            ]
+                        report_model = MySales
+                        group_by = None
+                        columns = [
+                            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value")
+                        ]
 
             Above code will return the calculated sum of all values in the report_model / queryset
 
@@ -137,7 +130,7 @@ Below is the general list of options that can be used to control the behavior of
 
             class MyReport(ReportView):
                 report_model = MySalesModel
-                group_by = 'client'
+                group_by = "client"
                 # OR
                 # group_by = 'client__agent__name'
                 # OR
@@ -229,7 +222,7 @@ Below is the general list of options that can be used to control the behavior of
 
 
 Hooks and functions
--------------------
+====================
 
 .. attribute:: ReportView.get_queryset()
 

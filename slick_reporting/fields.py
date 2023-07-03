@@ -43,6 +43,7 @@ class SlickReportField(object):
     """The queryset on which the computation would occur"""
 
     group_by = None
+    group_by_custom_querysets = None
     plus_side_q = None
     minus_side_q = None
 
@@ -105,6 +106,7 @@ class SlickReportField(object):
         calculation_method=None,
         date_field="",
         group_by=None,
+        group_by_custom_querysets=None,
     ):
         super(SlickReportField, self).__init__()
         self.date_field = date_field
@@ -114,6 +116,10 @@ class SlickReportField(object):
             self.report_model._default_manager.all()
             if self.queryset is None
             else self.queryset
+        )
+
+        self.group_by_custom_querysets = (
+            self.group_by_custom_querysets or group_by_custom_querysets
         )
 
         self.calculation_field = (
@@ -148,7 +154,12 @@ class SlickReportField(object):
 
     def apply_aggregation(self, queryset, group_by=""):
         annotation = self.calculation_method(self.calculation_field)
-        if group_by:
+        if self.group_by_custom_querysets:
+            output = []
+            for group_by_query in self.group_by_custom_querysets:
+                output.append(group_by_query.aggregate(annotation))
+            return output
+        elif group_by:
             queryset = queryset.values(group_by).annotate(annotation)
         else:
             queryset = queryset.aggregate(annotation)
@@ -170,7 +181,6 @@ class SlickReportField(object):
             q_filters, kwargs_filters, **kwargs
         )
         self._cache = debit_results, credit_results, dep_values
-        return self._cache
 
     def prepare(self, q_filters=None, kwargs_filters=None, **kwargs):
         """
@@ -285,7 +295,11 @@ class SlickReportField(object):
         return dep_results
 
     def extract_data(self, cached, current_obj):
-        group_by = "" if self.prevent_group_by else self.group_by
+        group_by = (
+            ""
+            if self.prevent_group_by
+            else (self.group_by or self.group_by_custom_querysets)
+        )
         debit_value = 0
         credit_value = 0
         annotation = self.get_annotation_name()
@@ -298,6 +312,9 @@ class SlickReportField(object):
                 if not group_by:
                     x = list(cached_debit.keys())[0]
                     debit_value = cached_debit[x]
+                elif self.group_by_custom_querysets:
+                    debit = cached_debit[int(current_obj)]
+                    debit_value = debit[annotation]
                 else:
                     for i, x in enumerate(cached_debit):
                         if str(x[group_by]) == current_obj:
