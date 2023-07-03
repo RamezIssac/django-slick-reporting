@@ -1,3 +1,5 @@
+.. _crosstab_reports:
+
 Crosstab Reports
 =================
 Use crosstab reports, also known as matrix reports, to show the relationships between three or more query items.

@@ -1,3 +1,5 @@
+.. _group_by_topic:
+
 ================
 Group By Reports
 ================

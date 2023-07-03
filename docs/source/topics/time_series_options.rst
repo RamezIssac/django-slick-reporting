@@ -17,30 +17,36 @@ Here is a quick recipe to what you want to do
 
         class MyReport(ReportView):
 
-            time_series_pattern = "monthly"
             # options are : "daily", "weekly", "monthly", "yearly", "custom"
+            time_series_pattern = "monthly"
+
 
             # if time_series_pattern is "custom", then you can specify the dates like so
-            # time_series_custom_dates = [
-            #   (datetime.date(2020, 1, 1), datetime.date(2020, 1, 14)),
-            #   (datetime.date(2020, 2, 1), datetime.date(2020, 2, 14)),
-            #   (datetime.date(2020, 3, 1), datetime.date(2020, 3,14)),
-            # ]
+            time_series_custom_dates = [
+              (datetime.date(2020, 1, 1), datetime.date(2020, 1, 14)),
+              (datetime.date(2020, 2, 1), datetime.date(2020, 2, 14)),
+              (datetime.date(2020, 3, 1), datetime.date(2020, 3,14)),
+            ]
 
+            # These columns will be calculated for each period in the time series.
             time_series_columns = [
                 SlickReportField.create(Sum, "value", verbose_name=_("Value")),
             ]
-            # These columns will be calculated for each period in the time series.
+
 
             columns = [
-                "some_optional_field",
-                "__time_series__",
+                "product_sku",
+
                 # You can customize where the time series columns are displayed in relation to the other columns
-                SlickReportField.create(Sum, "value", verbose_name=_("Value")),
+                "__time_series__",
+
                 # This is the same as the time_series_columns, but this one will be on the whole set
+                SlickReportField.create(Sum, "value", verbose_name=_("Value")),
+
             ]
-            time_series_selector = True
+
             # This will display a selector to change the time series pattern
+            time_series_selector = True
 
             # settings for the time series selector
             # ----------------------------------
@@ -48,12 +54,10 @@ Here is a quick recipe to what you want to do
             time_series_selector_default = (
                 "monthly"  # The initial value for the time series selector
             )
-            time_series_selector_label = _(
-                "Period Pattern"
-            )  # The label for the time series selector
-            time_series_selector_allow_empty = (
-                False  # Allow the user to select an empty time series
-            )
+            # The label for the time series selector
+            time_series_selector_label = _("Period Pattern")
+            # Allow the user to select an empty time series
+            time_series_selector_allow_empty = False
 
 
 .. _time_series_options:

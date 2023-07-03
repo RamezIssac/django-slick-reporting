@@ -1,9 +1,13 @@
+.. _how_to:
+
 =======
 How To
 =======
+In this section we will go over some of the frequent tasks you will need to do when using ReportView.
+
 
 Customize the form
-------------------
+==================
 
 The filter form is automatically generated for convenience
 but you can override it and add your own Form.
@@ -125,3 +129,42 @@ Create your own Chart Engine
 
 Create a Custom ComputationField and reuse it
 ---------------------------------------------
+
+
+
+Add a new chart engine
+----------------------
+
+
+Add an exporting option
+-----------------------
+
+
+
+Work with categorical data
+--------------------------
+
+How to create a custom ComputationField
+---------------------------------------
+
+
+create custom columns
+---------------------
+
+
+format numbers in the datatable
+
+
+custom group by
+custom time series periods
+custom crosstab reports
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Topics:
+   :titlesonly:
+
+
+   customize_frontend
+
+

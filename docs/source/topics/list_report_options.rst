@@ -1,3 +1,5 @@
+.. _list_reports:
+
 List Reports
 ============
 

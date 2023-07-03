@@ -1,19 +1,20 @@
-Report View General Options
-===========================
+.. _report_view_options:
+
+General Options
+================
 
 
 
-In following sections we will explore the different options for each type of report.
-Below is the general list of options that can be used to control the behavior of the report view.
+Below is the list of general options that is used across all types of reports.
 
 
 .. attribute:: ReportView.report_model
 
-    the model where the relevant data is stored, in more complex reports, it's usually a database view / materialized view.
+    The model where the relevant data is stored, in more complex reports, it's usually a database view / materialized view.
 
 .. attribute:: ReportView.queryset
 
-        the queryset to be used in the report, if not specified, it will default to ``report_model._default_manager.all()``
+        The queryset to be used in the report, if not specified, it will default to ``report_model._default_manager.all()``
 
 
 .. attribute:: ReportView.columns
@@ -37,9 +38,10 @@ Below is the general list of options that can be used to control the behavior of
                 return record["first_name"] + " " + record["last_name"]
 
 
-    Columns names can be
+    Here is a list of all available column options available. A column can be
 
-    * A Computation Field, as a class or by its name if its registered (see :ref:`computation_field`)
+    * A Computation Field. Added as a class or by its name if its registered see :ref:`computation_field`
+
         Example:
 
             .. code-block:: python
@@ -50,12 +52,14 @@ Below is the general list of options that can be used to control the behavior of
 
                     class MyReport(ReportView):
                         columns = [
-                            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
                             # a computation field created on the fly
-                            MyTotalReportField,
+                            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
+
                             # A computation Field class
-                            "__total__",
+                            MyTotalReportField,
+
                             # a computation field registered in the computation field registry
+                            "__total__",
                         ]
 
 
@@ -218,7 +222,7 @@ Below is the general list of options that can be used to control the behavior of
 
 
 Hooks and functions
--------------------
+====================
 
 .. attribute:: ReportView.get_queryset()
 

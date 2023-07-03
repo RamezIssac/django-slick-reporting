@@ -35,7 +35,7 @@ You can start by using ``ReportView`` which is a subclass of ``django.views.gene
     from .models import MySalesItems
 
 
-    class MonthlyProductSales(ReportView):
+    class ProductSales(ReportView):
 
         report_model = MySalesItems
         date_field = "date_placed"
@@ -61,7 +61,11 @@ You can start by using ``ReportView`` which is a subclass of ``django.views.gene
 
     # in urls.py
     from django.urls import path
-    from .views import MonthlyProductSales
+    from .views import ProductSales
+
+    urlpatterns = [
+        path("product-sales/", ProductSales.as_view(), name="product-sales"),
+    ]
 
 Demo site
 ----------
@@ -70,19 +74,19 @@ https://django-slick-reporting.com is a quick walk-though with live code example
 
 
 
-Next step :ref:`structure`
+Next step :ref:`tutorial`
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   tutorial
    concept
-   report_view/index
+   tutorial
+   howto/index
+   topics/index
    charts
-   exporting
-   report_generator
-   computation_field
+   ref/index
+
 
 
 Indices and tables

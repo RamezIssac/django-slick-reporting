@@ -6,20 +6,13 @@ Customizing Filter Form
 The filter form is a form that is used to filter the data to be used in the report.
 
 
-Customizing the generated form
-------------------------------
+The generated form
+-------------------
+
 Behind the scene, The view calls ``slick_reporting.form_factory.report_form_factory`` in ``get_form_class`` method.
 ``report_form_factory`` is a helper method which generates a form containing start date and end date, as well as all foreign keys on the report_model.
 
-
-You can customize the generated form:
-
-# Todo
-
-You can also override the form by providing a ``form_class`` attribute to the report view.
-
-
-.. _filter_form_customization:
+Changing the generated form API is still private, however, you can use your own form easily.
 
 Overriding the Form
 --------------------
@@ -120,8 +113,10 @@ Example a full example of a custom form:
             return self.cleaned_data["end_date"]
 
         # ----
-        # in reports.py
-        @register_report_view
+        # in views.py
+
+        from .forms import RequestLogForm
+
         class RequestCountByPath(ReportView):
             form_class = RequestLogForm
 
