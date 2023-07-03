@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 ## [1.0.1] - 2023-07-03
 
 - Added missing js files ported from erp_framework package. 
-
+- Document the need for "crispy_bootstrap4" in the docs and add it as a dependency in the setup.
 
 ## [1.0.0] - 2023-07-03
 
