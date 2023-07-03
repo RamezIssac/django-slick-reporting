@@ -21,6 +21,7 @@ The interface is simple, only 3 mandatory methods to implement, The rest are man
    These filters will be passed to the report_model.objects.filter(*q_filters, **kw_filters)
 
 #. get_start_date: return the start date to be used in the report
+
 #. get_end_date: return the end date to be used in the report
 
 
