@@ -1,0 +1,12 @@
+{% load reporting_tags %}
+
+<ul class="nav flex-column">
+    {%  for report in reports %}
+        {% is_active_report report as is_active %}
+          <li class="nav-item">
+            <a class="nav-link {% if is_active  %}active{% endif %}" href="{% get_report_url report %}">
+                {{ report.get_report_title }} <span class="sr-only">(current)</span>
+            </a>
+          </li>
+    {% endfor %}
+</ul>

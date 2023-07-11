@@ -1,0 +1,41 @@
+{% load i18n %}
+{% load erp_reporting_tags %}
+
+<li class="nav-header _nav-item-submenu {% if is_report %} menu-open {% endif %}">
+{#    <a class="nav-link {% if is_report %} active {% endif %}" href="">#}
+        <i class="nav-icon fas fa-chart-line"> </i>
+
+{#        <p>#}
+            {% trans 'Reports' %}
+            {#            <i class="right fas fa-angle-left"></i>#}
+{#        </p>#}
+
+{#    </a>#}
+</li>
+    <ul class="nav has-treeview" {% if is_report %} style="display: block" {% endif %}>
+        {% for base_model, reports in base_models_reports_tuple %}
+            <li class="nav-item    ">
+                <a href=""
+                   class="nav-link  {% get_report_active_class base_model %} {% if base_model.get_model_name == current_base_model_name %}active{% endif %}">
+                    {#                    <i class="far fa-circle nav-icon"></i>#}
+                    <p>
+{#                        {% get_model_verbose_name_plural base_model %}#}
+                        <i class="fas fa-angle-left right"></i>
+                    </p>
+                </a>
+                <ul class="nav nav-treeview" style="display: none">
+                    {% for report in reports %}
+                        <li class="nav-item ">
+                            <a href="{% get_report_url report %}"
+                               class="nav-link  {% if report.get_report_slug == report_slug %}active{% endif %}">
+                                {#                            <i class="far fa-circle nav-icon"></i>#}
+                                <p>{{ report.report_title }}</p>
+                            </a>
+                        </li>
+                    {% endfor %}
+
+                </ul>
+            </li>
+        {% endfor %}
+    </ul>
+{#</li>#}

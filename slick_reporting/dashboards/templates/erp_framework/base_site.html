@@ -1,0 +1,32 @@
+{% extends admin_base_site_template|default:"admin/base.html" %}
+
+{% load i18n static %}
+{% load reporting_tags i18n %}
+
+{% block title %}{{ title|capfirst }} | {{ site_title|default:_('Django ERP Framework') }}{% endblock %}
+
+{% block branding %}
+    <h1 id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:'' }}</a></h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+{% block extrastyle %}
+    <link href="{% static "erp_framework/css/animate.min.css" %}" rel="stylesheet" type="text/css">
+
+    <style>
+        .groupChartControllers {
+            margin: 5px;
+            text-align: center;
+        }
+
+        .nav-charts {
+            display: inline-flex;
+        }
+
+    </style>
+
+{% endblock %}
+
+{% block footer %}
+
+{% endblock %}

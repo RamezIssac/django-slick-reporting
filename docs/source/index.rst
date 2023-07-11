@@ -7,7 +7,7 @@ Django Slick Reporting
 * Highcharts & Charts.js integration ready to use with the shipped in View, easily extendable to use with your own charts.
 * Export to CSV
 * Easily extendable to add your own computation fields,
-
+* Create Dashboard(s) with multiple charts and reports
 
 Installation
 ------------

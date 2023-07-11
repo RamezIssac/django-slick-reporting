@@ -1,0 +1,38 @@
+{% extends 'erp_framework/base_site.html' %}
+{% load i18n admin_urls %}
+
+{% block content_title %} {{ title }}{% endblock %}
+{% block breadcrumbs %}
+    <ol class="breadcrumb float-sm-right">
+        <li class="breadcrumb-item"><a href="{% url 'admin:index' %}"><i
+                class="fa fa-tachometer-alt"></i> {% trans 'Home' %}</a></li>
+        <li class="breadcrumb-item"><a
+                href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+        <li class="breadcrumb-item">
+            {% if has_view_permission %}
+                <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+            {% else %}
+                {{ opts.verbose_name_plural|capfirst }}
+            {% endif %}
+        </li>
+        <li class="breadcrumb-item active">
+            {% if add %}
+                {% blocktrans with name=opts.verbose_name %}Add {{ name }}{% endblocktrans %}
+            {% else %}
+                {{ original|truncatewords:"18" }}
+            {% endif %}
+        </li>
+    </ol>
+{% endblock %}
+
+{% block content %}
+        <table class="table">
+        {% for line in data %}
+            <tr>
+                <th>{{ line.0|capfirst }}</th>
+                <td>{{ line.1|default:'-' }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+{% endblock %}

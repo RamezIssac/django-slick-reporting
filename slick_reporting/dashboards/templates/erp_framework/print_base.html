@@ -1,0 +1,49 @@
+{% extends 'erp_framework/base_site.html' %}
+
+{% load ra_tags i18n %}
+
+{% block content %}
+    <style>
+        td[class*='_id'], th[data-id*='_id'] {
+            display: none;
+        }
+
+    </style>
+    <div class="row">
+        <div class="col-sm-12">
+            <h5 class="text-center no-margin text-bold reportTitle">
+                {{ response.metadata.report_title }}
+            </h5>
+            {#            <h5 class="text-center no-margin-top text-semibold reportSubTitle" style="margin-bottom: 25px">#}
+            {#                {{ response.report_sub_title }}#}
+            {#            </h5>#}
+        </div>
+    </div>
+    <div class="tableContainer">
+
+    </div>
+    {% block post_table_container %}
+        <div class="postTableContainer">
+        </div>
+    {% endblock %}
+{% endblock %}
+
+
+{% block extra_js %}
+
+    <script>
+        $(document).ready(function () {
+
+            let data = {{ response|jsonify }};
+            let extra_options = {
+                "paging": false,
+                "ordering": false,
+                "info": false,
+                "searching": false
+            }
+            $.erp_framework.datatable.buildAdnInitializeDatatable(data, $('.tableContainer'), extra_options);
+            window.print();
+
+        })
+    </script>
+{% endblock %}
