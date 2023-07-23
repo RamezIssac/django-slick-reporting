@@ -8,6 +8,8 @@ from django.conf import settings
 from django.db.models import Q
 from django.forms import modelform_factory
 from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
+from django.template.defaultfilters import capfirst
+from django.urls import reverse
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
@@ -121,7 +123,48 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     default_order_by = ""
 
-    template_name = "slick_reporting/simple_report.html"
+    # template_name = "slick_reporting/simple_report.html"
+    template_name = "erp_framework/report.html"
+
+    admin_site_name = "erp_framework" # todo : ERP_FRAMEWORK_SITE_NAME
+
+
+    @classmethod
+    def get_report_title(cls):
+        """
+        :return: The report name
+        """
+        # name = 'name'
+        name = ""
+        if cls.report_title:
+            name = cls.report_title
+
+        return capfirst(name)
+
+    @classmethod
+    def get_url(cls, request=None):
+        try:
+            current_app = request.current_app
+        except:
+            current_app = cls.admin_site_name
+
+        return reverse(
+            "admin:report",
+            args=(cls.get_app_label(), cls.get_report_slug()),
+            current_app=current_app,
+        )
+
+    @classmethod
+    def get_app_label(cls):
+        """
+        A convenience method to get the base model name
+        :return:
+        """
+        app_label = cls.__module__.split(".")[0]
+        return app_label
+
+
+
 
     @staticmethod
     def form_filter_func(fkeys_dict):
@@ -395,6 +438,8 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         context = super().get_context_data(**kwargs)
         context[self.report_title_context_key] = self.report_title
         context["crispy_helper"] = self.get_form_crispy_helper()
+        context["report"] = self
+
 
         if not (self.request.POST or self.request.GET):
             # initialize empty form with initials if the no data is in the get or the post

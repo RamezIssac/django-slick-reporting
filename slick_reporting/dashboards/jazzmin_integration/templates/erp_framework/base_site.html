@@ -1,0 +1,131 @@
+{% extends admin_base_site_template|default:"admin/base.html" %}
+
+{% load i18n static %}
+{% load jazzmin reporting_tags i18n %}
+
+{% block title %}{{ title|capfirst }} | {{ site_title|default:_('Django ERP Framework') }}{% endblock %}
+
+{% block branding %}
+    <h1 id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:'' }}</a></h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+{% block extrastyle %}
+{#    <link href="{% static "erp_framework/css/animate.min.css" %}" rel="stylesheet" type="text/css">#}
+
+    <style>
+        .groupChartControllers {
+            margin: 5px;
+            text-align: center;
+        }
+
+        .nav-charts {
+            display: inline-flex;
+        }
+
+    </style>
+
+{% endblock %}
+{#{% block sidebar %}#}
+{#    {% include 'erp_framework/sidebar.html' %}#}
+{#{% endblock %}#}
+
+{% block extrajs %}
+    {% include "slick_reporting/js_resources.html" %}
+{% endblock %}
+
+
+{% block sidebar %}
+    {% if jazzmin_settings.show_sidebar %}
+        {% get_side_menu as side_menu_list %}
+
+        <aside class="main-sidebar elevation-4 {{ jazzmin_ui.sidebar_classes }}" id="jazzy-sidebar">
+            <a href="{% url 'admin:index' %}" class="brand-link {{ jazzmin_ui.brand_classes }}" id="jazzy-logo">
+                <img src="{% static jazzmin_settings.site_logo %}" alt="{{ jazzmin_settings.site_header }} Logo"
+                     class="{{ jazzmin_settings.site_logo_classes }} brand-image elevation-3" style="opacity: .8">
+                <span class="brand-text font-weight-light">{{ jazzmin_settings.site_brand }}</span>
+            </a>
+
+            <div class="sidebar">
+                <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+                    <div class="image">
+                        {% if jazzmin_settings|has_jazzmin_setting:"user_avatar" %}
+                            <img src="{% get_user_avatar request.user %}" width="160px" class="img-circle elevation-2"
+                                 alt="User Image">
+                        {% else %}
+                            <i class="fas fa-inverse user-profile fa-user-circle"></i>
+                        {% endif %}
+                    </div>
+                    <div class="info">
+                        {% if perms|can_view_self %}
+                            <a href="{% jazzy_admin_url request.user request.current_app|default:"admin" %}"
+                               class="d-block">{{ request.user }}</a>
+                        {% else %}
+                            <span class="d-block" style="color: white;">{{ request.user }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <nav class="mt-2">
+                    <ul class="nav nav-pills nav-sidebar flex-column {{ jazzmin_ui.sidebar_list_classes }}"
+                        data-widget="treeview" role="menu" data-collapsible="false">
+
+                        <li class="nav-item">
+                            <a href="{% url 'admin:index' %}" class="nav-link">
+                                <i class="nav-icon fas fa-th-large"></i>
+                                <p>{% trans 'Dashboard' %}</p>
+                            </a>
+                        </li>
+
+                        {% if jazzmin_settings.navigation_expanded %}
+                            {% for app in side_menu_list %}
+                                <li class="nav-header">{{ app.name }}</li>
+                                {% for model in app.models %}
+                                    <li class="nav-item">
+                                        {% if model.url %}
+                                            <a href="{{ model.url }}" class="nav-link">
+                                                <i class="nav-icon {{ model.icon }}"></i>
+                                                <p>{{ model.name }}</p>
+                                            </a>
+                                        {% else %}
+                                            <span class="nav-link disabled">
+                                                <i class="nav-icon {{ model.icon }}"></i> <p>{{ model.name }}</p>
+                                            </span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            {% endfor %}
+                        {% else %}
+                            {% for app in side_menu_list %}
+                                <li class="nav-item has-treeview">
+                                    <a href="#" class="nav-link">
+                                        <i class="nav-icon {{ app.icon }}"></i>
+                                        <p>{{ app.name|truncatechars:21 }} <i class="fas fa-angle-left right"></i></p>
+                                    </a>
+                                    <ul class="nav nav-treeview" style="display: none;">
+                                        {% for model in app.models %}
+                                            <li class="nav-item">
+                                                <a href="{% if model.url %}{{ model.url }}{% else %}javascript:void(0){% endif %}"
+                                                   class="nav-link">
+                                                    <i class="nav-icon {{ model.icon }}"></i>
+                                                    <p>{{ model.name }}</p>
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </li>
+                            {% endfor %}
+                        {% endif %}
+                        <li class="nav-header">{% translate "Reports" %}</li>
+                        {% render_reports_menu template_name="reporting/flat_menu.html" %}
+                    </ul>
+
+                </nav>
+            </div>
+        </aside>
+    {% endif %}
+{% endblock %}
+
+{% block footer %}
+
+{% endblock %}
