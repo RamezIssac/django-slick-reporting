@@ -70,7 +70,7 @@ Example:
         class MyReport(ReportView):
             report_model = MySales
 
-            group_by_querysets = [
+            group_by_custom_querysets = [
                 MySales.objects.filter(status="pending"),
                 MySales.objects.filter(status__in=["paid", "overdue"]),
             ]

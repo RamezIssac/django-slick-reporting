@@ -393,6 +393,30 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         self.assertEqual(data[1]["sum__value"], 1200)
         self.assertIn("__index__", data[0].keys())
 
+    def test_custom_group_by_with_index(self):
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            group_by_custom_querysets=[
+                SimpleSales.objects.filter(
+                    client_id__in=[self.client1.pk, self.client2.pk]
+                ),
+                SimpleSales.objects.filter(client_id__in=[self.client3.pk]),
+            ],
+            columns=[
+                "__index__", #assert that no issue if added manually , issue 68
+
+                SlickReportField.create(Sum, "value"),
+                "__total__",
+            ],
+            date_field="doc_date",
+        )
+
+        data = report.get_report_data()
+        self.assertEqual(len(data), 2)
+        self.assertEqual(data[0]["sum__value"], 900)
+        self.assertEqual(data[1]["sum__value"], 1200)
+        self.assertIn("__index__", data[0].keys())
+
     def test_traversing_group_by_and_foreign_key_field(self):
         report = ReportGenerator(
             report_model=SimpleSales,
