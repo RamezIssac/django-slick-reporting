@@ -124,7 +124,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
     default_order_by = ""
 
     # template_name = "slick_reporting/simple_report.html"
-    template_name = "erp_framework/report.html"
+    template_name = "slick_reporting/integrated_report.html"
 
     admin_site_name = "erp_framework" # todo : ERP_FRAMEWORK_SITE_NAME
 

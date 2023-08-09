@@ -1,0 +1,61 @@
+{% extends 'erp_framework/base_site.html' %}
+
+{% load crispy_forms_tags i18n static reporting_tags %}
+
+
+{% block breadcrumbs %}
+    <ul class="breadcrumb heading-text">
+        <a href="{% url 'admin:index' %}" class="breadcrumb-item">
+            <i class="icon-home2 mx-2"></i> {% trans 'Home' %} </a>
+        <a class="breadcrumb-item"> {% trans 'Reports' %}</a>
+{#        <a class="breadcrumb-item"> {% get_model_verbose_name_plural base_model %} </a>#}
+        <a class="breadcrumb-item"> {{ title }}</a>
+    </ul>
+
+{% endblock %}
+
+{% block content %}
+    <div class="col-lg-12">
+
+        {% if form %}
+            <h4>{% trans "Filters" %}</h4>
+            <form id="reportForm">
+                {% crispy form crispy_helper %}
+                <input type="submit" value="Filter" class="btn btn-primary btn-lg btn-block refreshReport ">
+            <input type="button" value="Export Csv" class="btn btn-secondary btn-lg btn-block exportCsvBtn">
+            </form>
+        {% endif %}
+
+
+        <div class="row">
+            <div class="col-lg-12">
+                <h4 class="py-5">{% trans "Results" %}</h4>
+                <div class="card" id="{{ report_data.report_slug }}">
+                    <div class="card-body">
+                        <div data-report-widget
+                             data-report-url="{% get_report_url report %}"
+                             data-extra-params="{{ data_extra_param|default:'' }}"
+                             data-success-callback="{{ data_success_callback|default:'' }}"
+
+                             report-form-selector="#reportForm"
+
+                                {#             data-chart-id="{{ data_chart_id|default:'' }}"#}
+                        >
+                            {% if report.chart_settings and not no_chart %}
+                                <div id="container" data-report-chart style="width:100%; height:400px;"></div>
+                                {#                <canvas data-report-chart height="100"></canvas>#}
+                            {% endif %}
+                            <div data-report-table>
+
+                            </div>
+                        </div>
+
+
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -89,7 +89,8 @@ For a complete reference of the ``BaseReportForm`` interface, check :ref:`filter
 
 
 Use the report view in our own template
----------------------------------------
+=======================================
+
 To use the report template with your own project templates, you simply need to override the ``slick_reporting/base.html`` template to make it extends your own base template
 You only need to have a ``{% block content %}`` in your base template to be able to use the report template
 and a ``{% block extrajs %}`` block to add the javascript implementation.
@@ -113,6 +114,8 @@ The example below assumes you have a ``base.html`` template in your project temp
 
     {% endblock %}
 
+
+To do
 
 Work with tree data & Nested categories
 ---------------------------------------
