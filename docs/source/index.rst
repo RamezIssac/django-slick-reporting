@@ -36,8 +36,9 @@ You can start by using ``ReportView`` which is a subclass of ``django.views.gene
 .. code-block:: python
 
     # in views.py
-    from slick_reporting.views import ReportView
-    from slick_reporting.fields import SlickReportField, Chart
+    from django.db.models import Sum
+    from slick_reporting.views import ReportView, Chart
+    from slick_reporting.fields import SlickReportField
     from .models import MySalesItems
 
 
