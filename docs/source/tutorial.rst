@@ -156,6 +156,8 @@ A time series report is a report that computes the data for each period of time.
         computation_method = Sum
         computation_field = "value"
         verbose_name = _("Sales Value")
+        name = "my_value_sum"
+
 
 
     class MonthlyProductSales(ReportView):
@@ -173,7 +175,7 @@ A time series report is a report that computes the data for each period of time.
             Chart(
                 _("Total Sales Monthly"),
                 Chart.PIE,
-                data_source=["value"],
+                data_source=["my_value_sum"],
                 title_source=["name"],
                 plot_total=True,
             ),
