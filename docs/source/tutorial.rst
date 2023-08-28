@@ -76,8 +76,8 @@ In Slick Reporting, you can do the same thing by creating a report view looking 
                 group_by = "product"
                 columns = [
                     "title",
-                    SlickReportField.create(Sum, "quantity", "verbose_name": "Total quantity sold", "is_summable": False),
-                    SlickReportField.create(Sum, "value", name="sum__value",  "verbose_name": "Total Value sold $"),
+                    SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
+                    SlickReportField.create(Sum, "value", name="sum__value", verbose_name"=Total Value sold $"),
                 ]
 
                 chart_settings = [
