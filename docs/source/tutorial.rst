@@ -320,7 +320,6 @@ The interface is simple, only 3 mandatory methods to implement, The rest are man
 
 * ``get_end_date``: Mandatory, return the end date of the report.
 
-* ``get_crispy_helper`` : return a crispy form helper to be used in rendering the form. (optional)
 
 For detailed information about the form, please check :ref:`filter_form`
 
@@ -330,18 +329,19 @@ Example
 .. code-block:: python
 
     # forms.py
+    from django import forms
+    from django.db.models import Q
     from slick_reporting.forms import BaseReportForm
-    from crispy_forms.helper import FormHelper
 
     # A Normal form , Inheriting from BaseReportForm
-    class RequestLogForm(BaseReportForm, forms.Form):
-
-        SECURE_CHOICES = (
+    class TotalSalesFilterForm(BaseReportForm, forms.Form):
+        PRODUCT_SIZE_CHOICES = (
             ("all", "All"),
-            ("secure", "Secure"),
-            ("non-secure", "Not Secure"),
+            ("big-only", "Big Only"),
+            ("small-only", "Small Only"),
+            ("medium-only", "Medium Only"),
+            ("all-except-extra-big", "All except extra Big"),
         )
-
         start_date = forms.DateField(
             required=False,
             label="Start Date",
@@ -350,35 +350,24 @@ Example
         end_date = forms.DateField(
             required=False, label="End Date", widget=forms.DateInput(attrs={"type": "date"})
         )
-        secure = forms.ChoiceField(
-            choices=SECURE_CHOICES, required=False, label="Secure", initial="all"
+        product_size = forms.ChoiceField(
+            choices=PRODUCT_SIZE_CHOICES, required=False, label="Product Size", initial="all"
         )
-        other_people_only = forms.BooleanField(
-            required=False, label="Show requests from other users only"
-        )
-
 
         def get_filters(self):
             # return the filters to be used in the report
             # Note: the use of Q filters and kwargs filters
             kw_filters = {}
             q_filters = []
-            if self.cleaned_data["secure"] == "secure":
-                kw_filters["is_secure"] = True
-            elif self.cleaned_data["secure"] == "non-secure":
-                kw_filters["is_secure"] = False
-            if self.cleaned_data["other_people_only"]:
-                q_filters.append(~Q(user=self.request.user))
+            if self.cleaned_data["product_size"] == "big-only":
+                kw_filters["product__size__in"] = ["extra_big", "big"]
+            elif self.cleaned_data["product_size"] == "small-only":
+                kw_filters["product__size__in"] = ["extra_small", "small"]
+            elif self.cleaned_data["product_size"] == "medium-only":
+                kw_filters["product__size__in"] = ["medium"]
+            elif self.cleaned_data["product_size"] == "all-except-extra-big":
+                q_filters.append(~Q(product__size__in=["extra_big", "big"]))
             return q_filters, kw_filters
-
-        def get_start_date(self):
-            return self.cleaned_data["start_date"]
-
-        def get_end_date(self):
-            return self.cleaned_data["end_date"]
-
-        def get_crispy_helper(self):
-            return FormHelper()
 
 
 Recap

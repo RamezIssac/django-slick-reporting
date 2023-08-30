@@ -34,11 +34,11 @@ class Command(BaseCommand):
             "RA"
         ]
         product_category = [
-            "Extra big",
-            "Big",
-            "Medium",
-            "Small",
-            "Extra small"
+            "extra_big",
+            "big",
+            "medium",
+            "small",
+            "extra-small"
         ]
         SalesTransaction.objects.all().delete()
         Client.objects.all().delete()
@@ -57,7 +57,8 @@ class Command(BaseCommand):
         clients_ids = list(Client.objects.values_list("pk", flat=True))
         # create products
         for i in range(1, 10):
-            Product.objects.create(name=f"Product {i}", category=random.choice(product_category), )
+            Product.objects.create(name=f"Product {i}", category=random.choice(product_category),
+                                   size=random.choice(product_category))
         products_ids = list(Product.objects.values_list("pk", flat=True))
 
         # for i in range(1, 10):

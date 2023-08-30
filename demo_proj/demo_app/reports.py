@@ -1,6 +1,7 @@
 from slick_reporting.views import ReportView, Chart
 from slick_reporting.fields import SlickReportField
 from .models import SalesTransaction
+from .forms import TotalSalesFilterForm
 from django.db.models import Sum
 
 
@@ -168,3 +169,12 @@ class LastTenSales(ListReportView):
     ]
     default_order_by = "-date"
     limit_records = 10
+
+class TotalProductSalesWithCustomForm(TotalProductSales):
+    form_class = TotalSalesFilterForm
+    columns = [
+        "name",
+        "size",
+        SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
+        SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
+    ]

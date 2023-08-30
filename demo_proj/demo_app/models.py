@@ -21,6 +21,7 @@ class Product(models.Model):
     name = models.CharField(max_length=100, verbose_name="Product Name")
     category = models.CharField(max_length=100, verbose_name="Product Category", default="Medium")
     sku = models.CharField(_("SKU"), max_length=255, default=uuid.uuid4)
+    size = models.CharField(max_length=100, verbose_name="Size", default="Medium")
 
 
     class Meta:

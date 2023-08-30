@@ -1,5 +1,6 @@
 from collections import OrderedDict
 
+from crispy_forms.helper import FormHelper
 from django import forms
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
@@ -140,10 +141,15 @@ class BaseReportForm:
         )
 
     def get_crispy_helper(self):
-        raise NotImplementedError(
-            "get_crispy_helper() must be implemented in subclass,"
-            "should return a crispy helper object"
-        )
+        # return a default helper
+        helper = FormHelper()
+        helper.form_class = "form-horizontal"
+        helper.label_class = "col-sm-2 col-md-2 col-lg-2"
+        helper.field_class = "col-sm-10 col-md-10 col-lg-10"
+        helper.form_tag = False
+        helper.disable_csrf = True
+        helper.render_unmentioned_fields = True
+        return helper
 
 
 class SlickReportForm(BaseReportForm):

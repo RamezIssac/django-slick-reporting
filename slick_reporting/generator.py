@@ -399,6 +399,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         if filters:
             query = query.filter(**filters)
+        if self.q_filters:
+            query = query.filter(*self.q_filters)
         if fields:
             return query.values(*fields)
         return query.values()

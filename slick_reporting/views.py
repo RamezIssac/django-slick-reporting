@@ -259,14 +259,18 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     def get_report_generator(self, queryset, for_print):
         q_filters, kw_filters = self.form.get_filters()
+        crosstab_compute_remainder = False
         if self.crosstab_field:
             self.crosstab_ids = self.form.get_crosstab_ids()
+        try:
+            crosstab_compute_remainder = (
+                self.form.get_crosstab_compute_remainder()
+                if self.request.GET or self.request.POST
+                else self.crosstab_compute_remainder
+            )
+        except NotImplementedError:
+            pass
 
-        crosstab_compute_remainder = (
-            self.form.get_crosstab_compute_remainder()
-            if self.request.GET or self.request.POST
-            else self.crosstab_compute_remainder
-        )
 
         time_series_pattern = self.time_series_pattern
         if self.time_series_selector:
