@@ -70,22 +70,27 @@ In Slick Reporting, you can do the same thing by creating a report view looking 
 
 
             class TotalProductSales(ReportView):
-
-                report_model = Sales
-                date_field = "doc_date"
+                report_model = SalesTransaction
+                date_field = "date"
                 group_by = "product"
                 columns = [
-                    "title",
+                    "name",
                     SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
-                    SlickReportField.create(Sum, "value", name="sum__value", verbose_name"=Total Value sold $"),
+                    SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
                 ]
 
                 chart_settings = [
                     Chart(
                         "Total sold $",
                         Chart.BAR,
-                        data_source="value__sum",
-                        title_source="title",
+                        data_source=["sum__value"],
+                        title_source=["name"],
+                    ),
+                    Chart(
+                        "Total sold $ [PIE]",
+                        Chart.PIE,
+                        data_source=["sum__value"],
+                        title_source=["name"],
                     ),
                 ]
 
@@ -118,25 +123,24 @@ You can also export the report to CSV.
             from django.db.models import Sum
             from slick_reporting.views import ReportView, Chart
             from slick_reporting.fields import SlickReportField
-            from .models import Sales
+            from .models import SalesTransaction
 
 
-            class TotalProductSales(ReportView):
-
-                report_model = Sales
-                date_field = "doc_date"
-                group_by = "client__country" # notice the double underscore
+            class TotalProductSalesByCountry(ReportView):
+                report_model = SalesTransaction
+                date_field = "date"
+                group_by = "client__country"  # notice the double underscore
                 columns = [
-                    "country",
-                    SlickReportField.create(Sum, "value", name="sum__value"),
+                    "client__country",
+                    SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold by country $"),
                 ]
 
                 chart_settings = [
                     Chart(
-                        "Total sold $",
-                        Chart.PIE, # A Pie Chart
-                        data_source="value__sum",
-                        title_source="country",
+                        "Total sold by country $",
+                        Chart.PIE,  # A Pie Chart
+                        data_source=["sum__value"],
+                        title_source=["client__country"],
                     ),
                 ]
 
@@ -149,6 +153,7 @@ A time series report is a report that computes the data for each period of time.
 
 .. code-block:: python
 
+    from django.utils.translation import gettext_lazy as _
     from slick_reporting.fields import SlickReportField
 
 
@@ -161,8 +166,8 @@ A time series report is a report that computes the data for each period of time.
 
 
     class MonthlyProductSales(ReportView):
-        report_model = Sales
-        date_field = "doc_date"
+        report_model = SalesTransaction
+        date_field = "date"
         group_by = "product"
         columns = ["name", "sku"]
 
@@ -178,6 +183,12 @@ A time series report is a report that computes the data for each period of time.
                 data_source=["my_value_sum"],
                 title_source=["name"],
                 plot_total=True,
+            ),
+            Chart(
+                _("Sales Monthly [Bar]"),
+                Chart.COLUMN,
+                data_source=["my_value_sum"],
+                title_source=["name"],
             ),
         ]
 
