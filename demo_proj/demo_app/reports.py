@@ -1,3 +1,5 @@
+import datetime
+
 from slick_reporting.views import ReportView, Chart
 from slick_reporting.fields import SlickReportField
 from .models import SalesTransaction
@@ -253,3 +255,116 @@ class GroupByCustomQueryset(ReportView):
         elif index == 2:
             row_obj['__index__'] = "Medium"
         return row_obj
+
+
+class TimeSeriesReport(ReportView):
+    report_model = SalesTransaction
+    group_by = "client"
+    time_series_pattern = "monthly"
+    # options are : "daily", "weekly", "bi-weekly", "monthly", "quarterly", "semiannually", "annually" and "custom"
+
+    date_field = "date"
+    time_series_columns = [
+        SlickReportField.create(Sum, "value", verbose_name=_("Sales For ")),
+    ]
+    # These columns will be calculated for each period in the time series.
+
+    columns = [
+        "name",
+        "__time_series__",
+        # placeholder for the generated time series columns
+
+        SlickReportField.create(Sum, "value", verbose_name=_("Total Sales")),
+        # This is the same as the time_series_columns, but this one will be on the whole set
+
+    ]
+
+    chart_settings = [
+        Chart("Client Sales",
+              Chart.BAR,
+              data_source=["sum__value"],
+              title_source=["name"],
+              ),
+        Chart("Total Sales [Pie]",
+              Chart.PIE,
+              data_source=["sum__value"],
+              title_source=["name"],
+              plot_total=True,
+              ),
+        Chart("Total Sales [Area chart]",
+              Chart.AREA,
+              data_source=["sum__value"],
+              title_source=["name"],
+              )
+    ]
+
+
+class TimeSeriesReportWithSelector(TimeSeriesReport):
+    report_title = _("Time Series Report With Pattern Selector")
+    time_series_selector = True
+    time_series_selector_choices = (
+        ("daily", _("Daily")),
+        ("weekly", _("Weekly")),
+        ("bi-weekly", _("Bi-Weekly")),
+        ("monthly", _("Monthly")),
+    )
+    time_series_selector_default = "bi-weekly"
+
+    time_series_selector_label = _("Period Pattern")
+    # The label for the time series selector
+
+    time_series_selector_allow_empty = True
+    # Allow the user to select an empty time series, in which case no time series will be applied to the report.
+
+
+def get_current_year():
+    return datetime.datetime.now().year
+
+
+class TimeSeriesReportWithCustomDates(TimeSeriesReport):
+    report_title = _("Time Series Report With Custom Dates")
+    time_series_pattern = "custom"
+    time_series_custom_dates = (
+        (datetime.datetime(get_current_year(), 1, 1), datetime.datetime(get_current_year(), 1, 10)),
+        (datetime.datetime(get_current_year(), 2, 1), datetime.datetime(get_current_year(), 2, 10)),
+        (datetime.datetime(get_current_year(), 3, 1), datetime.datetime(get_current_year(), 3, 10)),
+    )
+
+
+class SumOfFieldValue(SlickReportField):
+    # A custom computation Field identical to the one created like this
+    # Similar to `SlickReportField.create(Sum, "value", verbose_name=_("Total Sales"))`
+
+    calculation_method = Sum
+    calculation_field = "value"
+    name = "sum_of_value"
+
+    @classmethod
+    def get_time_series_field_verbose_name(cls, date_period, index, dates, pattern):
+        # date_period: is a tuple (start_date, end_date)
+        # index is the  index of the current pattern in the patterns on the report
+        # dates: the whole dates we have on the reports
+        # pattern it's the pattern name, ex: monthly, daily, custom
+        return f"First 10 days sales {date_period[0].month}-{date_period[0].year}"
+
+
+class TimeSeriesReportWithCustomDatesAndCustomTitle(TimeSeriesReportWithCustomDates):
+    report_title = _("Time Series Report With Custom Dates and custom Title")
+
+    time_series_columns = [
+        SumOfFieldValue,  # Use our newly created SlickReportField with the custom time series verbose name
+    ]
+
+    chart_settings = [
+        Chart("Client Sales",
+              Chart.BAR,
+              data_source=["sum_of_value"],  # Note:  This is the name of our `TotalSalesField` `field
+              title_source=["name"],
+              ),
+        Chart("Total Sales [Pie]",
+              Chart.PIE,
+              data_source=["sum_of_value"],
+              title_source=["name"],
+              plot_total=True,
+              ),
+    ]

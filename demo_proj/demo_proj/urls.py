@@ -19,7 +19,9 @@ from django.urls import path
 
 from demo_app.reports import ProductSales, TotalProductSales, TotalProductSalesByCountry, MonthlyProductSales, \
     ProductSalesPerCountryCrosstab, ProductSalesPerClientCrosstab, LastTenSales, TotalProductSalesWithCustomForm, \
-    GroupByReport, GroupByTraversingFieldReport, GroupByCustomQueryset
+    GroupByReport, GroupByTraversingFieldReport, GroupByCustomQueryset, TimeSeriesReport
+
+from demo_app import reports
 
 urlpatterns = [
     path("product-sales/", ProductSales.as_view(), name="product-sales"),
@@ -39,8 +41,13 @@ urlpatterns = [
     path("group-by-report/", GroupByReport.as_view(), name="group-by-report"),
     path("group-by-traversing-field/", GroupByTraversingFieldReport.as_view(), name="group-by-traversing-field"),
     path("group-by-custom-queryset/", GroupByCustomQueryset.as_view(), name="group-by-custom-queryset"),
-
-
+    path("time-series-report/", TimeSeriesReport.as_view(), name="time-series-report"),
+    path("time-series-with-selector/", reports.TimeSeriesReportWithSelector.as_view(),
+         name="time-series-with-selector"),
+    path("time-series-with-custom-dates/", reports.TimeSeriesReportWithCustomDates.as_view(),
+         name="time-series-with-custom-dates"),
+    path("time-series-with-custom-dates-and-title/", reports.TimeSeriesReportWithCustomDatesAndCustomTitle.as_view(),
+         name="time-series-with-custom-dates-and-title"),
 
     path("admin/", admin.site.urls),
 ]

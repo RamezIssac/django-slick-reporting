@@ -297,6 +297,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             group_by_custom_querysets_column_verbose_name=self.group_by_custom_querysets_column_verbose_name,
             time_series_pattern=time_series_pattern,
             time_series_columns=self.time_series_columns,
+            time_series_custom_dates=self.time_series_custom_dates,
             crosstab_field=self.crosstab_field,
             crosstab_ids=self.crosstab_ids,
             crosstab_columns=self.crosstab_columns,

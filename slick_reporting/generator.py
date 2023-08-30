@@ -631,7 +631,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 ][0]
             except IndexError:
                 raise ImproperlyConfigured(
-                    f"Could not find {group_by} in {report_model}"
+                    f"ReportView {cls}: Could not find the group_by field: `{group_by}` in report_model: `{report_model}`"
                 )
             if group_by_field.is_relation:
                 group_by_model = group_by_field.related_model
@@ -873,7 +873,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 time_delta = datetime.timedelta(days=1)
             elif series == "weekly":
                 time_delta = relativedelta(weeks=1)
-            elif series == "semimonthly":
+            elif series == "bi-weekly":
                 time_delta = relativedelta(weeks=2)
             elif series == "monthly":
                 time_delta = relativedelta(months=1)
