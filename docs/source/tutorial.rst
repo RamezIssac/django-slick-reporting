@@ -70,22 +70,27 @@ In Slick Reporting, you can do the same thing by creating a report view looking 
 
 
             class TotalProductSales(ReportView):
-
-                report_model = Sales
-                date_field = "doc_date"
+                report_model = SalesTransaction
+                date_field = "date"
                 group_by = "product"
                 columns = [
-                    "title",
+                    "name",
                     SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
-                    SlickReportField.create(Sum, "value", name="sum__value", verbose_name"=Total Value sold $"),
+                    SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
                 ]
 
                 chart_settings = [
                     Chart(
                         "Total sold $",
                         Chart.BAR,
-                        data_source="value__sum",
-                        title_source="title",
+                        data_source=["sum__value"],
+                        title_source=["name"],
+                    ),
+                    Chart(
+                        "Total sold $ [PIE]",
+                        Chart.PIE,
+                        data_source=["sum__value"],
+                        title_source=["name"],
                     ),
                 ]
 
@@ -118,25 +123,24 @@ You can also export the report to CSV.
             from django.db.models import Sum
             from slick_reporting.views import ReportView, Chart
             from slick_reporting.fields import SlickReportField
-            from .models import Sales
+            from .models import SalesTransaction
 
 
-            class TotalProductSales(ReportView):
-
-                report_model = Sales
-                date_field = "doc_date"
-                group_by = "client__country" # notice the double underscore
+            class TotalProductSalesByCountry(ReportView):
+                report_model = SalesTransaction
+                date_field = "date"
+                group_by = "client__country"  # notice the double underscore
                 columns = [
-                    "country",
-                    SlickReportField.create(Sum, "value", name="sum__value"),
+                    "client__country",
+                    SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold by country $"),
                 ]
 
                 chart_settings = [
                     Chart(
-                        "Total sold $",
-                        Chart.PIE, # A Pie Chart
-                        data_source="value__sum",
-                        title_source="country",
+                        "Total sold by country $",
+                        Chart.PIE,  # A Pie Chart
+                        data_source=["sum__value"],
+                        title_source=["client__country"],
                     ),
                 ]
 
@@ -149,6 +153,7 @@ A time series report is a report that computes the data for each period of time.
 
 .. code-block:: python
 
+    from django.utils.translation import gettext_lazy as _
     from slick_reporting.fields import SlickReportField
 
 
@@ -161,8 +166,8 @@ A time series report is a report that computes the data for each period of time.
 
 
     class MonthlyProductSales(ReportView):
-        report_model = Sales
-        date_field = "doc_date"
+        report_model = SalesTransaction
+        date_field = "date"
         group_by = "product"
         columns = ["name", "sku"]
 
@@ -178,6 +183,12 @@ A time series report is a report that computes the data for each period of time.
                 data_source=["my_value_sum"],
                 title_source=["name"],
                 plot_total=True,
+            ),
+            Chart(
+                _("Sales Monthly [Bar]"),
+                Chart.COLUMN,
+                data_source=["my_value_sum"],
+                title_source=["name"],
             ),
         ]
 
@@ -207,12 +218,11 @@ A crosstab report shows the relation between two or more variables. For example,
 .. code-block:: python
 
 
-    class ProductSalesPerCountry(ReportView):
-        report_model = Sales
-        date_field = "doc_date"
+    class ProductSalesPerCountryCrosstab(ReportView):
+        report_model = SalesTransaction
+        date_field = "date"
         group_by = "product"
         crosstab_field = "client__country"
-
         crosstab_columns = [
             SumValueComputationField,
         ]
@@ -237,7 +247,7 @@ Then again in your urls.py add the following:
     urlpatterns = [
         path(
             "product-sales-per-country/",
-            ProductSalesPerCountry.as_view(),
+            ProductSalesPerCountryCrosstab.as_view(),
             name="product-sales-per-country",
         ),
     ]
@@ -249,23 +259,24 @@ A list report is a report that shows a list of records. For example, if you want
 
 .. code-block:: python
 
-    from slick_reporting.view import ListReportView
+    from slick_reporting.views import ListReportView
 
 
     class LastTenSales(ListReportView):
-        report_model = Sales
-        date_field = "doc_date"
-        group_by = "product"
+        report_model = SalesTransaction
+        report_title = "Last 10 sales"
+        date_field = "date"
+        filters = ["client"]
         columns = [
-            "product__name",
-            "product__sku",
-            "doc_date",
+            "product",
+            "date",
             "quantity",
             "price",
             "value",
         ]
-        default_order_by = "-doc_date"
+        default_order_by = "-date"
         limit_records = 10
+
 
 
 Then again in your urls.py add the following:
@@ -309,7 +320,6 @@ The interface is simple, only 3 mandatory methods to implement, The rest are man
 
 * ``get_end_date``: Mandatory, return the end date of the report.
 
-* ``get_crispy_helper`` : return a crispy form helper to be used in rendering the form. (optional)
 
 For detailed information about the form, please check :ref:`filter_form`
 
@@ -319,18 +329,19 @@ Example
 .. code-block:: python
 
     # forms.py
+    from django import forms
+    from django.db.models import Q
     from slick_reporting.forms import BaseReportForm
-    from crispy_forms.helper import FormHelper
 
     # A Normal form , Inheriting from BaseReportForm
-    class RequestLogForm(BaseReportForm, forms.Form):
-
-        SECURE_CHOICES = (
+    class TotalSalesFilterForm(BaseReportForm, forms.Form):
+        PRODUCT_SIZE_CHOICES = (
             ("all", "All"),
-            ("secure", "Secure"),
-            ("non-secure", "Not Secure"),
+            ("big-only", "Big Only"),
+            ("small-only", "Small Only"),
+            ("medium-only", "Medium Only"),
+            ("all-except-extra-big", "All except extra Big"),
         )
-
         start_date = forms.DateField(
             required=False,
             label="Start Date",
@@ -339,35 +350,24 @@ Example
         end_date = forms.DateField(
             required=False, label="End Date", widget=forms.DateInput(attrs={"type": "date"})
         )
-        secure = forms.ChoiceField(
-            choices=SECURE_CHOICES, required=False, label="Secure", initial="all"
+        product_size = forms.ChoiceField(
+            choices=PRODUCT_SIZE_CHOICES, required=False, label="Product Size", initial="all"
         )
-        other_people_only = forms.BooleanField(
-            required=False, label="Show requests from other users only"
-        )
-
 
         def get_filters(self):
             # return the filters to be used in the report
             # Note: the use of Q filters and kwargs filters
             kw_filters = {}
             q_filters = []
-            if self.cleaned_data["secure"] == "secure":
-                kw_filters["is_secure"] = True
-            elif self.cleaned_data["secure"] == "non-secure":
-                kw_filters["is_secure"] = False
-            if self.cleaned_data["other_people_only"]:
-                q_filters.append(~Q(user=self.request.user))
+            if self.cleaned_data["product_size"] == "big-only":
+                kw_filters["product__size__in"] = ["extra_big", "big"]
+            elif self.cleaned_data["product_size"] == "small-only":
+                kw_filters["product__size__in"] = ["extra_small", "small"]
+            elif self.cleaned_data["product_size"] == "medium-only":
+                kw_filters["product__size__in"] = ["medium"]
+            elif self.cleaned_data["product_size"] == "all-except-extra-big":
+                q_filters.append(~Q(product__size__in=["extra_big", "big"]))
             return q_filters, kw_filters
-
-        def get_start_date(self):
-            return self.cleaned_data["start_date"]
-
-        def get_end_date(self):
-            return self.cleaned_data["end_date"]
-
-        def get_crispy_helper(self):
-            return FormHelper()
 
 
 Recap

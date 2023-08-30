@@ -61,25 +61,29 @@ You can simply use a code like this
 
 
     class TotalProductSales(ReportView):
-
-        report_model = MySalesItems
-        date_field = "date_placed"
+        report_model = SalesTransaction
+        date_field = "date"
         group_by = "product"
         columns = [
-            "title",
-            SlickReportField.create(Sum, "quantity"),
-            SlickReportField.create(Sum, "value", name="sum__value"),
+            "name",
+            SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
+            SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
         ]
 
         chart_settings = [
             Chart(
                 "Total sold $",
                 Chart.BAR,
-                data_source="value__sum",
-                title_source="title",
+                data_source=["sum__value"],
+                title_source=["name"],
+            ),
+            Chart(
+                "Total sold $ [PIE]",
+                Chart.PIE,
+                data_source=["sum__value"],
+                title_source=["name"],
             ),
         ]
-
 
 To get something this
 

@@ -23,7 +23,7 @@ Usage
 -----
 
 #. Add ``"slick_reporting", "crispy_forms", "crispy_bootstrap4",`` to ``INSTALLED_APPS``.
-#. Add ``CRISPY_TEMPLATE_PACK = 'bootstrap4'`` to your ``settings.py``
+#. Add ``CRISPY_TEMPLATE_PACK = "bootstrap4"`` to your ``settings.py``
 #. Execute `python manage.py collectstatic` so the JS helpers are collected and served.
 
 
@@ -56,7 +56,7 @@ You can start by using ``ReportView`` which is a subclass of ``django.views.gene
         ]
 
         # Charts
-        charts_settings = [
+        chart_settings = [
             Chart(
                 "Total sold $",
                 Chart.BAR,

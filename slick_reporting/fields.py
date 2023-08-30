@@ -377,11 +377,12 @@ class SlickReportField(object):
     @classmethod
     def get_time_series_field_verbose_name(cls, date_period, index, dates, pattern):
         """
-        Get the name of the verbose name of a computaion field that's in a time_series.
-        should be a mix of the date period if the column an it's verbose name.
+        Get the name of the verbose name of a computation field that's in a time_series.
+        should be a mix of the date period of the column and it's verbose name.
         :param date_period: a tuple of (start_date, end_date)
         :param index: the index of the current field in the whole dates to be calculated
         :param dates a list of tuples representing the start and the end date
+        :param pattern it's the pattern name. monthly, daily, custom, ...
         :return: a verbose string
         """
         dt_format = "%Y/%m/%d"

@@ -126,7 +126,7 @@ class CrosstabTests(BaseTestData, TestCase):
         columns = report.get_list_display_columns()
         time_series_columns = report.get_time_series_parsed_columns()
         expected_num_of_columns = (
-            2 * datetime.today().month
+                2 * datetime.today().month
         )  # 2 client + 1 remainder * months since start of year
 
         self.assertEqual(len(time_series_columns), expected_num_of_columns, columns)
@@ -379,6 +379,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
                 ),
                 SimpleSales.objects.filter(client_id__in=[self.client3.pk]),
             ],
+            group_by_custom_querysets_column_verbose_name="Custom Title",
             columns=[
                 # "__index__", is added automatically
                 SlickReportField.create(Sum, "value"),
@@ -386,12 +387,14 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
             ],
             date_field="doc_date",
         )
-
         data = report.get_report_data()
         self.assertEqual(len(data), 2)
         self.assertEqual(data[0]["sum__value"], 900)
         self.assertEqual(data[1]["sum__value"], 1200)
         self.assertIn("__index__", data[0].keys())
+        columns_data = report.get_columns_data()
+        self.assertEqual(columns_data[0]["verbose_name"], "Custom Title")
+
 
     def test_custom_group_by_with_index(self):
         report = ReportGenerator(
@@ -403,7 +406,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
                 SimpleSales.objects.filter(client_id__in=[self.client3.pk]),
             ],
             columns=[
-                "__index__", #assert that no issue if added manually , issue 68
+                "__index__",  # assert that no issue if added manually , issue 68
 
                 SlickReportField.create(Sum, "value"),
                 "__total__",
