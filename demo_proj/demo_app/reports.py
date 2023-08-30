@@ -71,13 +71,15 @@ class TotalProductSalesByCountry(ReportView):
         ),
     ]
 
+
 from django.utils.translation import gettext_lazy as _
+
+
 class SumValueComputationField(SlickReportField):
     computation_method = Sum
     computation_field = "value"
     verbose_name = _("Sales Value")
     name = "my_value_sum"
-
 
 
 class MonthlyProductSales(ReportView):
@@ -134,7 +136,6 @@ class ProductSalesPerCountryCrosstab(ReportView):
     date_field = "date"
     group_by = "product"
     crosstab_field = "client__country"
-
     crosstab_columns = [
         SumValueComputationField,
     ]
@@ -148,3 +149,22 @@ class ProductSalesPerCountryCrosstab(ReportView):
         "__crosstab__",
         SumValueComputationField,
     ]
+
+
+from slick_reporting.views import ListReportView
+
+
+class LastTenSales(ListReportView):
+    report_model = SalesTransaction
+    report_title = "Last 10 sales"
+    date_field = "date"
+    filters = ["client"]
+    columns = [
+        "product",
+        "date",
+        "quantity",
+        "price",
+        "value",
+    ]
+    default_order_by = "-date"
+    limit_records = 10

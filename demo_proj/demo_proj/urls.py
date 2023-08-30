@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from demo_app.reports import ProductSales, TotalProductSales, TotalProductSalesByCountry, MonthlyProductSales, ProductSalesPerCountryCrosstab, ProductSalesPerClientCrosstab
+from demo_app.reports import ProductSales, TotalProductSales, TotalProductSalesByCountry, MonthlyProductSales, ProductSalesPerCountryCrosstab, ProductSalesPerClientCrosstab, LastTenSales
 
 urlpatterns = [
     path("product-sales/", ProductSales.as_view(), name="product-sales"),
@@ -26,6 +26,7 @@ urlpatterns = [
     path("monthly-product-sales/", MonthlyProductSales.as_view(), name="monthly-product-sales"),
     path("product-sales-per-client-crosstab/", ProductSalesPerClientCrosstab.as_view(), name="product-sales-per-client-crosstab"),
     path("product-sales-per-country-crosstab/", ProductSalesPerCountryCrosstab.as_view(), name="product-sales-per-country-crosstab"),
+    path("last-10-sales/", LastTenSales.as_view(), name="last-10-sales"),
 
     path("admin/", admin.site.urls),
 ]

@@ -218,12 +218,11 @@ A crosstab report shows the relation between two or more variables. For example,
 .. code-block:: python
 
 
-    class ProductSalesPerCountry(ReportView):
-        report_model = Sales
-        date_field = "doc_date"
+    class ProductSalesPerCountryCrosstab(ReportView):
+        report_model = SalesTransaction
+        date_field = "date"
         group_by = "product"
         crosstab_field = "client__country"
-
         crosstab_columns = [
             SumValueComputationField,
         ]
@@ -248,7 +247,7 @@ Then again in your urls.py add the following:
     urlpatterns = [
         path(
             "product-sales-per-country/",
-            ProductSalesPerCountry.as_view(),
+            ProductSalesPerCountryCrosstab.as_view(),
             name="product-sales-per-country",
         ),
     ]
@@ -260,23 +259,24 @@ A list report is a report that shows a list of records. For example, if you want
 
 .. code-block:: python
 
-    from slick_reporting.view import ListReportView
+    from slick_reporting.views import ListReportView
 
 
     class LastTenSales(ListReportView):
-        report_model = Sales
-        date_field = "doc_date"
-        group_by = "product"
+        report_model = SalesTransaction
+        report_title = "Last 10 sales"
+        date_field = "date"
+        filters = ["client"]
         columns = [
-            "product__name",
-            "product__sku",
-            "doc_date",
+            "product",
+            "date",
             "quantity",
             "price",
             "value",
         ]
-        default_order_by = "-doc_date"
+        default_order_by = "-date"
         limit_records = 10
+
 
 
 Then again in your urls.py add the following:
