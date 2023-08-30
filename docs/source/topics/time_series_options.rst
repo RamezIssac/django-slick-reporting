@@ -6,7 +6,10 @@ Time Series Reports
 A Time series report is a report that is generated for a periods of time.
 The period can be daily, weekly, monthly, yearly or custom, calculations will be performed for each period in the time series.
 
-Here is a quick look at the Typical use case
+General use case
+----------------
+
+Here is a quick look at the general use case
 
 
 .. code-block:: python
@@ -20,7 +23,7 @@ Here is a quick look at the Typical use case
             group_by = "client"
 
             time_series_pattern = "monthly"
-            # options are : "daily", "weekly", "bi-weekly", "monthly", "quarterly", "semiannually", "annually" and "custom"
+            # options are: "daily", "weekly", "bi-weekly", "monthly", "quarterly", "semiannually", "annually" and "custom"
 
             date_field = "date"
 

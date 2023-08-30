@@ -89,8 +89,8 @@ Next step :ref:`tutorial`
 
    concept
    tutorial
-   howto/index
    topics/index
+   howto/index
    charts
    ref/index
 

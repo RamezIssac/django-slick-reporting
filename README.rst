@@ -142,7 +142,7 @@ Example: How much was sold in value for each product monthly within a date perio
         ]
 
 
-.. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/report_view/_static/timeseries.png?raw=true
+.. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/topics/_static/timeseries.png?raw=true
     :alt: Time Series Report
     :align: center
 
@@ -177,7 +177,7 @@ Crosstab reports show data in rows and columns with information summarized at th
             ]
 
 
-.. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/report_view/_static/crosstab.png?raw=true
+.. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/topics/_static/crosstab.png?raw=true
    :alt: Homepage
    :align: center
 

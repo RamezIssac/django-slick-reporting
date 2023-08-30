@@ -5,7 +5,10 @@ Crosstab Reports
 Use crosstab reports, also known as matrix reports, to show the relationships between three or more query items.
 Crosstab reports show data in rows and columns with information summarized at the intersection points.
 
-Here is a simple example of a crosstab report:
+
+General use case
+----------------
+Here is a general use case:
 
 .. code-block:: python
 
