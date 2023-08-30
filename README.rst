@@ -43,14 +43,12 @@ Use the package manager `pip <https://pip.pypa.io/en/stable/>`_ to install djang
 Usage
 -----
 
-So you have a model that contains data, let's call it `MySalesItems`
+So we have a model `SalesTransaction` which contains typical data about a sale.
+We can extract different kinds of information for that model.
 
-You can simply use a code like this
+Let's start by a "Group by" report. This will generate a report how much quantity and value was each product sold within a certain time.
 
 .. code-block:: python
-
-    # in your urls.py
-    path("path-to-report", TotalProductSales.as_view())
 
 
     # in views.py
@@ -85,7 +83,12 @@ You can simply use a code like this
             ),
         ]
 
-To get something this
+    # then, in urls.py
+    path("total-sales-report", TotalProductSales.as_view())
+
+
+
+With this code, you will get something like this:
 
 .. image:: https://i.ibb.co/SvxTM23/Selection-294.png
     :target: https://i.ibb.co/SvxTM23/Selection-294.png
@@ -95,29 +98,31 @@ To get something this
 Time Series
 -----------
 
+A Time series report is a report that is generated for a periods of time.
+The period can be daily, weekly, monthly, yearly or custom. Calculations will be performed for each period in the time series.
+
+Example: How much was sold in value for each product monthly within a date period ?
 
 .. code-block:: python
 
     # in views.py
     from slick_reporting.views import ReportView
     from slick_reporting.fields import SlickReportField
-    from .models import MySalesItems
+    from .models import SalesTransaction
 
 
     class MonthlyProductSales(ReportView):
-        report_model = MySalesItems
-        date_field = "date_placed"
+        report_model = SalesTransaction
+        date_field = "date"
         group_by = "product"
         columns = ["name", "sku"]
 
-        # Settings for creating time series report
-        time_series_pattern = (
-            "monthly"  # or "yearly" , "weekly" , "daily" , others and custom patterns
-        )
+        time_series_pattern = "monthly"
+        # or "yearly" , "weekly" , "daily" , others and custom patterns
         time_series_columns = [
             SlickReportField.create(
                 Sum, "value", verbose_name=_("Sales Value"), name="value"
-            )
+            ) # what will be calculated for each month
         ]
 
         chart_settings = [
@@ -128,6 +133,12 @@ Time Series
                 title_source=["name"],
                 plot_total=True,
             ),
+            Chart("Total Sales [Area chart]",
+              Chart.AREA,
+              data_source=["value"],
+              title_source=["name"],
+              plot_total=False,
+              )
         ]
 
 
@@ -137,6 +148,8 @@ Time Series
 
 Cross Tab
 ---------
+Use crosstab reports, also known as matrix reports, to show the relationships between three or more query items.
+Crosstab reports show data in rows and columns with information summarized at the intersection points.
 
 .. code-block:: python
 
