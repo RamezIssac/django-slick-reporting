@@ -194,16 +194,38 @@ You can interact with the `ReportGenerator` using same syntax as used with the `
     my_report.get_report_data()  # -> [{'title':'Product 1', '__total__: 56}, {'title':'Product 2', '__total__: 43}, ]
 
 
-This is just a scratch, for more please visit the documentation 
+This is just a scratch of what you can do and customize.
+
+Demo site
+---------
+
+Available on `Django Slick Reporting <https://django-slick-reporting.com/>`_
+
+
+You can also use locally
+
+.. code-block:: console
+
+        # clone the repo
+        # create a virtual environment, activate it, then
+        cd django-slick-reporting/demo_proj
+        pip install requirements.txt
+        python manage.py migrate
+        python manage.py create_entries
+        python manage.py runserver
+
+the ``create_entries`` command will generate data for the demo app
+
 
 Batteries Included
 ------------------
 
 Slick Reporting comes with
 
-* A Bootstrap Filter Form
-* Charting support `Chart.js <https://www.chartjs.org/>`_
-* Powerful tables `datatables.net <https://datatables.net/>`_
+* An auto-generated, bootstrap-ready Filter Form
+* Carts.js Charting support `Chart.js <https://www.chartjs.org/>`_
+* Highcharts.js Charting support `Highcharts.js <https://www.highcharts.com//>`_
+* Datatables `datatables.net <https://datatables.net/>`_
 
 A Preview:
 
@@ -211,11 +233,6 @@ A Preview:
     :target: https://i.ibb.co/SvxTM23/Selection-294.png
     :alt: Shipped in View Page
 
-
-Demo site
----------
-
-Available on `Django Slick Reporting <https://django-slick-reporting.com/>`_
 
 Documentation
 -------------
@@ -225,11 +242,8 @@ Available on `Read The Docs <https://django-slick-reporting.readthedocs.io/en/la
 Road Ahead
 ----------
 
-This project is young and can use your support.
-
-Some of the ideas / features that ought be added
-
-* Support Other backends like SQL Alchemy & Pandas
+* Continue on enriching the demo project
+* Add the dashboard capabilities
 
 
 Running tests
@@ -268,6 +282,6 @@ If you like this package, chances are you may like those packages too!
 
 `Django Tabular Permissions <https://github.com/RamezIssac/django-tabular-permissions>`_ Display Django permissions in a HTML table that is translatable and easy customized.
 
-`Django Ra ERP Framework <https://github.com/ra-systems/RA>`_ A framework to build business solutions with ease.
+`Django ERP Framework <https://github.com/ra-systems/RA>`_ A framework to build business solutions with ease.
 
 If you find this project useful or promising , You can support us by a github ⭐
