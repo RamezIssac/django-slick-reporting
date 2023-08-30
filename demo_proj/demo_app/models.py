@@ -17,12 +17,20 @@ class Client(models.Model):
         return self.name
 
 
+class ProductCategory(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Product Category Name")
+
+    def __str__(self):
+        return self.name
+
+
 class Product(models.Model):
     name = models.CharField(max_length=100, verbose_name="Product Name")
-    category = models.CharField(max_length=100, verbose_name="Product Category", default="Medium")
+    # category = models.CharField(max_length=100, verbose_name="Product Category", default="Medium")
+    product_category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE, null=True)
+
     sku = models.CharField(_("SKU"), max_length=255, default=uuid.uuid4)
     size = models.CharField(max_length=100, verbose_name="Size", default="Medium")
-
 
     class Meta:
         verbose_name = _("Product")
@@ -54,8 +62,7 @@ class SalesTransaction(models.Model):
         return f"{self.number} - {self.date}"
 
     def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
+            self, force_insert=False, force_update=False, using=None, update_fields=None
     ):
         self.value = self.price * self.quantity
         super().save(force_insert, force_update, using, update_fields)
-

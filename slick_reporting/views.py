@@ -271,7 +271,6 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         except NotImplementedError:
             pass
 
-
         time_series_pattern = self.time_series_pattern
         if self.time_series_selector:
             time_series_pattern = self.form.get_time_series_pattern()
@@ -294,6 +293,8 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             swap_sign=self.swap_sign,
             columns=self.columns,
             group_by=self.group_by,
+            group_by_custom_querysets=self.group_by_custom_querysets,
+            group_by_custom_querysets_column_verbose_name=self.group_by_custom_querysets_column_verbose_name,
             time_series_pattern=time_series_pattern,
             time_series_columns=self.time_series_columns,
             crosstab_field=self.crosstab_field,
@@ -421,6 +422,7 @@ class ReportView(ReportViewBase):
         # sanity check, raises error if the columns or date fields is not set
         if cls.columns:
             cls.report_generator_class.check_columns(
+                cls,
                 cls.columns,
                 cls.group_by,
                 cls.get_report_model(),

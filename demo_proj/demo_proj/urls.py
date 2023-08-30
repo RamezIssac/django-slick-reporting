@@ -18,7 +18,8 @@ from django.contrib import admin
 from django.urls import path
 
 from demo_app.reports import ProductSales, TotalProductSales, TotalProductSalesByCountry, MonthlyProductSales, \
-    ProductSalesPerCountryCrosstab, ProductSalesPerClientCrosstab, LastTenSales, TotalProductSalesWithCustomForm
+    ProductSalesPerCountryCrosstab, ProductSalesPerClientCrosstab, LastTenSales, TotalProductSalesWithCustomForm, \
+    GroupByReport, GroupByTraversingFieldReport, GroupByCustomQueryset
 
 urlpatterns = [
     path("product-sales/", ProductSales.as_view(), name="product-sales"),
@@ -32,7 +33,14 @@ urlpatterns = [
          name="product-sales-per-country-crosstab"),
     path("last-10-sales/", LastTenSales.as_view(), name="last-10-sales"),
 
-    path("total-product-sales-with-custom-form/", TotalProductSalesWithCustomForm.as_view(), name="total-product-sales-with-custom-form"),
+    path("total-product-sales-with-custom-form/", TotalProductSalesWithCustomForm.as_view(),
+         name="total-product-sales-with-custom-form"),
+
+    path("group-by-report/", GroupByReport.as_view(), name="group-by-report"),
+    path("group-by-traversing-field/", GroupByTraversingFieldReport.as_view(), name="group-by-traversing-field"),
+    path("group-by-custom-queryset/", GroupByCustomQueryset.as_view(), name="group-by-custom-queryset"),
+
+
 
     path("admin/", admin.site.urls),
 ]

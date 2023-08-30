@@ -65,7 +65,7 @@ class ReportGeneratorAPI:
 
     group_by_custom_querysets = None
     """A List of querysets representing different group by options"""
-    group_by_custom_querysets_column_verbose_name = ""
+    group_by_custom_querysets_column_verbose_name = None
 
     columns = None
     """A list of column names.
@@ -159,6 +159,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         kwargs_filters=None,
         group_by=None,
         group_by_custom_querysets=None,
+        group_by_custom_querysets_column_verbose_name=None,
         columns=None,
         time_series_pattern=None,
         time_series_columns=None,
@@ -273,6 +274,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             group_by_custom_querysets or self.group_by_custom_querysets or []
         )
 
+        self.group_by_custom_querysets_column_verbose_name = group_by_custom_querysets_column_verbose_name or self.group_by_custom_querysets_column_verbose_name or ""
         self.time_series_pattern = self.time_series_pattern or time_series_pattern
         self.time_series_columns = self.time_series_columns or time_series_columns
         self.time_series_custom_dates = (
@@ -596,7 +598,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         """
         return row_obj
 
-    @classmethod
+    @staticmethod
     def check_columns(
         cls,
         columns,
@@ -611,8 +613,10 @@ class ReportGenerator(ReportGeneratorAPI, object):
         :param group_by: group by field if any
         :param report_model: the report model
         :param container_class: a class to search for custom columns attribute in, typically the ReportView
+        :param group_by_custom_querysets a list of group by custom queries Or None.
         :return: List of dict, each dict contains relevant data to the respective field in `columns`
         """
+
         group_by_model = None
         if group_by_custom_querysets:
             if "__index__" not in columns:
@@ -740,6 +744,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
     def _parse(self):
         self.parsed_columns = self.check_columns(
+            self,
             self.columns,
             self.group_by,
             self.report_model,
