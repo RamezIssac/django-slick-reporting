@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2023-08-31
+- Add a demo project for exploration and also containing all documentation code for proofing.
+- Revise and Enhancing Tutorial , Group by and Time series documentation.
+- Fix issue with error on dev console on report page due to resources duplication
+- Fix issue with Custom querysets not being correctly connected in the view
+- Fix issue with time series custom dates
+- Fix issue with Crosstab on traversing fields
+
 
 ## [1.0.1] - 2023-07-03
 
@@ -11,7 +19,7 @@ All notable changes to this project will be documented in this file.
 ## [1.0.0] - 2023-07-03
 
 - Added crosstab_ids_custom_filters to allow custom filters on crosstab ids
-- Added ``group_by_querysets`` to allow custom querysets as group 
+- Added ``group_by_custom_querysets`` to allow custom querysets as group 
 - Added ability to have crosstab report in a time series report
 - Enhanced Docs content and structure.
 

@@ -1,11 +1,12 @@
 from collections import OrderedDict
 
+from crispy_forms.helper import FormHelper
 from django import forms
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
 from . import app_settings
-from .helpers import get_foreign_keys
+from .helpers import get_foreign_keys, get_field_from_query_text
 
 TIME_SERIES_CHOICES = (
     ("monthly", _("Monthly")),
@@ -22,11 +23,11 @@ def default_formfield_callback(f, **kwargs):
 
 
 def get_crispy_helper(
-    foreign_keys_map=None,
-    crosstab_model=None,
-    crosstab_key_name=None,
-    crosstab_display_compute_remainder=False,
-    add_date_range=True,
+        foreign_keys_map=None,
+        crosstab_model=None,
+        crosstab_key_name=None,
+        crosstab_display_compute_remainder=False,
+        add_date_range=True,
 ):
     from crispy_forms.helper import FormHelper
     from crispy_forms.layout import Column, Layout, Div, Row, Field
@@ -62,6 +63,13 @@ def get_crispy_helper(
     helper.layout.fields.append(filters_container)
 
     return helper
+
+
+def get_choices_form_queryset_list(qs):
+    choices = []
+    for row in qs:
+        choices.append((row, row))
+    return choices
 
 
 class OrderByForm(forms.Form):
@@ -133,10 +141,15 @@ class BaseReportForm:
         )
 
     def get_crispy_helper(self):
-        raise NotImplementedError(
-            "get_crispy_helper() must be implemented in subclass,"
-            "should return a crispy helper object"
-        )
+        # return a default helper
+        helper = FormHelper()
+        helper.form_class = "form-horizontal"
+        helper.label_class = "col-sm-2 col-md-2 col-lg-2"
+        helper.field_class = "col-sm-10 col-md-10 col-lg-10"
+        helper.form_tag = False
+        helper.disable_csrf = True
+        helper.render_unmentioned_fields = True
+        return helper
 
 
 class SlickReportForm(BaseReportForm):
@@ -188,6 +201,8 @@ class SlickReportForm(BaseReportForm):
         This is hook is to customize this naieve approach.
         :return: key: a string that should be in self.cleaned_data
         """
+        if self.crosstab_field_klass:
+            return self.crosstab_field_klass.attname
         return f"{self.crosstab_model}_id"
 
     def get_crosstab_ids(self):
@@ -195,11 +210,14 @@ class SlickReportForm(BaseReportForm):
         Get the crosstab ids so they can be sent to the report generator.
         :return:
         """
-        if self.crosstab_model:
-            qs = self.cleaned_data.get(self.crosstab_key_name)
-            return [
-                x for x in qs.values_list(self.crosstab_field_related_name, flat=True)
-            ]
+        if self.crosstab_field_klass:
+            if self.crosstab_field_klass.is_relation:
+                qs = self.cleaned_data.get(self.crosstab_key_name)
+                return [
+                    x for x in qs.values_list(self.crosstab_field_related_name, flat=True)
+                ]
+            else:
+                return self.cleaned_data.get(self.crosstab_key_name)
         return []
 
     def get_crosstab_compute_remainder(self):
@@ -225,19 +243,19 @@ def _default_foreign_key_widget(f_field):
 
 
 def report_form_factory(
-    model,
-    crosstab_model=None,
-    display_compute_remainder=True,
-    fkeys_filter_func=None,
-    foreign_key_widget_func=None,
-    excluded_fields=None,
-    initial=None,
-    required=None,
-    show_time_series_selector=False,
-    time_series_selector_choices=None,
-    time_series_selector_default="",
-    time_series_selector_label=None,
-    time_series_selector_allow_empty=False,
+        model,
+        crosstab_model=None,
+        display_compute_remainder=True,
+        fkeys_filter_func=None,
+        foreign_key_widget_func=None,
+        excluded_fields=None,
+        initial=None,
+        required=None,
+        show_time_series_selector=False,
+        time_series_selector_choices=None,
+        time_series_selector_default="",
+        time_series_selector_label=None,
+        time_series_selector_allow_empty=False,
 ):
     """
     Create a Report Form based on the report_model passed by
@@ -256,6 +274,7 @@ def report_form_factory(
     :return:
     """
     crosstab_field_related_name = ""
+    crosstab_field_klass = None
     foreign_key_widget_func = foreign_key_widget_func or _default_foreign_key_widget
     fkeys_filter_func = fkeys_filter_func or (lambda x: x)
 
@@ -307,14 +326,33 @@ def report_form_factory(
             field_attrs["required"] = True
         fields[name] = f_field.formfield(**field_attrs)
 
-    if crosstab_model and display_compute_remainder:
-        fields["crosstab_compute_remainder"] = forms.BooleanField(
-            required=False, label=_("Display the crosstab remainder"), initial=True
-        )
-        crosstab_field_klass = [
-            x for x in model._meta.get_fields() if x.name == crosstab_model
-        ]
-        crosstab_field_related_name = crosstab_field_klass[0].to_fields[0]
+    if crosstab_model:
+        # todo Enhance, add tests , cover cases
+        # Crosstab is a foreign key on model
+        # crosstab is a Char field on model
+        # crosstab is a traversing fk field
+        # crosstab is a traversing Char / choice field
+
+        if display_compute_remainder:
+            fields["crosstab_compute_remainder"] = forms.BooleanField(
+                required=False, label=_("Display the crosstab remainder"), initial=True
+            )
+
+        crosstab_field_klass = get_field_from_query_text(crosstab_model, model)
+        if crosstab_field_klass.is_relation:
+
+            crosstab_field_related_name = crosstab_field_klass.to_fields[0]
+        else:
+            crosstab_field_related_name = crosstab_field_klass.name
+
+        if "__" in crosstab_model:  # traversing field, it won't be added naturally to the form
+            if crosstab_field_klass.is_relation:
+                pass
+            else:
+                fields[crosstab_field_related_name] = forms.MultipleChoiceField(choices=get_choices_form_queryset_list(
+                    list(crosstab_field_klass.model.objects.values_list(crosstab_field_related_name, flat=True).distinct())),
+                    required=False, label=crosstab_field_klass.verbose_name)
+
 
     bases = (
         SlickReportForm,
@@ -330,6 +368,7 @@ def report_form_factory(
             "crosstab_model": crosstab_model,
             "crosstab_display_compute_remainder": display_compute_remainder,
             "crosstab_field_related_name": crosstab_field_related_name,
+            "crosstab_field_klass": crosstab_field_klass,
         },
     )
     return new_form

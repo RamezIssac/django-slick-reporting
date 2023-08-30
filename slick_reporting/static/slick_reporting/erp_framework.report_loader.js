@@ -125,14 +125,14 @@
         return $container
     }
 
-    $('body').on('click', 'a[data-chart-id]', function (e) {
-        e.preventDefault();
-        let $this = $(this);
-        let data = $.erp_framework.cache[$this.attr('data-report-slug')]
-        let chart_id = $this.attr('data-chart-id')
-        $.erp_framework.report_loader.displayChart(data, $this.parents('[data-report-widget]').find('[data-report-chart]'), chart_id)
-
-    });
+    // $('body').on('click', 'a[data-chart-id]', function (e) {
+    //     e.preventDefault();
+    //     let $this = $(this);
+    //     let data = $.erp_framework.cache[$this.attr('data-report-slug')]
+    //     let chart_id = $this.attr('data-chart-id')
+    //     $.erp_framework.report_loader.displayChart(data, $this.parents('[data-report-widget]').find('[data-report-chart]'), chart_id)
+    //
+    // });
 
     $.erp_framework.report_loader = {
         cache: $.erp_framework.cache,
