@@ -126,3 +126,26 @@ It just hold the index of the row in the group.
 its verbose name (ie the one on the table header) can be customized via ``group_by_custom_querysets_column_verbose_name``
 
 You can then customize the *value* of the __index__ column via ``format_row`` hook
+
+The No Group By
+---------------
+Sometimes you want to get some calculations done on the whole report_model, without a group_by.
+You can do that by having the calculation fields you need in the columns, and leave out the group by.
+
+Example:
+
+.. code-block:: python
+
+    class NoGroupByReport(ReportView):
+        report_model = SalesTransaction
+        report_title = _("No-Group-By Report [WIP]")
+        date_field = "date"
+        group_by = ""
+
+        columns = [
+            SlickReportField.create(
+                method=Sum, field="value", name="value__sum", verbose_name="Total sold $", is_summable=True,
+            ),
+        ]
+
+This report will give one number, the sum of all the values in the ``value`` field of the ``SalesTransaction`` model, within a period.

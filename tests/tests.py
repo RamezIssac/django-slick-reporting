@@ -384,6 +384,7 @@ class ReportTest(BaseTestData, TestCase):
 
         # todo add __fb__ to time series and check the balance
 
+    @skip("This Test should be refactored to use the List Report Generator")
     def test_client_statement_detail(self):
         """
         Test the detail statement

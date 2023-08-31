@@ -366,12 +366,12 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     self.group_by_field_attname
                 )
         else:
-            if self.time_series_pattern:
-                self.main_queryset = [{}]
-            else:
-                self.main_queryset = self._apply_queryset_options(
-                    main_queryset, self.get_database_columns()
-                )
+            # if self.time_series_pattern:
+            self.main_queryset = [{}]
+            # else:
+            #     self.main_queryset = self._apply_queryset_options(
+            #         main_queryset, self.get_database_columns()
+            #     )
         self._prepare_report_dependencies()
 
     def _remove_order(self, main_queryset):
@@ -550,7 +550,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 elif (
                     col_data.get("source", "") == "magic_field"
                     and (self.group_by or self.group_by_custom_querysets)
-                ) or (self.time_series_pattern and not self.group_by):
+                ) or (not (self.group_by or self.group_by_custom_querysets)):
                     source = self._report_fields_dependencies[window].get(name, False)
 
                     if source:
