@@ -15,7 +15,7 @@
                   </span>
         </a>
     </li>
-    <li class="nav-item dropdown active">
+    <li class="nav-item dropdown ">
         <a class="nav-link dropdown-toggle" href="#navbar-base" data-bs-toggle="dropdown" data-bs-auto-close="false"
            role="button" aria-expanded="false">
                   <span class="nav-link-icon d-md-none d-lg-inline-block"><!-- Download SVG icon from http://tabler-icons.io/i/package -->
@@ -29,7 +29,7 @@
                     Tutorial
                   </span>
         </a>
-        <div class="dropdown-menu show">
+        <div class="dropdown-menu {% should_show "tutorial" %}">
             <div class="dropdown-menu-columns">
                 <div class="dropdown-menu-column">
                     {% get_menu "tutorial" %}
@@ -84,7 +84,7 @@
                     Group By Examples
                   </span>
         </a>
-        <div class="dropdown-menu show">
+        <div class="dropdown-menu {% should_show "group_by" %}">
             <div class="dropdown-menu-columns">
                 <div class="dropdown-menu-column">
                     {% get_menu "group_by" %}
@@ -110,7 +110,7 @@
                     Time Series Examples
                   </span>
         </a>
-        <div class="dropdown-menu show">
+        <div class="dropdown-menu {% should_show "timeseries" %}">
             <div class="dropdown-menu-columns">
                 <div class="dropdown-menu-column">
                     {% get_menu "timeseries" %}
@@ -136,7 +136,7 @@
                     Crosstab Examples
                   </span>
         </a>
-        <div class="dropdown-menu show">
+        <div class="dropdown-menu {% should_show "crosstab" %}">
             <div class="dropdown-menu-columns">
                 <div class="dropdown-menu-column">
                     {% get_menu "crosstab" %}

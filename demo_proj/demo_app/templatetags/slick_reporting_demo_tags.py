@@ -8,13 +8,10 @@ from django.utils.safestring import mark_safe
 
 register = template.Library()
 
-
-@register.simple_tag(takes_context=True)
-def get_menu(context, section):
+def get_section(section):
     from ..helpers import TUTORIAL, GROUP_BY, TIME_SERIES, CROSSTAB
-    request = context['request']
-    to_use = None
-    menu = []
+    to_use = []
+
     if section == "tutorial":
         to_use = TUTORIAL
     elif section == "group_by":
@@ -23,7 +20,13 @@ def get_menu(context, section):
         to_use = TIME_SERIES
     elif section == "crosstab":
         to_use = CROSSTAB
-
+    return to_use
+@register.simple_tag(takes_context=True)
+def get_menu(context, section):
+    from ..helpers import TUTORIAL, GROUP_BY, TIME_SERIES, CROSSTAB
+    request = context['request']
+    to_use = get_section(section)
+    menu = []
     for link, report in to_use:
         is_active = "active" if f"/{link}/" in request.path else ""
 
@@ -33,3 +36,14 @@ def get_menu(context, section):
         )
 
     return mark_safe("".join(menu))
+
+@register.simple_tag(takes_context=True)
+def should_show(context, section):
+    request = context["request"]
+    to_use = get_section(section)
+    for link, report in to_use:
+        if f"/{link}/" in request.path:
+            return "show"
+    return ""
+
+

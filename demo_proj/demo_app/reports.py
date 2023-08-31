@@ -33,6 +33,7 @@ class ProductSales(ReportView):
 
 
 class TotalProductSales(ReportView):
+    report_title = _("Product Sales Quantity and Value ")
     report_model = SalesTransaction
     date_field = "date"
     group_by = "product"
@@ -59,6 +60,8 @@ class TotalProductSales(ReportView):
 
 
 class TotalProductSalesByCountry(ReportView):
+    report_title = _("Product Sales by Country")
+
     report_model = SalesTransaction
     date_field = "date"
     group_by = "client__country"  # notice the double underscore
@@ -88,6 +91,7 @@ class SumValueComputationField(SlickReportField):
 
 
 class MonthlyProductSales(ReportView):
+    report_title = _("Product Sales Monthly")
     report_model = SalesTransaction
     date_field = "date"
     group_by = "product"
@@ -116,6 +120,7 @@ class MonthlyProductSales(ReportView):
 
 
 class ProductSalesPerClientCrosstab(ReportView):
+    report_title = _("Product Sales Per Client Crosstab")
     report_model = SalesTransaction
     date_field = "date"
     group_by = "product"
@@ -137,6 +142,7 @@ class ProductSalesPerClientCrosstab(ReportView):
 
 
 class ProductSalesPerCountryCrosstab(ReportView):
+    report_title = _("Product Sales Per Country Crosstab")
     report_model = SalesTransaction
     date_field = "date"
     group_by = "product"
@@ -261,7 +267,7 @@ class GroupByCustomQueryset(ReportView):
 
 class NoGroupByReport(ReportView):
     report_model = SalesTransaction
-    report_title = _("No-Group-By Report [WIP]")
+    report_title = _("No-Group-By Report")
     date_field = "date"
     group_by = ""
 
@@ -273,6 +279,7 @@ class NoGroupByReport(ReportView):
 
 
 class TimeSeriesReport(ReportView):
+    report_title = _("Time Series Report")
     report_model = SalesTransaction
     group_by = "client"
     time_series_pattern = "monthly"
@@ -436,16 +443,19 @@ class CrosstabReport(ReportView):
 
 
 class CrosstabWithTraversingField(CrosstabReport):
+    report_title = _("Cross tab Report With Traversing Field")
     crosstab_field = "product__size"
 
 
 class CrosstabWithIds(CrosstabReport):
+    report_title = _("Cross tab Report With Pre-set Ids")
 
     def get_crosstab_ids(self):
         return [Product.objects.first().pk, Product.objects.last().pk]
 
 
 class CrosstabWithIdsCustomFilter(CrosstabReport):
+    report_title = _("Crosstab with Custom Filters")
     crosstab_ids_custom_filters = [
         (~Q(product__size__in=["extra_big", "big"]), dict()),
 
@@ -474,6 +484,7 @@ class CustomCrossTabTotalField(SlickReportField):
 
 
 class CrossTabReportWithCustomVerboseName(CrosstabReport):
+    report_title = _("Crosstab with customized verbose name")
     crosstab_columns = [
         CustomCrossTabTotalField
     ]
@@ -494,12 +505,15 @@ class CustomCrossTabTotalField2(CustomCrossTabTotalField):
 
 
 class CrossTabReportWithCustomVerboseNameCustomFilter(CrosstabWithIdsCustomFilter):
+    report_title = _("Crosstab customized verbose name with custom filter")
+
     crosstab_columns = [
         CustomCrossTabTotalField2
     ]
 
 
 class CrossTabWithTimeSeries(CrossTabReportWithCustomVerboseNameCustomFilter):
+    report_title = _("Crosstab with time series")
     time_series_pattern = "monthly"
 
     columns = [
