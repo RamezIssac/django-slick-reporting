@@ -22,8 +22,14 @@ from demo_app.reports import ProductSales, TotalProductSales, TotalProductSalesB
     GroupByReport, GroupByTraversingFieldReport, GroupByCustomQueryset, TimeSeriesReport
 
 from demo_app import reports
+from demo_app import views
 
 urlpatterns = [
+
+    path("", views.HomeView.as_view(), name="home"),
+
+
+    # tutorial
     path("product-sales/", ProductSales.as_view(), name="product-sales"),
     path("total-product-sales/", TotalProductSales.as_view(), name="total-product-sales"),
     path("total-product-sales-by-country/", TotalProductSalesByCountry.as_view(),
@@ -34,14 +40,16 @@ urlpatterns = [
     path("product-sales-per-country-crosstab/", ProductSalesPerCountryCrosstab.as_view(),
          name="product-sales-per-country-crosstab"),
     path("last-10-sales/", LastTenSales.as_view(), name="last-10-sales"),
-
     path("total-product-sales-with-custom-form/", TotalProductSalesWithCustomForm.as_view(),
          name="total-product-sales-with-custom-form"),
 
+    # Group by
     path("group-by-report/", GroupByReport.as_view(), name="group-by-report"),
     path("group-by-traversing-field/", GroupByTraversingFieldReport.as_view(), name="group-by-traversing-field"),
     path("group-by-custom-queryset/", GroupByCustomQueryset.as_view(), name="group-by-custom-queryset"),
+    path("no-group-by/", reports.NoGroupByReport.as_view(), name="no-group-by"),
 
+    # Time Series
     path("time-series-report/", TimeSeriesReport.as_view(), name="time-series-report"),
     path("time-series-with-selector/", reports.TimeSeriesReportWithSelector.as_view(),
          name="time-series-with-selector"),
@@ -49,7 +57,10 @@ urlpatterns = [
          name="time-series-with-custom-dates"),
     path("time-series-with-custom-dates-and-title/", reports.TimeSeriesReportWithCustomDatesAndCustomTitle.as_view(),
          name="time-series-with-custom-dates-and-title"),
+    path("time-series-without-group-by/", reports.TimeSeriesWithoutGroupBy.as_view(),
+         name="time-series-without-group-by"),
 
+    # Crosstab
     path("crosstab-report/", reports.CrosstabReport.as_view(), name="crosstab-report"),
     path("crosstab-report-with-ids/", reports.CrosstabWithIds.as_view(), name="crosstab-report0with-ids"),
     path("crosstab-report-traversing-field/", reports.CrosstabWithTraversingField.as_view(),

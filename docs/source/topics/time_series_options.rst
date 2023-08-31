@@ -163,6 +163,44 @@ Example:
         ]
 
 
+Time Series without a group by
+------------------------------
+Maybe you want to get the time series calculated on the whole set, without grouping by anything.
+You can do that by omitting the `group_by` attribute, and having only time series (or other computation fields) columns.
+
+Example:
+
+.. code-block:: python
+
+    class TimeSeriesWithoutGroupBy(ReportView):
+        report_title = _("Time Series without a group by")
+        report_model = SalesTransaction
+        time_series_pattern = "monthly"
+        date_field = "date"
+        time_series_columns = [
+            SlickReportField.create(Sum, "value", verbose_name=_("Sales For ")),
+        ]
+
+        columns = [
+            "__time_series__",
+            SlickReportField.create(Sum, "value", verbose_name=_("Total Sales")),
+        ]
+
+        chart_settings = [
+            Chart("Total Sales [Bar]",
+                  Chart.BAR,
+                  data_source=["sum__value"],
+                  title_source=["name"],
+                  ),
+            Chart("Total Sales [Pie]",
+                  Chart.PIE,
+                  data_source=["sum__value"],
+                  title_source=["name"],
+                  ),
+        ]
+
+
+
 
 .. _time_series_options:
 

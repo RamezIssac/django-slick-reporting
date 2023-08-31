@@ -257,6 +257,19 @@ class GroupByCustomQueryset(ReportView):
         return row_obj
 
 
+class NoGroupByReport(ReportView):
+    report_model = SalesTransaction
+    report_title = _("No-Group-By Report [WIP]")
+    date_field = "date"
+    group_by = ""
+
+    columns = [
+        SlickReportField.create(
+            method=Sum, field="value", name="value__sum", verbose_name="Total sold $", is_summable=True,
+        ),
+    ]
+
+
 class TimeSeriesReport(ReportView):
     report_model = SalesTransaction
     group_by = "client"
@@ -366,6 +379,34 @@ class TimeSeriesReportWithCustomDatesAndCustomTitle(TimeSeriesReportWithCustomDa
               data_source=["sum_of_value"],
               title_source=["name"],
               plot_total=True,
+              ),
+    ]
+
+
+class TimeSeriesWithoutGroupBy(ReportView):
+    report_title = _("Time Series without a group by")
+    report_model = SalesTransaction
+    time_series_pattern = "monthly"
+    date_field = "date"
+    time_series_columns = [
+        SlickReportField.create(Sum, "value", verbose_name=_("Sales For ")),
+    ]
+
+    columns = [
+        "__time_series__",
+        SlickReportField.create(Sum, "value", verbose_name=_("Total Sales")),
+    ]
+
+    chart_settings = [
+        Chart("Total Sales [Bar]",
+              Chart.BAR,
+              data_source=["sum__value"],
+              title_source=["name"],
+              ),
+        Chart("Total Sales [Pie]",
+              Chart.PIE,
+              data_source=["sum__value"],
+              title_source=["name"],
               ),
     ]
 
