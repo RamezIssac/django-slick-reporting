@@ -41,6 +41,7 @@ urlpatterns = [
     path("group-by-report/", GroupByReport.as_view(), name="group-by-report"),
     path("group-by-traversing-field/", GroupByTraversingFieldReport.as_view(), name="group-by-traversing-field"),
     path("group-by-custom-queryset/", GroupByCustomQueryset.as_view(), name="group-by-custom-queryset"),
+
     path("time-series-report/", TimeSeriesReport.as_view(), name="time-series-report"),
     path("time-series-with-selector/", reports.TimeSeriesReportWithSelector.as_view(),
          name="time-series-with-selector"),
@@ -48,6 +49,21 @@ urlpatterns = [
          name="time-series-with-custom-dates"),
     path("time-series-with-custom-dates-and-title/", reports.TimeSeriesReportWithCustomDatesAndCustomTitle.as_view(),
          name="time-series-with-custom-dates-and-title"),
+
+    path("crosstab-report/", reports.CrosstabReport.as_view(), name="crosstab-report"),
+    path("crosstab-report-with-ids/", reports.CrosstabWithIds.as_view(), name="crosstab-report0with-ids"),
+    path("crosstab-report-traversing-field/", reports.CrosstabWithTraversingField.as_view(),
+         name="crosstab-report-with-traversing_field"),
+    path("crosstab-report-custom-filter/", reports.CrosstabWithIdsCustomFilter.as_view(),
+         name="crosstab-report-with-custom-filter"),
+    path("crosstab-report-custom-verbose-name/", reports.CrossTabReportWithCustomVerboseName.as_view(),
+         name="crosstab-report-custom-verbose-name"),
+    path("crosstab-report-custom-verbose-name-2/", reports.CrossTabReportWithCustomVerboseNameCustomFilter.as_view(),
+         name="crosstab-report-custom-verbose-name-2"),
+    path("crosstab-report-with-time-series/", reports.CrossTabWithTimeSeries.as_view(),
+         name="crosstab-report-with-time-series"),
+
+
 
     path("admin/", admin.site.urls),
 ]

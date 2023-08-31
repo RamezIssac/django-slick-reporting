@@ -2,9 +2,9 @@ import datetime
 
 from slick_reporting.views import ReportView, Chart
 from slick_reporting.fields import SlickReportField
-from .models import SalesTransaction
+from .models import SalesTransaction, Client, Product
 from .forms import TotalSalesFilterForm
-from django.db.models import Sum
+from django.db.models import Sum, Q
 
 
 class ProductSales(ReportView):
@@ -367,4 +367,99 @@ class TimeSeriesReportWithCustomDatesAndCustomTitle(TimeSeriesReportWithCustomDa
               title_source=["name"],
               plot_total=True,
               ),
+    ]
+
+
+class CrosstabReport(ReportView):
+    report_title = _("Cross tab Report")
+    report_model = SalesTransaction
+    group_by = "client"
+    date_field = "date"
+
+    columns = [
+        "name",
+        "__crosstab__",
+        # You can customize where the crosstab columns are displayed in relation to the other columns
+
+        SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
+        # This is the same as the calculation in the crosstab,
+        # but this one will be on the whole set. IE total value.
+    ]
+
+    crosstab_field = "product"
+    crosstab_columns = [
+        SlickReportField.create(Sum, "value", verbose_name=_("Value")),
+    ]
+
+
+class CrosstabWithTraversingField(CrosstabReport):
+    crosstab_field = "product__size"
+
+
+class CrosstabWithIds(CrosstabReport):
+
+    def get_crosstab_ids(self):
+        return [Product.objects.first().pk, Product.objects.last().pk]
+
+
+class CrosstabWithIdsCustomFilter(CrosstabReport):
+    crosstab_ids_custom_filters = [
+        (~Q(product__size__in=["extra_big", "big"]), dict()),
+
+        (None, dict(product__size__in=["extra_big", "big"])),
+    ]
+    # Note:
+    # if crosstab_ids_custom_filters is set, these settings has NO EFFECT
+    # crosstab_field = "client"
+    # crosstab_ids = [1, 2]
+    # crosstab_compute_remainder = True
+
+
+class CustomCrossTabTotalField(SlickReportField):
+    calculation_field = "value"
+    calculation_method = Sum
+    verbose_name = _("Sales for")
+    name = "sum__value"
+
+    @classmethod
+    def get_crosstab_field_verbose_name(cls, model, id):
+        if id == "----":  # 4 dashes: the remainder column
+            return _("Rest of Products")
+
+        name = Product.objects.get(pk=id).name
+        return f"{cls.verbose_name} {name}"
+
+
+class CrossTabReportWithCustomVerboseName(CrosstabReport):
+    crosstab_columns = [
+        CustomCrossTabTotalField
+    ]
+
+
+class CustomCrossTabTotalField2(CustomCrossTabTotalField):
+    @classmethod
+    def get_crosstab_field_verbose_name(cls, model, id):
+        print(model, id)
+        if id == 0:
+            return f"{cls.verbose_name} Big and Extra Big"
+        return f"{cls.verbose_name} all other sizes"
+
+    @classmethod
+    def get_time_series_field_verbose_name(cls, date_period, index, dates, pattern):
+        print("time series verbose name")
+        return super().get_time_series_field_verbose_name(date_period, index, dates, pattern)
+
+
+class CrossTabReportWithCustomVerboseNameCustomFilter(CrosstabWithIdsCustomFilter):
+    crosstab_columns = [
+        CustomCrossTabTotalField2
+    ]
+
+
+class CrossTabWithTimeSeries(CrossTabReportWithCustomVerboseNameCustomFilter):
+    time_series_pattern = "monthly"
+
+    columns = [
+        "name",
+        "__time_series__"
     ]

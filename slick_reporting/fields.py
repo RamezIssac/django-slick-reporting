@@ -1,4 +1,4 @@
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.template.defaultfilters import date as date_filter
 from django.utils.translation import gettext_lazy as _
 
@@ -197,6 +197,8 @@ class SlickReportField(object):
         queryset = self.get_queryset()
         group_by = "" if self.prevent_group_by else self.group_by
         if q_filters:
+            if type(q_filters) is Q:
+                q_filters = [q_filters]
             queryset = queryset.filter(*q_filters)
         if kwargs_filters:
             queryset = queryset.filter(**kwargs_filters)

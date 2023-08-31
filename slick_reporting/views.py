@@ -257,11 +257,18 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             )
         return kwargs
 
+    def get_crosstab_ids(self):
+        """
+        Hook to get the crosstab ids
+        :return:
+        """
+        return self.form.get_crosstab_ids()
+
     def get_report_generator(self, queryset, for_print):
         q_filters, kw_filters = self.form.get_filters()
         crosstab_compute_remainder = False
         if self.crosstab_field:
-            self.crosstab_ids = self.form.get_crosstab_ids()
+            self.crosstab_ids = self.get_crosstab_ids()
         try:
             crosstab_compute_remainder = (
                 self.form.get_crosstab_compute_remainder()
@@ -302,6 +309,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             crosstab_ids=self.crosstab_ids,
             crosstab_columns=self.crosstab_columns,
             crosstab_compute_remainder=crosstab_compute_remainder,
+            crosstab_ids_custom_filters=self.crosstab_ids_custom_filters,
             format_row_func=self.format_row,
             container_class=self,
             doc_type_plus_list=doc_type_plus_list,
