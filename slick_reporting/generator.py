@@ -543,7 +543,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 name = col_data["name"]
 
                 if col_data.get("source", "") == "attribute_field":
-                    data[name] = col_data["ref"](self, obj, data)
+                    data[name] = col_data["ref"](obj, data)
                 elif col_data.get("source", "") == "container_class_attribute_field":
                     data[name] = col_data["ref"](obj, data)
 

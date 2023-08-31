@@ -203,7 +203,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
             )
         )
 
-        dates = report._get_time_series_dates("semimonthly")
+        dates = report._get_time_series_dates("bi-weekly")
         self.assertEqual(len(dates), 27, len(dates))
         self.assertIsNotNone(
             report.get_time_series_field_verbose_name(
