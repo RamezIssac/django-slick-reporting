@@ -97,7 +97,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     report_title = ""
 
-    report_title_context_key = "title"
+    report_title_context_key = "report_title"
 
     report_generator_class = ReportGenerator
 

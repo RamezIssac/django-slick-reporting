@@ -1,5 +1,6 @@
 import datetime
 
+from django.utils.translation import gettext_lazy as _
 from slick_reporting.views import ReportView, Chart
 from slick_reporting.fields import SlickReportField
 from .models import SalesTransaction, Client, Product
@@ -8,6 +9,7 @@ from django.db.models import Sum, Q
 
 
 class ProductSales(ReportView):
+    report_title = _("Product Sales")
     report_model = SalesTransaction
     date_field = "date"
     group_by = "product"

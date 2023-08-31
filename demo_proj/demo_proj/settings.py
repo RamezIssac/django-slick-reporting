@@ -40,7 +40,7 @@ INSTALLED_APPS = [
 
     "demo_app",
     "crispy_forms",
-    "crispy_bootstrap4",
+    "crispy_bootstrap5",
     "slick_reporting",
     # "slick_reporting.dashboards",
 ]
@@ -128,4 +128,5 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CRISPY_TEMPLATE_PACK = "bootstrap4"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

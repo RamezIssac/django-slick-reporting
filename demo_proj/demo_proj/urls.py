@@ -62,11 +62,11 @@ urlpatterns = [
 
     # Crosstab
     path("crosstab-report/", reports.CrosstabReport.as_view(), name="crosstab-report"),
-    path("crosstab-report-with-ids/", reports.CrosstabWithIds.as_view(), name="crosstab-report0with-ids"),
+    path("crosstab-report-with-ids/", reports.CrosstabWithIds.as_view(), name="crosstab-report-with-ids"),
     path("crosstab-report-traversing-field/", reports.CrosstabWithTraversingField.as_view(),
-         name="crosstab-report-with-traversing_field"),
+         name="crosstab-report-traversing-field"),
     path("crosstab-report-custom-filter/", reports.CrosstabWithIdsCustomFilter.as_view(),
-         name="crosstab-report-with-custom-filter"),
+         name="crosstab-report-custom-filter"),
     path("crosstab-report-custom-verbose-name/", reports.CrossTabReportWithCustomVerboseName.as_view(),
          name="crosstab-report-custom-verbose-name"),
     path("crosstab-report-custom-verbose-name-2/", reports.CrossTabReportWithCustomVerboseNameCustomFilter.as_view(),

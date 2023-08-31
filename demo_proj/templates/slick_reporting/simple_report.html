@@ -9,16 +9,29 @@
 
         {% if form %}
 
-            <h4>Filters</h4>
-            <form id="reportForm">
-                {% crispy form crispy_helper %}
-                <input type="submit" value="Filter"
-                       class="btn btn-primary btn-lg btn-block refreshReport vanilla-btn-flag">
-                <input type="button" value="Export Csv" class="btn btn-secondary btn-lg btn-block exportCsvBtn">
+
+            <form id="reportForm" class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Filters</h3>
+                </div>
+                <div class="card-body">
+
+
+                    {% crispy form crispy_helper %}
+                </div>
+                <div class="card-footer text-end">
+                    <input type="submit" value="Filter"
+                           class="btn btn-primary  refreshReport vanilla-btn-flag">
+                    <input type="button" value="Export Csv" class="btn btn-secondary exportCsvBtn">
+
+                </div>
             </form>
         {% endif %}
-        <h4 class="py-5">Results</h4>
+
         <div class="card" id="{{ report_data.report_slug }}">
+            <div class="card-header">
+                <h5 class="card-title">{% trans "Results" %}</h5>
+            </div>
             <div class="card-body">
                 <div class="chartContainer screenOnly">
                     <div class="controls text-center">

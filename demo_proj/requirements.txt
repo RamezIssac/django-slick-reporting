@@ -2,4 +2,4 @@ django>=4.2
 python-dateutil>=2.8.1
 simplejson
 django-crispy-forms
-crispy-bootstrap4
+crispy-bootstrap5
