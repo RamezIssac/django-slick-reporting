@@ -220,9 +220,13 @@ You can also use locally
 .. code-block:: console
 
         # clone the repo
-        # create a virtual environment, activate it, then
+        git clone https://github.com/ra-systems/django-slick-reporting.git
+        # create a virtual environment and activate it
+        python -m venv /path/to/new/virtual/environment
+        source /path/to/new/virtual/environment/bin/activate
+
         cd django-slick-reporting/demo_proj
-        pip install requirements.txt
+        pip install -r requirements.txt
         python manage.py migrate
         python manage.py create_entries
         python manage.py runserver
