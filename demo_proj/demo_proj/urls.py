@@ -59,6 +59,8 @@ urlpatterns = [
          name="time-series-with-custom-dates-and-title"),
     path("time-series-without-group-by/", reports.TimeSeriesWithoutGroupBy.as_view(),
          name="time-series-without-group-by"),
+    path("time-series-with-group-by-custom-queryset/", reports.TimeSeriesReportWithCustomGroupByQueryset.as_view(),
+         name="time-series-with-group-by-custom-queryset"),
 
     # Crosstab
     path("crosstab-report/", reports.CrosstabReport.as_view(), name="crosstab-report"),

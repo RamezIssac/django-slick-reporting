@@ -155,10 +155,7 @@ class SlickReportField(object):
     def apply_aggregation(self, queryset, group_by=""):
         annotation = self.calculation_method(self.calculation_field)
         if self.group_by_custom_querysets:
-            output = []
-            for group_by_query in self.group_by_custom_querysets:
-                output.append(group_by_query.aggregate(annotation))
-            return output
+            return queryset.aggregate(annotation)
         elif group_by:
             queryset = queryset.values(group_by).annotate(annotation)
         else:
@@ -176,13 +173,28 @@ class SlickReportField(object):
         kwargs_filters = kwargs_filters or {}
 
         dep_values = self._prepare_dependencies(q_filters, kwargs_filters.copy())
+        if self.group_by_custom_querysets:
+            debit_results, credit_results = self.prepare_custom_group_by_queryset(
+                q_filters, kwargs_filters, **kwargs
+            )
+        else:
 
-        debit_results, credit_results = self.prepare(
-            q_filters, kwargs_filters, **kwargs
-        )
+            debit_results, credit_results = self.prepare(
+                q_filters, kwargs_filters, **kwargs
+            )
         self._cache = debit_results, credit_results, dep_values
 
-    def prepare(self, q_filters=None, kwargs_filters=None, **kwargs):
+    def prepare_custom_group_by_queryset(self, q_filters=None, kwargs_filters=None, **kwargs):
+        debit_output, credit_output = [], []
+        for index, queryset in enumerate(self.group_by_custom_querysets):
+            debit, credit = self.prepare(q_filters, kwargs_filters, queryset, **kwargs)
+            if debit:
+                debit_output.append(debit)
+            if credit:
+                credit_output.append(credit)
+        return debit_output, credit_output
+
+    def prepare(self, q_filters=None, kwargs_filters=None, queryset=None, **kwargs):
         """
         This is the first hook where you can customize the calculation away from the Django Query aggregation method
         This method et called with all available parameters , so you can prepare the results for the whole set and save
@@ -194,7 +206,7 @@ class SlickReportField(object):
         :param kwargs:
         :return:
         """
-        queryset = self.get_queryset()
+        queryset = queryset or self.get_queryset()
         group_by = "" if self.prevent_group_by else self.group_by
         if q_filters:
             if type(q_filters) is Q:
@@ -251,6 +263,8 @@ class SlickReportField(object):
                 self.report_model,
                 date_field=self.date_field,
                 group_by=self.group_by,
+                queryset=self.queryset,
+                group_by_custom_querysets=self.group_by_custom_querysets,
             )
             results = dep.init_preparation(q_filters, extra_filters)
             values[dep.name] = {"results": results, "instance": dep}

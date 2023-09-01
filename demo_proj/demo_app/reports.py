@@ -1,11 +1,13 @@
 import datetime
 
-from django.utils.translation import gettext_lazy as _
-from slick_reporting.views import ReportView, Chart
-from slick_reporting.fields import SlickReportField
-from .models import SalesTransaction, Client, Product
-from .forms import TotalSalesFilterForm
 from django.db.models import Sum, Q
+from django.utils.translation import gettext_lazy as _
+
+from slick_reporting.fields import SlickReportField
+from slick_reporting.views import ListReportView
+from slick_reporting.views import ReportView, Chart
+from .forms import TotalSalesFilterForm
+from .models import SalesTransaction, Product
 
 
 class ProductSales(ReportView):
@@ -78,9 +80,6 @@ class TotalProductSalesByCountry(ReportView):
             title_source=["client__country"],
         ),
     ]
-
-
-from django.utils.translation import gettext_lazy as _
 
 
 class SumValueComputationField(SlickReportField):
@@ -160,9 +159,6 @@ class ProductSalesPerCountryCrosstab(ReportView):
         "__crosstab__",
         SumValueComputationField,
     ]
-
-
-from slick_reporting.views import ListReportView
 
 
 class LastTenSales(ListReportView):
@@ -351,6 +347,52 @@ class TimeSeriesReportWithCustomDates(TimeSeriesReport):
         (datetime.datetime(get_current_year(), 2, 1), datetime.datetime(get_current_year(), 2, 10)),
         (datetime.datetime(get_current_year(), 3, 1), datetime.datetime(get_current_year(), 3, 10)),
     )
+
+
+class TimeSeriesReportWithCustomGroupByQueryset(ReportView):
+    report_title = _("Time Series Report")
+    report_model = SalesTransaction
+    group_by_custom_querysets = (
+        SalesTransaction.objects.filter(client__country='US'),
+        SalesTransaction.objects.filter(client__country__in=['RS', 'DE']),
+    )
+
+    time_series_pattern = "monthly"
+
+    date_field = "date"
+    time_series_columns = [
+        SlickReportField.create(Sum, "value", verbose_name=_("Sales For ")),
+        # "__total__"
+    ]
+
+    columns = [
+        "__index__",
+        "__time_series__",
+        # placeholder for the generated time series columns
+
+        SlickReportField.create(Sum, "value", verbose_name=_("Total Sales")),
+        # This is the same as the time_series_columns, but this one will be on the whole set
+
+    ]
+
+    chart_settings = [
+        Chart("Client Sales",
+              Chart.BAR,
+              data_source=["sum__value"],
+              title_source=["__index__"],
+              ),
+        Chart("Total Sales [Pie]",
+              Chart.PIE,
+              data_source=["sum__value"],
+              title_source=["__index__"],
+              plot_total=True,
+              ),
+        Chart("Total Sales [Area chart]",
+              Chart.AREA,
+              data_source=["sum__value"],
+              title_source=["name"],
+              )
+    ]
 
 
 class SumOfFieldValue(SlickReportField):

@@ -27,6 +27,7 @@ TIME_SERIES = [
     ("time-series-with-custom-dates", reports.TimeSeriesReportWithCustomDates),
     ("time-series-with-custom-dates-and-title", reports.TimeSeriesReportWithCustomDatesAndCustomTitle),
     ("time-series-without-group-by", reports.TimeSeriesWithoutGroupBy),
+    ('time-series-with-group-by-custom-queryset', reports.TimeSeriesReportWithCustomGroupByQueryset),
 ]
 
 CROSSTAB = [
