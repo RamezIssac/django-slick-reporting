@@ -18,19 +18,19 @@
         let chartElem = $elem.find('[data-report-chart]');
         let chart_id = $elem.attr('data-chart-id');
         let display_chart_selector = $elem.attr('data-display-chart-selector');
-        chartElem.append("<canvas width=\"400\" height=\"100\"></canvas>");
+        // chartElem.append("<canvas width=\"400\" height=\"100\"></canvas>");
         if (chartElem.length !== 0 && data.chart_settings.length !== 0) {
 
-            $.erp_framework.report_loader.displayChart(data, chartElem, chart_id);
+            $.slick_reporting.report_loader.displayChart(data, chartElem, chart_id);
         }
 
         if (display_chart_selector !== "False" && data.chart_settings.length > 1) {
-            $.erp_framework.report_loader.createChartsUIfromResponse(data, $elem);
+            $.slick_reporting.report_loader.createChartsUIfromResponse(data, $elem);
         }
 
         let tableElem = $elem.find('[data-report-table]');
         if (tableElem.length !== 0) {
-            $.erp_framework.datatable.buildAdnInitializeDatatable(data, tableElem);
+            $.slick_reporting.datatable.buildAdnInitializeDatatable(data, tableElem);
         }
 
     }
@@ -50,15 +50,15 @@
         catch (e){
             console.error(e);
         }
-        executeFunctionByName($.erp_framework.report_loader.chart_engines[engine], window, data, $elem, chart_id);
+        $.slick_reporting.executeFunctionByName($.slick_reporting.report_loader.chart_engines[engine], window, data, $elem, chart_id);
     }
 
 
     function refreshReportWidget($elem, extra_params) {
         let successFunctionName = $elem.attr('data-success-callback');
-        successFunctionName = successFunctionName || "$.erp_framework.report_loader.successCallback";
+        successFunctionName = successFunctionName || "$.slick_reporting.report_loader.successCallback";
         let failFunctionName = $elem.attr('data-fail-callback');
-        failFunctionName = failFunctionName || "$.erp_framework.report_loader.failFunction";
+        failFunctionName = failFunctionName || "$.slick_reporting.report_loader.failFunction";
 
         let data = {};
 
@@ -79,10 +79,10 @@
         }
 
         $.get(url, data, function (data) {
-            $.erp_framework.cache[data['report_slug']] = jQuery.extend(true, {}, data);
-            executeFunctionByName(successFunctionName, window, data, $elem);
+            $.slick_reporting.cache[data['report_slug']] = jQuery.extend(true, {}, data);
+            $.slick_reporting.executeFunctionByName(successFunctionName, window, data, $elem);
         }).fail(function (data) {
-            executeFunctionByName(failFunctionName, window, data, $elem);
+            $.slick_reporting.executeFunctionByName(failFunctionName, window, data, $elem);
         });
 
     }
@@ -127,14 +127,14 @@
     $('body').on('click', 'a[data-chart-id]', function (e) {
         e.preventDefault();
         let $this = $(this);
-        let data = $.erp_framework.cache[$this.attr('data-report-slug')]
+        let data = $.slick_reporting.cache[$this.attr('data-report-slug')]
         let chart_id = $this.attr('data-chart-id')
-        $.erp_framework.report_loader.displayChart(data, $this.parents('[data-report-widget]').find('[data-report-chart]'), chart_id)
+        $.slick_reporting.report_loader.displayChart(data, $this.parents('[data-report-widget]').find('[data-report-chart]'), chart_id)
 
     });
 
-    $.erp_framework.report_loader = {
-        cache: $.erp_framework.cache,
+    $.slick_reporting.report_loader = {
+        cache: $.slick_reporting.cache,
         initialize: initialize,
         refreshReportWidget: refreshReportWidget,
         failFunction: failFunction,

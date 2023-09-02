@@ -1,5 +1,24 @@
 (function ($) {
 
+    function executeFunctionByName(functionName, context /*, args */) {
+    let args = Array.prototype.slice.call(arguments, 2);
+    let namespaces = functionName.split(".");
+    let func = namespaces.pop();
+    for (let i = 0; i < namespaces.length; i++) {
+        context = context[namespaces[i]];
+    }
+    try {
+        func = context[func];
+        if (typeof func == 'undefined') {
+            throw 'Function {0} is not found the context {1}'.format(functionName, context);
+        }
+
+    } catch (err) {
+        console.error('Function {0} is not found the context {1}'.format(functionName, context), err)
+    }
+    return func.apply(context, args);
+}
+
     function getObjFromArray(objList, obj_key, key_value, failToFirst) {
         failToFirst = typeof (failToFirst) !== 'undefined';
         if (key_value !== '') {
@@ -49,7 +68,12 @@
     $.slick_reporting = {
         'getObjFromArray': getObjFromArray,
         'calculateTotalOnObjectArray': calculateTotalOnObjectArray,
+        "executeFunctionByName": executeFunctionByName,
+        defaults:{
+            total_label: 'Total',
+        }
 
     }
+    $.slick_reporting.cache = {}
 
 }(jQuery));

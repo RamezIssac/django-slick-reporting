@@ -16,16 +16,15 @@
              data-display-chart-selector="{{ display_chart_selector }}"
              data-failure-callback="{{ failure_callback|default:'' }}"
         >
-        {% block widget_content %}
-            {% if display_chart %}
-                <div id="container" data-report-chart style="width:100%; height:400px;"></div>
-                {#                <canvas data-report-chart height="100"></canvas>#}
-            {% endif %}
-            {% if display_table %}
-                <div data-report-table>
-                </div>
-            {% endif %}
-        {% endblock %}
+            {% block widget_content %}
+                {% if display_chart %}
+                    <div data-report-chart></div>
+                {% endif %}
+                {% if display_table %}
+                    <div data-report-table>
+                    </div>
+                {% endif %}
+            {% endblock %}
 
         </div>
     </div>
