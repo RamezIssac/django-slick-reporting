@@ -5,7 +5,10 @@ Crosstab Reports
 Use crosstab reports, also known as matrix reports, to show the relationships between three or more query items.
 Crosstab reports show data in rows and columns with information summarized at the intersection points.
 
-Here is a simple example of a crosstab report:
+
+General use case
+----------------
+Here is a general use case:
 
 .. code-block:: python
 
@@ -14,129 +17,126 @@ Here is a simple example of a crosstab report:
     from slick_reporting.views import ReportView
 
 
-    class MyCrosstabReport(ReportView):
-        group_by = "product"
-        crosstab_field = "client"
-        # the column you want to make a crosstab on, can be a foreign key or a choice field
+    class CrosstabReport(ReportView):
+        report_title = _("Cross tab Report")
+        report_model = SalesTransaction
+        group_by = "client"
+        date_field = "date"
 
+        columns = [
+            "name",
+            "__crosstab__",
+            # You can customize where the crosstab columns are displayed in relation to the other columns
+
+            SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
+            # This is the same as the calculation in the crosstab,
+            # but this one will be on the whole set. IE total value.
+        ]
+
+        crosstab_field = "product"
         crosstab_columns = [
             SlickReportField.create(Sum, "value", verbose_name=_("Value")),
         ]
 
-        crosstab_ids = [
-            1,
-            2,
-        ]  # a list of ids of the crosstab field you want to use. This will be passed on by the filter form, or , if set here, values here will be used.
-        # OR in case of a choice / text field
-        # crosstab_ids = ["my-choice-1", "my-choice-2", "my-choice-3"]
+Crosstab on a Traversing Field
+------------------------------
+You can also crosstab on a traversing field. In the example below we extend the previous crosstab report to be on the product sizes
 
-        crosstab_compute_remainder = True
-        # Compute reminder will add a column with the remainder of the crosstab computed
-        # Example: if you choose to do a cross tab on clientIds 1 & 2 , cross tab remainder will add a column with the calculation of all clients except those set/passed in crosstab_ids
+.. code-block:: python
 
-        columns = [
-            "name",
-            "sku",
-            "__crosstab__",
-            # You can customize where the crosstab columns are displayed in relation to the other columns
-            SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
-            # This is the same as the Same as the calculation in the crosstab, but this one will be on the whole set. IE total value
-        ]
+        class CrosstabWithTraversingField(CrosstabReport):
+            crosstab_field = "product__size"
 
 
 Customizing the crosstab ids
 ----------------------------
+You can set the default ids that you want to crosstab on, so the initial report, ie without user setting anything, comes out with the values you want
 
-For more fine tuned report, You can customize the ids of the crosstab report by suppling a list of tuples to the ``crosstab_ids_custom_filters`` attribute.
-the tuple should have 2 items, the first is a Q object(s) -if any- , and the second is a dict of kwargs filters that will be passed to the filter method of the ``report_model``.
+.. code-block:: python
+
+        class CrosstabWithIds(CrosstabReport):
+            def get_crosstab_ids(self):
+                return [Product.objects.first().pk, Product.objects.last().pk]
+
+
+Customizing the Crosstab Filter
+-------------------------------
+
+For more fine tuned report, You can customize the crosstab report by supplying a list of tuples to the ``crosstab_ids_custom_filters`` attribute.
+The tuple should have 2 items, the first is a list of Q object(s) -if any- , and the second is a dict of kwargs filters . Both will be passed to the filter method of the ``report_model``.
 
 Example:
 
 .. code-block:: python
 
-        from .models import MySales
-
-
-        class MyCrosstabReport(ReportView):
-
-            date_field = "date"
-            group_by = "product"
-            report_model = MySales
-
-            crosstab_columns = [
-                SlickReportField.create(Sum, "value", verbose_name=_("Value")),
-            ]
-
+        class CrosstabWithIdsCustomFilter(CrosstabReport):
             crosstab_ids_custom_filters = [
-                (
-                    ~Q(special_field="something"),
-                    dict(flag="sales"),
-                ),  # special_field and flag are fields on the report_model .
-                (None, dict(flag="sales-return")),
+                (~Q(product__size__in=["extra_big", "big"]), dict()),
+
+                (None, dict(product__size__in=["extra_big", "big"])),
             ]
+            # Note:
+            # if crosstab_ids_custom_filters is set, these settings has NO EFFECT
+            # crosstab_field = "client"
+            # crosstab_ids = [1, 2]
+            # crosstab_compute_remainder = True
 
-            # These settings has NO EFFECT if crosstab_ids_custom_filters is set
-            crosstab_field = "client"
-            crosstab_ids = [1, 2]
-            crosstab_compute_remainder = True
-
-
-
-Having Time Series Crosstab Reports
------------------------------------
-You can have a crosstab report in a time series by setting the :ref:`time_series_options` in addition to the crosstab options.
 
 
 Customizing the verbose name of the crosstab columns
 ----------------------------------------------------
-You can customize the verbose name of the crosstab columns by Customizing the ``ReportField`` and setting the ``crosstab_field_verbose_name`` attribute to your custom class.
+Similar to what we did in customizing the verbose name of the computation field for the time series,
+Here, We also can customize the verbose name of the crosstab columns by Subclass ``SlickReportField`` and setting the ``crosstab_field_verbose_name`` attribute on your custom class.
 Default is that the verbose name will display the id of the crosstab field, and the remainder column will be called "The remainder".
 
+Let's see two examples on how we can customize the verbose name.
+
+Example 1: On a "regular" crosstab report
 
 .. code-block:: python
 
         class CustomCrossTabTotalField(SlickReportField):
-
             calculation_field = "value"
             calculation_method = Sum
-            verbose_name = _("Total Value")
+            verbose_name = _("Sales for")
+            name = "sum__value"
 
             @classmethod
             def get_crosstab_field_verbose_name(cls, model, id):
-                from .models import Client
+                if id == "----":  # 4 dashes: the remainder column
+                    return _("Rest of Products")
 
-                if id == "----":  # the remainder column
-                    return _("Rest of clients")
-                name = Client.objects.get(pk=id).name
-                # OR if you crosstab on a choice field
-                # name = get_choice_name(model, "client", id)
+                name = Product.objects.get(pk=id).name
                 return f"{cls.verbose_name} {name}"
+
+
+        class CrossTabReportWithCustomVerboseName(CrosstabReport):
+            crosstab_columns = [
+                CustomCrossTabTotalField
+            ]
+
+Example 2: On the ``crosstab_ids_custom_filters`` one
+
+.. code-block:: python
+
+        class CustomCrossTabTotalField2(CustomCrossTabTotalField):
+
+            @classmethod
+            def get_crosstab_field_verbose_name(cls, model, id):
+                if id == 0:
+                    return f"{cls.verbose_name} Big and Extra Big"
+                return f"{cls.verbose_name} all other sizes"
+
+
+        class CrossTabReportWithCustomVerboseNameCustomFilter(CrosstabWithIdsCustomFilter):
+            crosstab_columns = [
+                CustomCrossTabTotalField2
+            ]
+
 
 
 Example
 -------
-
-.. code-block:: python
-
-    from .models import MySales
-
-
-    class MyCrosstabReport(ReportView):
-
-        date_field = "date"
-        group_by = "product"
-        report_model = MySales
-        crosstab_field = "client"
-
-        crosstab_columns = [
-            SlickReportField.create(Sum, "value", verbose_name=_("Value")),
-        ]
-
-        crosstab_ids = [1, 2]  # either set here via the filter form
-        crosstab_compute_remainder = True
-
-
-The above code would return a result like this:
 
 .. image:: _static/crosstab.png
   :width: 800

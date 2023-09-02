@@ -43,14 +43,12 @@ Use the package manager `pip <https://pip.pypa.io/en/stable/>`_ to install djang
 Usage
 -----
 
-So you have a model that contains data, let's call it `MySalesItems`
+So we have a model `SalesTransaction` which contains typical data about a sale.
+We can extract different kinds of information for that model.
 
-You can simply use a code like this
+Let's start by a "Group by" report. This will generate a report how much quantity and value was each product sold within a certain time.
 
 .. code-block:: python
-
-    # in your urls.py
-    path("path-to-report", TotalProductSales.as_view())
 
 
     # in views.py
@@ -61,27 +59,36 @@ You can simply use a code like this
 
 
     class TotalProductSales(ReportView):
-
-        report_model = MySalesItems
-        date_field = "date_placed"
+        report_model = SalesTransaction
+        date_field = "date"
         group_by = "product"
         columns = [
-            "title",
-            SlickReportField.create(Sum, "quantity"),
-            SlickReportField.create(Sum, "value", name="sum__value"),
+            "name",
+            SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
+            SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
         ]
 
         chart_settings = [
             Chart(
                 "Total sold $",
                 Chart.BAR,
-                data_source="value__sum",
-                title_source="title",
+                data_source=["sum__value"],
+                title_source=["name"],
+            ),
+            Chart(
+                "Total sold $ [PIE]",
+                Chart.PIE,
+                data_source=["sum__value"],
+                title_source=["name"],
             ),
         ]
 
+    # then, in urls.py
+    path("total-sales-report", TotalProductSales.as_view())
 
-To get something this
+
+
+With this code, you will get something like this:
 
 .. image:: https://i.ibb.co/SvxTM23/Selection-294.png
     :target: https://i.ibb.co/SvxTM23/Selection-294.png
@@ -91,29 +98,31 @@ To get something this
 Time Series
 -----------
 
+A Time series report is a report that is generated for a periods of time.
+The period can be daily, weekly, monthly, yearly or custom. Calculations will be performed for each period in the time series.
+
+Example: How much was sold in value for each product monthly within a date period ?
 
 .. code-block:: python
 
     # in views.py
     from slick_reporting.views import ReportView
     from slick_reporting.fields import SlickReportField
-    from .models import MySalesItems
+    from .models import SalesTransaction
 
 
     class MonthlyProductSales(ReportView):
-        report_model = MySalesItems
-        date_field = "date_placed"
+        report_model = SalesTransaction
+        date_field = "date"
         group_by = "product"
         columns = ["name", "sku"]
 
-        # Settings for creating time series report
-        time_series_pattern = (
-            "monthly"  # or "yearly" , "weekly" , "daily" , others and custom patterns
-        )
+        time_series_pattern = "monthly"
+        # or "yearly" , "weekly" , "daily" , others and custom patterns
         time_series_columns = [
             SlickReportField.create(
                 Sum, "value", verbose_name=_("Sales Value"), name="value"
-            )
+            ) # what will be calculated for each month
         ]
 
         chart_settings = [
@@ -124,15 +133,23 @@ Time Series
                 title_source=["name"],
                 plot_total=True,
             ),
+            Chart("Total Sales [Area chart]",
+              Chart.AREA,
+              data_source=["value"],
+              title_source=["name"],
+              plot_total=False,
+              )
         ]
 
 
-.. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/report_view/_static/timeseries.png?raw=true
+.. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/topics/_static/timeseries.png?raw=true
     :alt: Time Series Report
     :align: center
 
 Cross Tab
 ---------
+Use crosstab reports, also known as matrix reports, to show the relationships between three or more query items.
+Crosstab reports show data in rows and columns with information summarized at the intersection points.
 
 .. code-block:: python
 
@@ -160,7 +177,7 @@ Cross Tab
             ]
 
 
-.. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/report_view/_static/crosstab.png?raw=true
+.. image:: https://github.com/ra-systems/django-slick-reporting/blob/develop/docs/source/topics/_static/crosstab.png?raw=true
    :alt: Homepage
    :align: center
 
@@ -190,16 +207,42 @@ You can interact with the `ReportGenerator` using same syntax as used with the `
     my_report.get_report_data()  # -> [{'title':'Product 1', '__total__: 56}, {'title':'Product 2', '__total__: 43}, ]
 
 
-This is just a scratch, for more please visit the documentation 
+This is just a scratch of what you can do and customize.
+
+Demo site
+---------
+
+Available on `Django Slick Reporting <https://django-slick-reporting.com/>`_
+
+
+You can also use locally
+
+.. code-block:: console
+
+        # clone the repo
+        git clone https://github.com/ra-systems/django-slick-reporting.git
+        # create a virtual environment and activate it
+        python -m venv /path/to/new/virtual/environment
+        source /path/to/new/virtual/environment/bin/activate
+
+        cd django-slick-reporting/demo_proj
+        pip install -r requirements.txt
+        python manage.py migrate
+        python manage.py create_entries
+        python manage.py runserver
+
+the ``create_entries`` command will generate data for the demo app
+
 
 Batteries Included
 ------------------
 
 Slick Reporting comes with
 
-* A Bootstrap Filter Form
-* Charting support `Chart.js <https://www.chartjs.org/>`_
-* Powerful tables `datatables.net <https://datatables.net/>`_
+* An auto-generated, bootstrap-ready Filter Form
+* Carts.js Charting support `Chart.js <https://www.chartjs.org/>`_
+* Highcharts.js Charting support `Highcharts.js <https://www.highcharts.com//>`_
+* Datatables `datatables.net <https://datatables.net/>`_
 
 A Preview:
 
@@ -207,11 +250,6 @@ A Preview:
     :target: https://i.ibb.co/SvxTM23/Selection-294.png
     :alt: Shipped in View Page
 
-
-Demo site
----------
-
-Available on `Django Slick Reporting <https://django-slick-reporting.com/>`_
 
 Documentation
 -------------
@@ -221,11 +259,8 @@ Available on `Read The Docs <https://django-slick-reporting.readthedocs.io/en/la
 Road Ahead
 ----------
 
-This project is young and can use your support.
-
-Some of the ideas / features that ought be added
-
-* Support Other backends like SQL Alchemy & Pandas
+* Continue on enriching the demo project
+* Add the dashboard capabilities
 
 
 Running tests
@@ -264,6 +299,6 @@ If you like this package, chances are you may like those packages too!
 
 `Django Tabular Permissions <https://github.com/RamezIssac/django-tabular-permissions>`_ Display Django permissions in a HTML table that is translatable and easy customized.
 
-`Django Ra ERP Framework <https://github.com/ra-systems/RA>`_ A framework to build business solutions with ease.
+`Django ERP Framework <https://github.com/ra-systems/RA>`_ A framework to build business solutions with ease.
 
 If you find this project useful or promising , You can support us by a github ⭐

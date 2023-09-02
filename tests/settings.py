@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "slick_reporting",
     "crispy_forms",
+    "crispy_bootstrap4",
     "tests",
 ]
 

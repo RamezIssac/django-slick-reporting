@@ -65,7 +65,7 @@ class ReportGeneratorAPI:
 
     group_by_custom_querysets = None
     """A List of querysets representing different group by options"""
-    group_by_custom_querysets_column_verbose_name = ""
+    group_by_custom_querysets_column_verbose_name = None
 
     columns = None
     """A list of column names.
@@ -159,6 +159,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         kwargs_filters=None,
         group_by=None,
         group_by_custom_querysets=None,
+        group_by_custom_querysets_column_verbose_name=None,
         columns=None,
         time_series_pattern=None,
         time_series_columns=None,
@@ -273,6 +274,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             group_by_custom_querysets or self.group_by_custom_querysets or []
         )
 
+        self.group_by_custom_querysets_column_verbose_name = group_by_custom_querysets_column_verbose_name or self.group_by_custom_querysets_column_verbose_name or ""
         self.time_series_pattern = self.time_series_pattern or time_series_pattern
         self.time_series_columns = self.time_series_columns or time_series_columns
         self.time_series_custom_dates = (
@@ -364,12 +366,12 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     self.group_by_field_attname
                 )
         else:
-            if self.time_series_pattern:
-                self.main_queryset = [{}]
-            else:
-                self.main_queryset = self._apply_queryset_options(
-                    main_queryset, self.get_database_columns()
-                )
+            # if self.time_series_pattern:
+            self.main_queryset = [{}]
+            # else:
+            #     self.main_queryset = self._apply_queryset_options(
+            #         main_queryset, self.get_database_columns()
+            #     )
         self._prepare_report_dependencies()
 
     def _remove_order(self, main_queryset):
@@ -399,6 +401,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         if filters:
             query = query.filter(**filters)
+        if self.q_filters:
+            query = query.filter(*self.q_filters)
         if fields:
             return query.values(*fields)
         return query.values()
@@ -539,14 +543,14 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 name = col_data["name"]
 
                 if col_data.get("source", "") == "attribute_field":
-                    data[name] = col_data["ref"](self, obj, data)
+                    data[name] = col_data["ref"](obj, data)
                 elif col_data.get("source", "") == "container_class_attribute_field":
                     data[name] = col_data["ref"](obj, data)
 
                 elif (
                     col_data.get("source", "") == "magic_field"
                     and (self.group_by or self.group_by_custom_querysets)
-                ) or (self.time_series_pattern and not self.group_by):
+                ) or (not (self.group_by or self.group_by_custom_querysets)):
                     source = self._report_fields_dependencies[window].get(name, False)
 
                     if source:
@@ -594,7 +598,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         """
         return row_obj
 
-    @classmethod
+    @staticmethod
     def check_columns(
         cls,
         columns,
@@ -609,8 +613,10 @@ class ReportGenerator(ReportGeneratorAPI, object):
         :param group_by: group by field if any
         :param report_model: the report model
         :param container_class: a class to search for custom columns attribute in, typically the ReportView
+        :param group_by_custom_querysets a list of group by custom queries Or None.
         :return: List of dict, each dict contains relevant data to the respective field in `columns`
         """
+
         group_by_model = None
         if group_by_custom_querysets:
             if "__index__" not in columns:
@@ -625,7 +631,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 ][0]
             except IndexError:
                 raise ImproperlyConfigured(
-                    f"Could not find {group_by} in {report_model}"
+                    f"ReportView {cls}: Could not find the group_by field: `{group_by}` in report_model: `{report_model}`"
                 )
             if group_by_field.is_relation:
                 group_by_model = group_by_field.related_model
@@ -738,6 +744,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
     def _parse(self):
         self.parsed_columns = self.check_columns(
+            self,
             self.columns,
             self.group_by,
             self.report_model,
@@ -866,7 +873,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 time_delta = datetime.timedelta(days=1)
             elif series == "weekly":
                 time_delta = relativedelta(weeks=1)
-            elif series == "semimonthly":
+            elif series == "bi-weekly":
                 time_delta = relativedelta(weeks=2)
             elif series == "monthly":
                 time_delta = relativedelta(months=1)

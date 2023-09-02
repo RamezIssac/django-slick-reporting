@@ -23,7 +23,7 @@ Usage
 -----
 
 #. Add ``"slick_reporting", "crispy_forms", "crispy_bootstrap4",`` to ``INSTALLED_APPS``.
-#. Add ``CRISPY_TEMPLATE_PACK = 'bootstrap4'`` to your ``settings.py``
+#. Add ``CRISPY_TEMPLATE_PACK = "bootstrap4"`` to your ``settings.py``
 #. Execute `python manage.py collectstatic` so the JS helpers are collected and served.
 
 
@@ -36,9 +36,10 @@ You can start by using ``ReportView`` which is a subclass of ``django.views.gene
 .. code-block:: python
 
     # in views.py
-    from slick_reporting.views import ReportView
-    from slick_reporting.fields import SlickReportField, Chart
+    from slick_reporting.views import ReportView, Chart
+    from slick_reporting.fields import SlickReportField
     from .models import MySalesItems
+    from django.db.models import Sum
 
 
     class ProductSales(ReportView):
@@ -50,17 +51,17 @@ You can start by using ``ReportView`` which is a subclass of ``django.views.gene
         columns = [
             "title",
             SlickReportField.create(
-                method=Sum, field="value", name="value__sum", verbose_name=_("Total sold $")
+                method=Sum, field="value", name="value__sum", verbose_name="Total sold $"
             ),
         ]
 
         # Charts
-        charts_settings = [
+        chart_settings = [
             Chart(
                 "Total sold $",
                 Chart.BAR,
-                data_source="value__sum",
-                title_source="title",
+                data_source=["value__sum"],
+                title_source=["title"],
             ),
         ]
 
@@ -88,8 +89,8 @@ Next step :ref:`tutorial`
 
    concept
    tutorial
-   howto/index
    topics/index
+   howto/index
    charts
    ref/index
 

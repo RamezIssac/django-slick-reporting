@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+
+{% block page_title %}
+ {{ report_title }}
+{% endblock %}
+{% block meta_page_title %}
+    {{ report_title }}
+
+{% endblock %}
+
+{% block extrajs %}
+    {% include "slick_reporting/js_resources.html" %}
+
+{% endblock %}

@@ -99,7 +99,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     report_title = ""
 
-    report_title_context_key = "title"
+    report_title_context_key = "report_title"
 
     report_generator_class = ReportGenerator
 
@@ -300,16 +300,26 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             )
         return kwargs
 
+    def get_crosstab_ids(self):
+        """
+        Hook to get the crosstab ids
+        :return:
+        """
+        return self.form.get_crosstab_ids()
+
     def get_report_generator(self, queryset, for_print):
         q_filters, kw_filters = self.form.get_filters()
+        crosstab_compute_remainder = False
         if self.crosstab_field:
-            self.crosstab_ids = self.form.get_crosstab_ids()
-
-        crosstab_compute_remainder = (
-            self.form.get_crosstab_compute_remainder()
-            if self.request.GET or self.request.POST
-            else self.crosstab_compute_remainder
-        )
+            self.crosstab_ids = self.get_crosstab_ids()
+        try:
+            crosstab_compute_remainder = (
+                self.form.get_crosstab_compute_remainder()
+                if self.request.GET or self.request.POST
+                else self.crosstab_compute_remainder
+            )
+        except NotImplementedError:
+            pass
 
         time_series_pattern = self.time_series_pattern
         if self.time_series_selector:
@@ -333,12 +343,16 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             swap_sign=self.swap_sign,
             columns=self.columns,
             group_by=self.group_by,
+            group_by_custom_querysets=self.group_by_custom_querysets,
+            group_by_custom_querysets_column_verbose_name=self.group_by_custom_querysets_column_verbose_name,
             time_series_pattern=time_series_pattern,
             time_series_columns=self.time_series_columns,
+            time_series_custom_dates=self.time_series_custom_dates,
             crosstab_field=self.crosstab_field,
             crosstab_ids=self.crosstab_ids,
             crosstab_columns=self.crosstab_columns,
             crosstab_compute_remainder=crosstab_compute_remainder,
+            crosstab_ids_custom_filters=self.crosstab_ids_custom_filters,
             format_row_func=self.format_row,
             container_class=self,
             doc_type_plus_list=doc_type_plus_list,
@@ -462,6 +476,7 @@ class ReportView(ReportViewBase):
         # sanity check, raises error if the columns or date fields is not set
         if cls.columns:
             cls.report_generator_class.check_columns(
+                cls,
                 cls.columns,
                 cls.group_by,
                 cls.get_report_model(),

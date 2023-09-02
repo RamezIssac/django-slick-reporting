@@ -40,7 +40,7 @@
     jQuery(document).ready(function () {
         $('.page-container').show();
         $.erp_framework.focus_first();
-        $.erp_framework.report_loader.initialize();
+        {#$.erp_framework.report_loader.initialize();#}
         $('#changelist-form table').addClass('table table-hover table-striped table-condensed table-bordered')
         $("select").select2();
 
@@ -52,7 +52,7 @@
         });
 
 
-        $('.refreshReport').on('click', function (event) {
+        $('.refreshReport').not(".vanilla-btn-flag").on('click', function (event) {
             event.preventDefault();
             let $elem = $('[data-report-widget]')
             $.erp_framework.report_loader.refreshReportWidget($elem)
