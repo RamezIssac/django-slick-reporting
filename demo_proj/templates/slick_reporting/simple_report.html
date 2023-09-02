@@ -21,7 +21,7 @@
                 </div>
                 <div class="card-footer text-end">
                     <input type="submit" value="Filter"
-                           class="btn btn-primary  refreshReport vanilla-btn-flag">
+                           class="btn btn-primary  refreshReport">
                     <input type="button" value="Export Csv" class="btn btn-secondary exportCsvBtn">
 
                 </div>
@@ -33,39 +33,29 @@
                 <h5 class="card-title">{% trans "Results" %}</h5>
             </div>
             <div class="card-body">
-                <div class="chartContainer screenOnly">
-                    <div class="controls text-center">
-                        <ul class="nav-charts list-inline">
 
-                            {% for chart in report_data.chart_settings %}
-                                <li class="list-inline-item">
-                                    <a href="#" data-chart-id="{{ chart.id }}"
-                                       data-charts-engine="{{ chart.engine_name }}">
-                                        {% if chart.type == 'pie' %}
-                                            <i class="fa fa-pie-chart"></i>
-                                        {% elif chart.type == 'line' %}
-                                            <i class="fa fa-line-chart"></i>
-                                        {% else %}
-                                            <i class="fa fa-bar-chart"></i>
-                                        {% endif %} {{ chart.title }}
-                                    </a></li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    <div class="reportChart screenOnly" dir="ltr"></div>
-                    {% if report_data.chart_settings %}
-                        {#                    #}
-                        {% if report_data.charts_engine == 'chartsjs' %}
-                            <canvas width="400" height="100"></canvas>
-                        {% elif report_data.charts_engine == 'highcharts' %}
-                            {#                        <div id="highchartContainer" style="width:100%; height:400px;"></div>#}
+                <div data-report-widget
+                     data-report-url="{{ request.path }}"
+                     data-extra-params=""
+                     data-form-selector="#reportForm"
+                        {% if not auto_load %}
+                     data-no-auto-load
                         {% endif %}
 
 
-                    {% endif %}
-                </div>
-                <div class="report-table">
-                    {% include 'slick_reporting/table.html' with table=report_data %}
+                     data-display-chart-selector="True"
+                >
+                    {#        {% block widget_content %}#}
+                    {#            {% if display_chart %}#}
+                    <div id="container" data-report-chart style="width:100%; height:400px;"></div>
+                    {#                <canvas data-report-chart height="100"></canvas>#}
+                    {#            {% endif %}#}
+                    {#            {% if display_table %}#}
+                    <div data-report-table>
+                    </div>
+                    {#            {% endif %}#}
+                    {#        {% endblock %}#}
+
                 </div>
             </div>
         </div>
@@ -73,7 +63,7 @@
     </div>
 
 {% endblock %}
-{% block extrajs %}
+{% block _extrajs %}
     {{ block.super }}
 
     <script>

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load slick_reporting_tags %}
+{% block page_title %} Dashboard {% endblock %}
+{% block meta_page_title %} Dashboard {% endblock %}
+
+{% block extrajs %}
+    {% include "slick_reporting/js_resources.html" %}
+    {#  make sure to have the js_resources added to the dashboard page  #}
+
+    <script>
+        function custom_js_callback(data, $elem) {
+            // data is the json response from the server
+            // $elem is the jquery object of the element `[data-report-widget]` that the report is attached to.
+
+            console.info(data);
+            console.info($elem);
+            $('#responsePre').text(JSON.stringify(data, null, 4));
+        }
+
+    </script>
+{% endblock %}
+{% block content %}
+    <div class="row row-deck row-cards">
+        <div class="col-lg-6">
+            {% get_widget_from_url url_name="product-sales" %}
+        </div>
+                <div class="col-lg-6">
+            {% get_widget_from_url url_name="total-product-sales" title="Widget custom title" %}
+        </div>
+
+        <div class="col-lg-6">
+            {% get_widget_from_url url_name="total-product-sales" chart_id=1 title="Custom default Chart" %}
+        </div>
+
+        <div class="col-lg-6">
+            {% get_widget_from_url url_name="total-product-sales" display_table=False title="No table, Chart Only" %}
+        </div>
+
+        <div class="col-lg-6">
+            {% get_widget_from_url url_name="total-product-sales" display_chart=False title="Table only, no chart" %}
+        </div>
+
+        <div class="col-lg-6">
+            {% get_widget_from_url url_name="total-product-sales" display_table=False display_chart_selector=False title="No Chart Selector, only the assigned one" %}
+        </div>
+
+        <div class="col-lg-6">
+            {% get_widget_from_url url_name="total-product-sales" success_callback="custom_js_callback" title="Custom Js Handler and template" template_name="widget_template_with_pre.html" %}
+        </div>
+
+
+    </div>
+
+{% endblock %}

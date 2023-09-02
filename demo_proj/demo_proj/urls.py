@@ -27,6 +27,7 @@ from demo_app import views
 urlpatterns = [
 
     path("", views.HomeView.as_view(), name="home"),
+    path("dashboard/", views.Dashboard.as_view(), name="dashboard"),
 
 
     # tutorial

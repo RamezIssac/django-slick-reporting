@@ -35,7 +35,7 @@ class ProductSales(ReportView):
 
 
 class TotalProductSales(ReportView):
-    report_title = _("Product Sales Quantity and Value ")
+    report_title = _("Product Sales Quantity and Value [no auto load]")
     report_model = SalesTransaction
     date_field = "date"
     group_by = "product"
@@ -44,6 +44,7 @@ class TotalProductSales(ReportView):
         SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
         SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
     ]
+    auto_load = False  # require the user to press the filter, useful if the report is resource demanding
 
     chart_settings = [
         Chart(

@@ -118,6 +118,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
     doc_type_field_name = "doc_type"
     doc_type_plus_list = None
     doc_type_minus_list = None
+    auto_load = True
 
     default_order_by = ""
 
@@ -127,6 +128,16 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
     def form_filter_func(fkeys_dict):
         # todo revise
         return fkeys_dict
+
+    @classmethod
+    def get_report_title(cls):
+        """
+        :return: The report name
+        """
+        name = cls.__name__
+        if cls.report_title:
+            name = cls.report_title
+        return name
 
     def order_results(self, data):
         """
@@ -158,18 +169,22 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
     def get(self, request, *args, **kwargs):
         form_class = self.get_form_class()
         self.form = self.get_form(form_class)
+        report_data = {}
         if self.form.is_valid():
-            report_data = self.get_report_results()
+            if self.request.GET or self.request.POST or request.headers.get("x-requested-with") == "XMLHttpRequest":
+                # only display results if it's requested,
+                # considered requested if it's ajax request, or a populated GET or POST.
+                report_data = self.get_report_results()
 
-            export_option = request.GET.get("_export", "")
-            if export_option:
-                try:
-                    return getattr(self, f"export_{export_option}")(report_data)
-                except AttributeError:
-                    pass
+                export_option = request.GET.get("_export", "")
+                if export_option:
+                    try:
+                        return getattr(self, f"export_{export_option}")(report_data)
+                    except AttributeError:
+                        pass
 
-            if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return self.ajax_render_to_response(report_data)
+                if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return self.ajax_render_to_response(report_data)
 
             return self.render_to_response(
                 self.get_context_data(report_data=report_data)
@@ -409,6 +424,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         context = super().get_context_data(**kwargs)
         context[self.report_title_context_key] = self.report_title
         context["crispy_helper"] = self.get_form_crispy_helper()
+        context["auto_load"] = self.auto_load
 
         if not (self.request.POST or self.request.GET):
             # initialize empty form with initials if the no data is in the get or the post

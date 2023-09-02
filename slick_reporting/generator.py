@@ -286,7 +286,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             self.date_field or (self.start_date_field_name and self.end_date_field_name)
         ) and (self.time_series_pattern or self.crosstab_field or self.group_by):
             raise ImproperlyConfigured(
-                f"date_field or [start_date_field_name and end_date_field_name] must be set for {self}"
+                f"date_field or [start_date_field_name and end_date_field_name] must be set for {container_class or self}"
             )
 
         self._prepared_results = {}

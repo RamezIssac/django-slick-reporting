@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.views.generic import TemplateView
 
 
@@ -6,3 +5,7 @@ from django.views.generic import TemplateView
 
 class HomeView(TemplateView):
     template_name = "home.html"
+
+
+class Dashboard(TemplateView):
+    template_name = "dashboard.html"
