@@ -1,3 +1,5 @@
+from warnings import warn
+
 from django.db.models import Sum, Q
 from django.template.defaultfilters import date as date_filter
 from django.utils.translation import gettext_lazy as _
@@ -551,4 +553,16 @@ field_registry.register(BalanceQTYReportField)
 
 
 class SlickReportField(ComputationField):
-    pass
+
+    @staticmethod
+    def warn():
+        warn(f'SlickReportField name is deprecated, please use ComputationField instead.', DeprecationWarning,
+             stacklevel=2)
+    @classmethod
+    def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
+        cls.warn()
+        return super().create(method, field, name, verbose_name, is_summable)
+
+    def __new__(cls, *args, **kwargs):
+        cls.warn()
+        return super().__new__(cls, *args, **kwargs)
