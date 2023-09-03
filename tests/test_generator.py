@@ -18,7 +18,6 @@ from .report_generators import (
     TimeSeriesCustomDates,
     CrosstabOnField,
     CrosstabOnTraversingField,
-    CrosstabTimeSeries,
     CrosstabCustomQueryset,
 )
 
