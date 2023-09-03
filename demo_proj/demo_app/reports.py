@@ -3,7 +3,7 @@ import datetime
 from django.db.models import Sum, Q
 from django.utils.translation import gettext_lazy as _
 
-from slick_reporting.fields import SlickReportField
+from slick_reporting.fields import ComputationField
 from slick_reporting.views import ListReportView
 from slick_reporting.views import ReportView, Chart
 from .forms import TotalSalesFilterForm
@@ -18,7 +18,7 @@ class ProductSales(ReportView):
 
     columns = [
         "name",
-        SlickReportField.create(
+        ComputationField.create(
             method=Sum, field="value", name="value__sum", verbose_name="Total sold $", is_summable=True,
         ),
     ]
@@ -41,8 +41,8 @@ class TotalProductSales(ReportView):
     group_by = "product"
     columns = [
         "name",
-        SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
-        SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
+        ComputationField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
+        ComputationField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
     ]
     auto_load = False  # require the user to press the filter, useful if the report is resource demanding
 
@@ -70,7 +70,7 @@ class TotalProductSalesByCountry(ReportView):
     group_by = "client__country"  # notice the double underscore
     columns = [
         "client__country",
-        SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold by country $"),
+        ComputationField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold by country $"),
     ]
 
     chart_settings = [
@@ -83,7 +83,7 @@ class TotalProductSalesByCountry(ReportView):
     ]
 
 
-class SumValueComputationField(SlickReportField):
+class SumValueComputationField(ComputationField):
     computation_method = Sum
     computation_field = "value"
     verbose_name = _("Sales Value")
@@ -184,8 +184,8 @@ class TotalProductSalesWithCustomForm(TotalProductSales):
     columns = [
         "name",
         "size",
-        SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
-        SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
+        ComputationField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
+        ComputationField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
     ]
 
 
@@ -197,7 +197,7 @@ class GroupByReport(ReportView):
 
     columns = [
         "name",
-        SlickReportField.create(
+        ComputationField.create(
             method=Sum, field="value", name="value__sum", verbose_name="Total sold $", is_summable=True,
         ),
     ]
@@ -232,7 +232,7 @@ class GroupByCustomQueryset(ReportView):
 
     columns = [
         "__index__",
-        SlickReportField.create(Sum, "value", verbose_name=_("Total Sold $"), name="value"),
+        ComputationField.create(Sum, "value", verbose_name=_("Total Sold $"), name="value"),
     ]
 
     chart_settings = [
@@ -269,7 +269,7 @@ class NoGroupByReport(ReportView):
     group_by = ""
 
     columns = [
-        SlickReportField.create(
+        ComputationField.create(
             method=Sum, field="value", name="value__sum", verbose_name="Total sold $", is_summable=True,
         ),
     ]
@@ -284,7 +284,7 @@ class TimeSeriesReport(ReportView):
 
     date_field = "date"
     time_series_columns = [
-        SlickReportField.create(Sum, "value", verbose_name=_("Sales For ")),
+        ComputationField.create(Sum, "value", verbose_name=_("Sales For ")),
     ]
     # These columns will be calculated for each period in the time series.
 
@@ -293,7 +293,7 @@ class TimeSeriesReport(ReportView):
         "__time_series__",
         # placeholder for the generated time series columns
 
-        SlickReportField.create(Sum, "value", verbose_name=_("Total Sales")),
+        ComputationField.create(Sum, "value", verbose_name=_("Total Sales")),
         # This is the same as the time_series_columns, but this one will be on the whole set
 
     ]
@@ -362,7 +362,7 @@ class TimeSeriesReportWithCustomGroupByQueryset(ReportView):
 
     date_field = "date"
     time_series_columns = [
-        SlickReportField.create(Sum, "value", verbose_name=_("Sales For ")),
+        ComputationField.create(Sum, "value", verbose_name=_("Sales For ")),
         # "__total__"
     ]
 
@@ -371,7 +371,7 @@ class TimeSeriesReportWithCustomGroupByQueryset(ReportView):
         "__time_series__",
         # placeholder for the generated time series columns
 
-        SlickReportField.create(Sum, "value", verbose_name=_("Total Sales")),
+        ComputationField.create(Sum, "value", verbose_name=_("Total Sales")),
         # This is the same as the time_series_columns, but this one will be on the whole set
 
     ]
@@ -396,9 +396,9 @@ class TimeSeriesReportWithCustomGroupByQueryset(ReportView):
     ]
 
 
-class SumOfFieldValue(SlickReportField):
+class SumOfFieldValue(ComputationField):
     # A custom computation Field identical to the one created like this
-    # Similar to `SlickReportField.create(Sum, "value", verbose_name=_("Total Sales"))`
+    # Similar to `ComputationField.create(Sum, "value", verbose_name=_("Total Sales"))`
 
     calculation_method = Sum
     calculation_field = "value"
@@ -417,7 +417,7 @@ class TimeSeriesReportWithCustomDatesAndCustomTitle(TimeSeriesReportWithCustomDa
     report_title = _("Time Series Report With Custom Dates and custom Title")
 
     time_series_columns = [
-        SumOfFieldValue,  # Use our newly created SlickReportField with the custom time series verbose name
+        SumOfFieldValue,  # Use our newly created ComputationField with the custom time series verbose name
     ]
 
     chart_settings = [
@@ -441,12 +441,12 @@ class TimeSeriesWithoutGroupBy(ReportView):
     time_series_pattern = "monthly"
     date_field = "date"
     time_series_columns = [
-        SlickReportField.create(Sum, "value", verbose_name=_("Sales For ")),
+        ComputationField.create(Sum, "value", verbose_name=_("Sales For ")),
     ]
 
     columns = [
         "__time_series__",
-        SlickReportField.create(Sum, "value", verbose_name=_("Total Sales")),
+        ComputationField.create(Sum, "value", verbose_name=_("Total Sales")),
     ]
 
     chart_settings = [
@@ -474,14 +474,14 @@ class CrosstabReport(ReportView):
         "__crosstab__",
         # You can customize where the crosstab columns are displayed in relation to the other columns
 
-        SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
+        ComputationField.create(Sum, "value", verbose_name=_("Total Value")),
         # This is the same as the calculation in the crosstab,
         # but this one will be on the whole set. IE total value.
     ]
 
     crosstab_field = "product"
     crosstab_columns = [
-        SlickReportField.create(Sum, "value", verbose_name=_("Value")),
+        ComputationField.create(Sum, "value", verbose_name=_("Value")),
     ]
 
 
@@ -511,7 +511,7 @@ class CrosstabWithIdsCustomFilter(CrosstabReport):
     # crosstab_compute_remainder = True
 
 
-class CustomCrossTabTotalField(SlickReportField):
+class CustomCrossTabTotalField(ComputationField):
     calculation_field = "value"
     calculation_method = Sum
     verbose_name = _("Sales for")

@@ -46,14 +46,14 @@ Below is the list of general options that is used across all types of reports.
 
             .. code-block:: python
 
-                    class MyTotalReportField(SlickReportField):
+                    class MyTotalReportField(ComputationField):
                         pass
 
 
                     class MyReport(ReportView):
                         columns = [
                             # a computation field created on the fly
-                            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value"),
+                            ComputationField.create(Sum, "value", verbose_name=_("Value"), name="value"),
 
                             # A computation Field class
                             MyTotalReportField,
@@ -95,7 +95,7 @@ Below is the list of general options that is used across all types of reports.
                         report_model = MySales
                         group_by = None
                         columns = [
-                            SlickReportField.create(Sum, "value", verbose_name=_("Value"), name="value")
+                            ComputationField.create(Sum, "value", verbose_name=_("Value"), name="value")
                         ]
 
             Above code will return the calculated sum of all values in the report_model / queryset

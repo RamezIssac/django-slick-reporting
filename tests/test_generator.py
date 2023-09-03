@@ -4,7 +4,7 @@ import pytz
 from django.db.models import Sum
 from django.test import TestCase
 
-from slick_reporting.fields import SlickReportField
+from slick_reporting.fields import ComputationField
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import get_foreign_keys
 from .models import OrderLine, ComplexSales
@@ -116,7 +116,7 @@ class CrosstabTests(BaseTestData, TestCase):
             time_series_pattern="monthly",
             crosstab_field="client",
             crosstab_columns=[
-                SlickReportField.create(
+                ComputationField.create(
                     Sum, "quantity", name="value__sum", verbose_name=_("Sales")
                 )
             ],
@@ -320,7 +320,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
             group_by="product__category",
             columns=[
                 "product__category",
-                SlickReportField.create(Sum, "value"),
+                ComputationField.create(Sum, "value"),
                 "__total__",
             ],
             # time_series_pattern='monthly',
@@ -342,7 +342,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
                 "name",
                 "contact_id",
                 "contact__address",
-                SlickReportField.create(Sum, "value"),
+                ComputationField.create(Sum, "value"),
                 "__total__",
             ],
             # time_series_pattern='monthly',
@@ -382,7 +382,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
             group_by_custom_querysets_column_verbose_name="Custom Title",
             columns=[
                 # "__index__", is added automatically
-                SlickReportField.create(Sum, "value"),
+                ComputationField.create(Sum, "value"),
                 "__total__",
             ],
             date_field="doc_date",
@@ -408,7 +408,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
             columns=[
                 "__index__",  # assert that no issue if added manually , issue 68
 
-                SlickReportField.create(Sum, "value"),
+                ComputationField.create(Sum, "value"),
                 "__total__",
             ],
             date_field="doc_date",
@@ -428,7 +428,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
                 "po_box",
                 "address",
                 "agent__name",
-                SlickReportField.create(Sum, "value"),
+                ComputationField.create(Sum, "value"),
                 "__total__",
             ],
             date_field="doc_date",
@@ -447,7 +447,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         report = ReportGenerator(
             report_model=SimpleSales,
             group_by="client__contact__agent",
-            columns=["name", SlickReportField.create(Sum, "value"), "__total__"],
+            columns=["name", ComputationField.create(Sum, "value"), "__total__"],
             date_field="doc_date",
         )
 

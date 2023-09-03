@@ -6,7 +6,7 @@ from .helpers import get_calculation_annotation
 from .registry import field_registry
 
 
-class SlickReportField(object):
+class ComputationField(object):
     """
     Computation field responsible for making the calculation unit
     """
@@ -65,7 +65,7 @@ class SlickReportField(object):
         """
         if not cls.name:
             raise ValueError(f"ReportField {cls} must have a name")
-        return super(SlickReportField, cls).__new__(cls)
+        return super(ComputationField, cls).__new__(cls)
 
     @classmethod
     def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
@@ -97,18 +97,18 @@ class SlickReportField(object):
         return report_klass
 
     def __init__(
-        self,
-        plus_side_q=None,
-        minus_side_q=None,
-        report_model=None,
-        queryset=None,
-        calculation_field=None,
-        calculation_method=None,
-        date_field="",
-        group_by=None,
-        group_by_custom_querysets=None,
+            self,
+            plus_side_q=None,
+            minus_side_q=None,
+            report_model=None,
+            queryset=None,
+            calculation_field=None,
+            calculation_method=None,
+            date_field="",
+            group_by=None,
+            group_by_custom_querysets=None,
     ):
-        super(SlickReportField, self).__init__()
+        super(ComputationField, self).__init__()
         self.date_field = date_field
         self.report_model = self.report_model or report_model
         self.queryset = self.queryset or queryset
@@ -119,7 +119,7 @@ class SlickReportField(object):
         )
 
         self.group_by_custom_querysets = (
-            self.group_by_custom_querysets or group_by_custom_querysets
+                self.group_by_custom_querysets or group_by_custom_querysets
         )
 
         self.calculation_field = (
@@ -251,9 +251,9 @@ class SlickReportField(object):
         )
 
     def _prepare_dependencies(
-        self,
-        q_filters=None,
-        extra_filters=None,
+            self,
+            q_filters=None,
+            extra_filters=None,
     ):
         values = {}
         for dep_class in self._require_classes:
@@ -417,7 +417,7 @@ class SlickReportField(object):
         return f"{cls.verbose_name} {date_period[0].strftime(dt_format)} - {date_period[1].strftime(dt_format)}"
 
 
-class FirstBalanceField(SlickReportField):
+class FirstBalanceField(ComputationField):
     name = "__fb__"
     verbose_name = _("opening balance")
 
@@ -433,7 +433,7 @@ class FirstBalanceField(SlickReportField):
 field_registry.register(FirstBalanceField)
 
 
-class TotalReportField(SlickReportField):
+class TotalReportField(ComputationField):
     name = "__total__"
     verbose_name = _("Sum of value")
     requires = ["__debit__", "__credit__"]
@@ -442,7 +442,7 @@ class TotalReportField(SlickReportField):
 field_registry.register(TotalReportField)
 
 
-class BalanceReportField(SlickReportField):
+class BalanceReportField(ComputationField):
     name = "__balance__"
     verbose_name = _("Closing Total")
     requires = ["__fb__"]
@@ -458,7 +458,7 @@ class BalanceReportField(SlickReportField):
 field_registry.register(BalanceReportField)
 
 
-class PercentageToBalance(SlickReportField):
+class PercentageToBalance(ComputationField):
     requires = [BalanceReportField]
     name = "PercentageToBalance"
     verbose_name = _("%")
@@ -471,7 +471,7 @@ class PercentageToBalance(SlickReportField):
         return (obj_balance / total) * 100
 
 
-class CreditReportField(SlickReportField):
+class CreditReportField(ComputationField):
     name = "__credit__"
     verbose_name = _("Credit")
 
@@ -483,7 +483,7 @@ field_registry.register(CreditReportField)
 
 
 @field_registry.register
-class DebitReportField(SlickReportField):
+class DebitReportField(ComputationField):
     name = "__debit__"
     verbose_name = _("Debit")
 
@@ -492,7 +492,7 @@ class DebitReportField(SlickReportField):
 
 
 @field_registry.register
-class CreditQuantityReportField(SlickReportField):
+class CreditQuantityReportField(ComputationField):
     name = "__credit_quantity__"
     verbose_name = _("Credit QTY")
     calculation_field = "quantity"
@@ -503,7 +503,7 @@ class CreditQuantityReportField(SlickReportField):
 
 
 @field_registry.register
-class DebitQuantityReportField(SlickReportField):
+class DebitQuantityReportField(ComputationField):
     name = "__debit_quantity__"
     calculation_field = "quantity"
     verbose_name = _("Debit QTY")
@@ -513,7 +513,7 @@ class DebitQuantityReportField(SlickReportField):
         return debit
 
 
-class TotalQTYReportField(SlickReportField):
+class TotalQTYReportField(ComputationField):
     name = "__total_quantity__"
     verbose_name = _("Total QTY")
     calculation_field = "quantity"
@@ -533,7 +533,7 @@ class FirstBalanceQTYReportField(FirstBalanceField):
 field_registry.register(FirstBalanceQTYReportField)
 
 
-class BalanceQTYReportField(SlickReportField):
+class BalanceQTYReportField(ComputationField):
     name = "__balance_quantity__"
     verbose_name = _("Closing QTY")
     calculation_field = "quantity"
@@ -548,3 +548,7 @@ class BalanceQTYReportField(SlickReportField):
 
 
 field_registry.register(BalanceQTYReportField)
+
+
+class SlickReportField(ComputationField):
+    pass

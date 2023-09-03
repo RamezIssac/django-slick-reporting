@@ -37,7 +37,7 @@ You can start by using ``ReportView`` which is a subclass of ``django.views.gene
 
     # in views.py
     from slick_reporting.views import ReportView, Chart
-    from slick_reporting.fields import SlickReportField
+    from slick_reporting.fields import ComputationField
     from .models import MySalesItems
     from django.db.models import Sum
 
@@ -50,7 +50,7 @@ You can start by using ``ReportView`` which is a subclass of ``django.views.gene
 
         columns = [
             "title",
-            SlickReportField.create(
+            ComputationField.create(
                 method=Sum, field="value", name="value__sum", verbose_name="Total sold $"
             ),
         ]

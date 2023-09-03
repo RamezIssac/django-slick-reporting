@@ -7,7 +7,7 @@ from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
 from django.db.models import Q, ForeignKey
 
 from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
-from .fields import SlickReportField
+from .fields import ComputationField
 from .helpers import get_field_from_query_text
 from .registry import field_registry
 
@@ -430,7 +430,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         return filters, {}
 
     def _prepare_report_dependencies(self):
-        from .fields import SlickReportField
+        from .fields import ComputationField
 
         all_columns = (
             ("normal", self._parsed_columns),
@@ -441,7 +441,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             for col_data in window_cols:
                 klass = col_data["ref"]
 
-                if isclass(klass) and issubclass(klass, SlickReportField):
+                if isclass(klass) and issubclass(klass, ComputationField):
                     dependencies_names = klass.get_full_dependency_list()
 
                     # check if any of these dependencies is on the report, if found we call the child to
@@ -470,7 +470,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 name = col_data["name"]
 
                 # if column has a dependency then skip it
-                if not (isclass(klass) and issubclass(klass, SlickReportField)):
+                if not (isclass(klass) and issubclass(klass, ComputationField)):
                     continue
                 if self._report_fields_dependencies[window].get(name, False):
                     continue
@@ -658,7 +658,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     is_container_class_attribute = True
                     attribute_field = getattr(container_class, col, None)
 
-            elif issubclass(col, SlickReportField):
+            elif issubclass(col, ComputationField):
                 magic_field_class = col
 
             try:
@@ -803,7 +803,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
                 if type(col) is str:
                     magic_field_class = field_registry.get_field_by_name(col)
-                elif issubclass(col, SlickReportField):
+                elif issubclass(col, ComputationField):
                     magic_field_class = col
 
                 _values.append(
@@ -924,7 +924,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 magic_field_class = None
                 if type(col) is str:
                     magic_field_class = field_registry.get_field_by_name(col)
-                elif issubclass(col, SlickReportField):
+                elif issubclass(col, ComputationField):
                     magic_field_class = col
 
                 crosstab_column = {

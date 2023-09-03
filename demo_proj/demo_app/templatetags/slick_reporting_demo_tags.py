@@ -1,12 +1,10 @@
 from django import template
-from django.template.defaultfilters import capfirst
-from django.template.loader import get_template, render_to_string
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.module_loading import import_string
 from django.utils.safestring import mark_safe
 
 register = template.Library()
+
 
 def get_section(section):
     from ..helpers import TUTORIAL, GROUP_BY, TIME_SERIES, CROSSTAB
@@ -21,9 +19,10 @@ def get_section(section):
     elif section == "crosstab":
         to_use = CROSSTAB
     return to_use
+
+
 @register.simple_tag(takes_context=True)
 def get_menu(context, section):
-    from ..helpers import TUTORIAL, GROUP_BY, TIME_SERIES, CROSSTAB
     request = context['request']
     to_use = get_section(section)
     menu = []
@@ -37,6 +36,7 @@ def get_menu(context, section):
 
     return mark_safe("".join(menu))
 
+
 @register.simple_tag(takes_context=True)
 def should_show(context, section):
     request = context["request"]
@@ -45,5 +45,3 @@ def should_show(context, section):
         if f"/{link}/" in request.path:
             return "show"
     return ""
-
-

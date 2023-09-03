@@ -54,7 +54,7 @@ Let's start by a "Group by" report. This will generate a report how much quantit
     # in views.py
     from django.db.models import Sum
     from slick_reporting.views import ReportView, Chart
-    from slick_reporting.fields import SlickReportField
+    from slick_reporting.fields import ComputationField
     from .models import MySalesItems
 
 
@@ -64,8 +64,8 @@ Let's start by a "Group by" report. This will generate a report how much quantit
         group_by = "product"
         columns = [
             "name",
-            SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
-            SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
+            ComputationField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
+            ComputationField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
         ]
 
         chart_settings = [
@@ -107,7 +107,7 @@ Example: How much was sold in value for each product monthly within a date perio
 
     # in views.py
     from slick_reporting.views import ReportView
-    from slick_reporting.fields import SlickReportField
+    from slick_reporting.fields import ComputationField
     from .models import SalesTransaction
 
 
@@ -120,7 +120,7 @@ Example: How much was sold in value for each product monthly within a date perio
         time_series_pattern = "monthly"
         # or "yearly" , "weekly" , "daily" , others and custom patterns
         time_series_columns = [
-            SlickReportField.create(
+            ComputationField.create(
                 Sum, "value", verbose_name=_("Sales Value"), name="value"
             ) # what will be calculated for each month
         ]
@@ -155,7 +155,7 @@ Crosstab reports show data in rows and columns with information summarized at th
 
         # in views.py
         from slick_reporting.views import ReportView
-        from slick_reporting.fields import SlickReportField
+        from slick_reporting.fields import ComputationField
         from .models import MySalesItems
 
 
@@ -164,7 +164,7 @@ Crosstab reports show data in rows and columns with information summarized at th
             crosstab_field = "client"
             crosstab_ids = [1, 2, 3]
             crosstab_columns = [
-                SlickReportField.create(Sum, "value", verbose_name=_("Value for")),
+                ComputationField.create(Sum, "value", verbose_name=_("Value for")),
             ]
             crosstab_compute_remainder = True
 
@@ -173,7 +173,7 @@ Crosstab reports show data in rows and columns with information summarized at th
                 # You can customize where the crosstab columns are displayed in relation to the other columns
                 "__crosstab__",
                 # This is the same as the Same as the calculation in the crosstab, but this one will be on the whole set. IE total value
-                SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
+                ComputationField.create(Sum, "value", verbose_name=_("Total Value")),
             ]
 
 

@@ -22,7 +22,7 @@ Example:
 
     columns = [
         "name",
-        SlickReportField.create(
+        ComputationField.create(
             method=Sum, field="value", name="value__sum", verbose_name="Total sold $", is_summable=True,
         ),
     ]
@@ -89,7 +89,7 @@ Example:
 
             columns = [
                 "__index__",
-                SlickReportField.create(Sum, "value", verbose_name=_("Total Sold $"), name="value"),
+                ComputationField.create(Sum, "value", verbose_name=_("Total Sold $"), name="value"),
             ]
 
             chart_settings = [
@@ -143,7 +143,7 @@ Example:
         group_by = ""
 
         columns = [
-            SlickReportField.create(
+            ComputationField.create(
                 method=Sum, field="value", name="value__sum", verbose_name="Total sold $", is_summable=True,
             ),
         ]

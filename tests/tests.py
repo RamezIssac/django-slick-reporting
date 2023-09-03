@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 
-from slick_reporting.fields import SlickReportField, BalanceReportField
+from slick_reporting.fields import ComputationField, BalanceReportField
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.views import ReportView
 from slick_reporting.registry import field_registry
@@ -478,7 +478,7 @@ class ReportTest(BaseTestData, TestCase):
 
     def test_many_to_many_group_by(self):
         field_registry.register(
-            SlickReportField.create(Count, "tax__name", "tax__count")
+            ComputationField.create(Count, "tax__name", "tax__count")
         )
 
         report_generator = ReportGenerator(
@@ -500,9 +500,9 @@ class ReportTest(BaseTestData, TestCase):
 
 class TestView(BaseTestData, TestCase):
     def test_view(self):
-        response = self.client.get(reverse("report1"))
+        response = self.client.get(reverse("report1"), HTTP_X_REQUESTED_WITH="XMLHttpRequest",)
         self.assertEqual(response.status_code, 200)
-        view_report_data = response.context["report_data"]["data"]
+        view_report_data = response.json()["data"]
         report_generator = ReportGenerator(
             report_model=SimpleSales,
             date_field="doc_date",
@@ -515,9 +515,9 @@ class TestView(BaseTestData, TestCase):
         self.assertEqual(view_report_data, report_generator.get_report_data())
 
     def test_qs_only(self):
-        response = self.client.get(reverse("queryset-only"))
+        response = self.client.get(reverse("queryset-only"), HTTP_X_REQUESTED_WITH="XMLHttpRequest",)
         self.assertEqual(response.status_code, 200)
-        view_report_data = response.context["report_data"]["data"]
+        view_report_data = response.json()["data"]
         report_generator = ReportGenerator(
             report_model=SimpleSales,
             date_field="doc_date",
@@ -704,7 +704,7 @@ class TestReportFieldRegistry(TestCase):
 
     def test_registering_new(self):
         def register():
-            class ReportFieldWDuplicatedName(SlickReportField):
+            class ReportFieldWDuplicatedName(ComputationField):
                 name = "__total_field__"
                 calculation_field = "field"
 
@@ -715,7 +715,7 @@ class TestReportFieldRegistry(TestCase):
 
     def test_already_registered(self):
         def register():
-            class ReportFieldWDuplicatedName(SlickReportField):
+            class ReportFieldWDuplicatedName(ComputationField):
                 name = "__total__"
 
             field_registry.register(ReportFieldWDuplicatedName)
@@ -740,13 +740,13 @@ class TestReportFieldRegistry(TestCase):
     def test_creating_a_report_field_on_the_fly(self):
         from django.db.models import Sum
 
-        name = SlickReportField.create(Sum, "value", "__sum_of_value__")
+        name = ComputationField.create(Sum, "value", "__sum_of_value__")
         self.assertNotIn(name, field_registry.get_all_report_fields_names())
 
     def test_creating_a_report_field_on_the_fly_wo_name(self):
         from django.db.models import Sum
 
-        name = SlickReportField.create(Sum, "value")
+        name = ComputationField.create(Sum, "value")
         self.assertNotIn(name, field_registry.get_all_report_fields_names())
 
 
@@ -766,7 +766,7 @@ class TestGroupByDate(TestCase):
         )
 
     def test_joined_per_day(self):
-        field_registry.register(SlickReportField.create(Count, "id", "count__id"))
+        field_registry.register(ComputationField.create(Count, "id", "count__id"))
         report_generator = ReportGenerator(
             report_model=UserJoined,
             date_field="date_joined",

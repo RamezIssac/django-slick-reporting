@@ -122,7 +122,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     default_order_by = ""
 
-    template_name = "slick_reporting/simple_report.html"
+    template_name = "slick_reporting/report.html"
 
     @staticmethod
     def form_filter_func(fkeys_dict):
