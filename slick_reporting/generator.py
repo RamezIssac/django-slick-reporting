@@ -217,13 +217,9 @@ class ReportGenerator(ReportGeneratorAPI, object):
             self.queryset = main_queryset
 
         if not self.report_model and self.queryset is None:
-            raise ImproperlyConfigured(
-                "report_model or queryset must be set on a class level or via init"
-            )
+            raise ImproperlyConfigured("report_model or queryset must be set on a class level or via init")
 
-        main_queryset = (
-            self.report_model.objects if self.queryset is None else self.queryset
-        )
+        main_queryset = self.report_model.objects if self.queryset is None else self.queryset
 
         self.start_date = start_date or datetime.datetime.combine(
             SLICK_REPORTING_DEFAULT_START_DATE.date(),
@@ -236,12 +232,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
         )
         self.date_field = self.date_field or date_field
 
-        self.start_date_field_name = (
-            self.start_date_field_name or start_date_field_name or self.date_field
-        )
-        self.end_date_field_name = (
-            self.end_date_field_name or end_date_field_name or self.date_field
-        )
+        self.start_date_field_name = self.start_date_field_name or start_date_field_name or self.date_field
+        self.end_date_field_name = self.end_date_field_name or end_date_field_name or self.date_field
 
         self.q_filters = q_filters or []
         self.kwargs_filters = kwargs_filters or {}
@@ -249,42 +241,34 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         self.crosstab_columns = crosstab_columns or self.crosstab_columns or []
         self.crosstab_ids = self.crosstab_ids or crosstab_ids or []
-        self.crosstab_ids_custom_filters = (
-            self.crosstab_ids_custom_filters or crosstab_ids_custom_filters or []
-        )
+        self.crosstab_ids_custom_filters = self.crosstab_ids_custom_filters or crosstab_ids_custom_filters or []
 
         self.crosstab_compute_remainder = (
-            self.crosstab_compute_remainder
-            if crosstab_compute_remainder is None
-            else crosstab_compute_remainder
+            self.crosstab_compute_remainder if crosstab_compute_remainder is None else crosstab_compute_remainder
         )
 
         self.format_row = format_row_func or self._default_format_row
 
-        main_queryset = (
-            self.report_model.objects if main_queryset is None else main_queryset
-        )
+        main_queryset = self.report_model.objects if main_queryset is None else main_queryset
         # todo revise & move somewhere nicer, List Report need to override the resetting of order
         main_queryset = self._remove_order(main_queryset)
 
         self.columns = columns or self.columns or []
         self.group_by = group_by or self.group_by
 
-        self.group_by_custom_querysets = (
-            group_by_custom_querysets or self.group_by_custom_querysets or []
-        )
+        self.group_by_custom_querysets = group_by_custom_querysets or self.group_by_custom_querysets or []
 
-        self.group_by_custom_querysets_column_verbose_name = group_by_custom_querysets_column_verbose_name or self.group_by_custom_querysets_column_verbose_name or ""
+        self.group_by_custom_querysets_column_verbose_name = (
+            group_by_custom_querysets_column_verbose_name or self.group_by_custom_querysets_column_verbose_name or ""
+        )
         self.time_series_pattern = self.time_series_pattern or time_series_pattern
         self.time_series_columns = self.time_series_columns or time_series_columns
-        self.time_series_custom_dates = (
-            self.time_series_custom_dates or time_series_custom_dates
-        )
+        self.time_series_custom_dates = self.time_series_custom_dates or time_series_custom_dates
         self.container_class = container_class
 
-        if not (
-            self.date_field or (self.start_date_field_name and self.end_date_field_name)
-        ) and (self.time_series_pattern or self.crosstab_field or self.group_by):
+        if not (self.date_field or (self.start_date_field_name and self.end_date_field_name)) and (
+            self.time_series_pattern or self.crosstab_field or self.group_by
+        ):
             raise ImproperlyConfigured(
                 f"date_field or [start_date_field_name and end_date_field_name] must be set for {container_class or self}"
             )
@@ -305,9 +289,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         if self.group_by:
             try:
-                self.group_by_field = get_field_from_query_text(
-                    self.group_by, self.report_model
-                )
+                self.group_by_field = get_field_from_query_text(self.group_by, self.report_model)
 
             except (IndexError, AttributeError):
                 raise ImproperlyConfigured(
@@ -323,12 +305,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         # doc_types = form.get_doc_type_plus_minus_lists()
         doc_types = [], []
-        self.doc_type_plus_list = (
-            list(doc_type_plus_list) if doc_type_plus_list else doc_types[0]
-        )
-        self.doc_type_minus_list = (
-            list(doc_type_minus_list) if doc_type_minus_list else doc_types[1]
-        )
+        self.doc_type_plus_list = list(doc_type_plus_list) if doc_type_plus_list else doc_types[0]
+        self.doc_type_minus_list = list(doc_type_minus_list) if doc_type_minus_list else doc_types[1]
 
         self.swap_sign = self.swap_sign or swap_sign
         self.limit_records = self.limit_records or limit_records
@@ -339,32 +317,21 @@ class ReportGenerator(ReportGeneratorAPI, object):
         # Preparing actions
         self._parse()
         if self.group_by_custom_querysets:
-            self.main_queryset = [
-                {"__index__": i} for i, v in enumerate(self.group_by_custom_querysets)
-            ]
+            self.main_queryset = [{"__index__": i} for i, v in enumerate(self.group_by_custom_querysets)]
         elif self.group_by:
             self.main_queryset = self._apply_queryset_options(main_queryset)
 
             if type(self.group_by_field) is ForeignKey:
-                ids = self.main_queryset.values_list(
-                    self.group_by_field_attname
-                ).distinct()
+                ids = self.main_queryset.values_list(self.group_by_field_attname).distinct()
                 # uses the same logic that is in Django's query.py when fields is empty in values() call
-                concrete_fields = [
-                    f.name
-                    for f in self.group_by_field.related_model._meta.concrete_fields
-                ]
+                concrete_fields = [f.name for f in self.group_by_field.related_model._meta.concrete_fields]
                 # add database columns that are not already in concrete_fields
-                final_fields = concrete_fields + list(
-                    set(self.get_database_columns()) - set(concrete_fields)
-                )
+                final_fields = concrete_fields + list(set(self.get_database_columns()) - set(concrete_fields))
                 self.main_queryset = self.group_by_field.related_model.objects.filter(
                     **{f"{self.group_by_field.target_field.name}__in": ids}
                 ).values(*final_fields)
             else:
-                self.main_queryset = self.main_queryset.distinct().values(
-                    self.group_by_field_attname
-                )
+                self.main_queryset = self.main_queryset.distinct().values(self.group_by_field_attname)
         else:
             # if self.time_series_pattern:
             self.main_queryset = [{}]
@@ -419,9 +386,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         if "__" in col_data["crosstab_field"]:
             column_name = col_data["crosstab_field"]
         else:
-            field = get_field_from_query_text(
-                col_data["crosstab_field"], self.report_model
-            )
+            field = get_field_from_query_text(col_data["crosstab_field"], self.report_model)
             column_name = field.column
         if col_data["is_remainder"] and not queryset_filters:
             filters = [~Q(**{f"{column_name}__in": self.crosstab_ids})]
@@ -453,8 +418,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                         and (
                             (
                                 window == "time_series"
-                                and x.get("start_date", "")
-                                == col_data.get("start_date", "")
+                                and x.get("start_date", "") == col_data.get("start_date", "")
                                 and x.get("end_date") == col_data.get("end_date")
                             )
                             or window == "crosstab"
@@ -462,9 +426,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                         )
                     ]
                     for field in fields_on_report:
-                        self._report_fields_dependencies[window][
-                            field["name"]
-                        ] = col_data["name"]
+                        self._report_fields_dependencies[window][field["name"]] = col_data["name"]
             for col_data in window_cols:
                 klass = col_data["ref"]
                 name = col_data["name"]
@@ -487,18 +449,11 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
                 q_filters = None
                 date_filter = {
-                    f"{self.start_date_field_name}__gte": col_data.get(
-                        "start_date", self.start_date
-                    ),
-                    f"{self.end_date_field_name}__lt": col_data.get(
-                        "end_date", self.end_date
-                    ),
+                    f"{self.start_date_field_name}__gte": col_data.get("start_date", self.start_date),
+                    f"{self.end_date_field_name}__lt": col_data.get("end_date", self.end_date),
                 }
                 date_filter.update(self.kwargs_filters)
-                if (
-                    window == "crosstab"
-                    or col_data.get("computation_flag", "") == "crosstab"
-                ):
+                if window == "crosstab" or col_data.get("computation_flag", "") == "crosstab":
                     q_filters, kw_filters = col_data["queryset_filters"]
                     date_filter.update(kw_filters)
 
@@ -529,9 +484,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         elif self.group_by:
             if self.group_by_field.related_model and "__" not in self.group_by:
-                primary_key_name = self.get_primary_key_name(
-                    self.group_by_field.related_model
-                )
+                primary_key_name = self.get_primary_key_name(self.group_by_field.related_model)
             else:
                 primary_key_name = self.group_by_field_attname
 
@@ -548,16 +501,13 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     data[name] = col_data["ref"](obj, data)
 
                 elif (
-                    col_data.get("source", "") == "magic_field"
-                    and (self.group_by or self.group_by_custom_querysets)
+                    col_data.get("source", "") == "magic_field" and (self.group_by or self.group_by_custom_querysets)
                 ) or (not (self.group_by or self.group_by_custom_querysets)):
                     source = self._report_fields_dependencies[window].get(name, False)
 
                     if source:
                         computation_class = self.report_fields_classes[source]
-                        value = computation_class.get_dependency_value(
-                            group_by_val, col_data["ref"].name
-                        )
+                        value = computation_class.get_dependency_value(group_by_val, col_data["ref"].name)
                     else:
                         try:
                             computation_class = self.report_fields_classes[name]
@@ -573,11 +523,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         return data
 
     def get_report_data(self):
-        main_queryset = (
-            self.main_queryset[: self.limit_records]
-            if self.limit_records
-            else self.main_queryset
-        )
+        main_queryset = self.main_queryset[: self.limit_records] if self.limit_records else self.main_queryset
 
         all_columns = (
             ("normal", self._parsed_columns),
@@ -624,11 +570,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         if group_by:
             try:
-                group_by_field = [
-                    x
-                    for x in report_model._meta.get_fields()
-                    if x.name == group_by.split("__")[0]
-                ][0]
+                group_by_field = [x for x in report_model._meta.get_fields() if x.name == group_by.split("__")[0]][0]
             except IndexError:
                 raise ImproperlyConfigured(
                     f"ReportView {cls}: Could not find the group_by field: `{group_by}` in report_model: `{report_model}`"
@@ -652,7 +594,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             attribute_field = None
             is_container_class_attribute = False
 
-            if type(col) is str:
+            if isinstance(col, str):
                 attribute_field = getattr(cls, col, None)
                 if attribute_field is None:
                     is_container_class_attribute = True
@@ -662,9 +604,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 magic_field_class = col
 
             try:
-                magic_field_class = (
-                    magic_field_class or field_registry.get_field_by_name(col)
-                )
+                magic_field_class = magic_field_class or field_registry.get_field_by_name(col)
             except KeyError:
                 magic_field_class = None
 
@@ -672,9 +612,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 col_data = {
                     "name": col,
                     "verbose_name": getattr(attribute_field, "verbose_name", col),
-                    "source": "container_class_attribute_field"
-                    if is_container_class_attribute
-                    else "attribute_field",
+                    "source": "container_class_attribute_field" if is_container_class_attribute else "attribute_field",
                     "ref": attribute_field,
                     "type": "text",
                 }
@@ -703,16 +641,10 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     parsed_columns.append(col_data)
                     continue
 
-                model_to_use = (
-                    group_by_model
-                    if group_by and "__" not in group_by
-                    else report_model
-                )
+                model_to_use = group_by_model if group_by and "__" not in group_by else report_model
                 group_by_str = str(group_by)
                 if "__" in group_by_str:
-                    related_model = get_field_from_query_text(
-                        group_by, model_to_use
-                    ).related_model
+                    related_model = get_field_from_query_text(group_by, model_to_use).related_model
                     model_to_use = related_model if related_model else model_to_use
 
                 try:
@@ -756,11 +688,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         self._time_series_parsed_columns = self.get_time_series_parsed_columns()
 
     def get_database_columns(self):
-        return [
-            col["name"]
-            for col in self.parsed_columns
-            if "source" in col and col["source"] == "database"
-        ]
+        return [col["name"] for col in self.parsed_columns if "source" in col and col["source"] == "database"]
 
     # def get_method_columns(self):
     #     return [col['name'] for col in self.parsed_columns if col['type'] == 'method']
@@ -801,20 +729,16 @@ class ReportGenerator(ReportGeneratorAPI, object):
             for col in cols:
                 magic_field_class = None
 
-                if type(col) is str:
+                if isinstance(col, str):
                     magic_field_class = field_registry.get_field_by_name(col)
                 elif issubclass(col, ComputationField):
                     magic_field_class = col
 
                 _values.append(
                     {
-                        "name": magic_field_class.name
-                        + "TS"
-                        + dt[1].strftime("%Y%m%d"),
+                        "name": magic_field_class.name + "TS" + dt[1].strftime("%Y%m%d"),
                         "original_name": magic_field_class.name,
-                        "verbose_name": self.get_time_series_field_verbose_name(
-                            magic_field_class, dt, index, series
-                        ),
+                        "verbose_name": self.get_time_series_field_verbose_name(magic_field_class, dt, index, series),
                         "ref": magic_field_class,
                         "start_date": dt[0],
                         "end_date": dt[1],
@@ -827,18 +751,14 @@ class ReportGenerator(ReportGeneratorAPI, object):
             if self._crosstab_parsed_columns:
                 for parsed_col in self._crosstab_parsed_columns:
                     parsed_col = parsed_col.copy()
-                    parsed_col["name"] = (
-                        parsed_col["name"] + "TS" + dt[1].strftime("%Y%m%d")
-                    )
+                    parsed_col["name"] = parsed_col["name"] + "TS" + dt[1].strftime("%Y%m%d")
                     parsed_col["start_date"] = dt[0]
                     parsed_col["end_date"] = dt[1]
                     _values.append(parsed_col)
 
         return _values
 
-    def get_time_series_field_verbose_name(
-        self, computation_class, date_period, index, series, pattern=None
-    ):
+    def get_time_series_field_verbose_name(self, computation_class, date_period, index, series, pattern=None):
         """
         Sent the column data to construct a verbose name.
         Default implementation is delegated to the ReportField.get_time_series_field_verbose_name
@@ -849,9 +769,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         :return: a verbose string
         """
         pattern = pattern or self.time_series_pattern
-        return computation_class.get_time_series_field_verbose_name(
-            date_period, index, series, pattern
-        )
+        return computation_class.get_time_series_field_verbose_name(date_period, index, series, pattern)
 
     def get_custom_time_series_dates(self):
         """
@@ -886,9 +804,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             elif series == "custom":
                 return self.get_custom_time_series_dates()
             else:
-                raise NotImplementedError(
-                    f'"{series}" is not implemented for time_series_pattern'
-                )
+                raise NotImplementedError(f'"{series}" is not implemented for time_series_pattern')
 
             done = False
 
@@ -922,7 +838,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
             for col in report_columns:
                 magic_field_class = None
-                if type(col) is str:
+                if isinstance(col, str):
                     magic_field_class = field_registry.get_field_by_name(col)
                 elif issubclass(col, ComputationField):
                     magic_field_class = col
@@ -936,16 +852,12 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     "ref": magic_field_class,
                     "id": crosstab_id,
                     "crosstab_field": self.crosstab_field,
-                    "is_remainder": counter == ids_length
-                    if self.crosstab_compute_remainder
-                    else False,
+                    "is_remainder": counter == ids_length if self.crosstab_compute_remainder else False,
                     "source": "magic_field" if magic_field_class else "",
                     "is_summable": magic_field_class.is_summable,
                     "computation_flag": "crosstab",  # a flag, todo find a better way probably
                 }
-                crosstab_column["queryset_filters"] = self._construct_crosstab_filter(
-                    crosstab_column, queryset_filters
-                )
+                crosstab_column["queryset_filters"] = self._construct_crosstab_filter(crosstab_column, queryset_filters)
 
                 output_cols.append(crosstab_column)
 
@@ -971,14 +883,10 @@ class ReportGenerator(ReportGeneratorAPI, object):
         metadata = {
             "time_series_pattern": self.time_series_pattern,
             "time_series_column_names": [x["name"] for x in time_series_columns],
-            "time_series_column_verbose_names": [
-                x["verbose_name"] for x in time_series_columns
-            ],
+            "time_series_column_verbose_names": [x["verbose_name"] for x in time_series_columns],
             "crosstab_model": self.crosstab_field or "",
             "crosstab_column_names": [x["name"] for x in crosstab_columns],
-            "crosstab_column_verbose_names": [
-                x["verbose_name"] for x in crosstab_columns
-            ],
+            "crosstab_column_verbose_names": [x["verbose_name"] for x in crosstab_columns],
         }
         return metadata
 
@@ -1004,18 +912,14 @@ class ReportGenerator(ReportGeneratorAPI, object):
             )
         return data
 
-    def get_full_response(
-        self, data=None, report_slug=None, chart_settings=None, default_chart_title=None
-    ):
+    def get_full_response(self, data=None, report_slug=None, chart_settings=None, default_chart_title=None):
         data = data or self.get_report_data()
         data = {
             "report_slug": report_slug or self.__class__.__name__,
             "data": data,
             "columns": self.get_columns_data(),
             "metadata": self.get_metadata(),
-            "chart_settings": self.get_chart_settings(
-                chart_settings, default_chart_title=default_chart_title
-            ),
+            "chart_settings": self.get_chart_settings(chart_settings, default_chart_title=default_chart_title),
         }
         return data
 
@@ -1032,17 +936,12 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
             chart["id"] = chart.get("id", f"{i}")
             chart_type = chart.get("type", "line")
-            if (
-                chart_type == "column"
-                and SLICK_REPORTING_DEFAULT_CHARTS_ENGINE == "chartsjs"
-            ):
+            if chart_type == "column" and SLICK_REPORTING_DEFAULT_CHARTS_ENGINE == "chartsjs":
                 chart["type"] = "bar"
 
             if not chart.get("title", False):
                 chart["title"] = report_title
-            chart["engine_name"] = chart.get(
-                "engine_name", SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
-            )
+            chart["engine_name"] = chart.get("engine_name", SLICK_REPORTING_DEFAULT_CHARTS_ENGINE)
             output.append(chart)
         return output
 
@@ -1081,9 +980,7 @@ class ListViewReportGenerator(ReportGenerator):
         group_by_val = None
         if self.group_by:
             if self.group_by_field.related_model and "__" not in self.group_by:
-                primary_key_name = self.get_primary_key_name(
-                    self.group_by_field.related_model
-                )
+                primary_key_name = self.get_primary_key_name(self.group_by_field.related_model)
             else:
                 primary_key_name = self.group_by_field_attname
 
@@ -1100,15 +997,13 @@ class ListViewReportGenerator(ReportGenerator):
                 elif col_data.get("source", "") == "container_class_attribute_field":
                     data[name] = col_data["ref"](obj)
 
-                elif (
-                    col_data.get("source", "") == "magic_field" and self.group_by
-                ) or (self.time_series_pattern and not self.group_by):
+                elif (col_data.get("source", "") == "magic_field" and self.group_by) or (
+                    self.time_series_pattern and not self.group_by
+                ):
                     source = self._report_fields_dependencies[window].get(name, False)
                     if source:
                         computation_class = self.report_fields_classes[source]
-                        value = computation_class.get_dependency_value(
-                            group_by_val, col_data["ref"].name
-                        )
+                        value = computation_class.get_dependency_value(group_by_val, col_data["ref"].name)
                     else:
                         try:
                             computation_class = self.report_fields_classes[name]

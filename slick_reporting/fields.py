@@ -133,7 +133,7 @@ class ComputationField(object):
     @classmethod
     def _get_required_classes(cls):
         requires = cls.requires or []
-        return [field_registry.get_field_by_name(x) if type(x) is str else x for x in requires]
+        return [field_registry.get_field_by_name(x) if isinstance(x, str) else x for x in requires]
 
     def apply_q_plus_filter(self, qs):
         return qs.filter(*self.plus_side_q)
