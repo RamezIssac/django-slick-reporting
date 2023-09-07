@@ -10,7 +10,8 @@ All notable changes to this project will be documented in this file.
 - Added auto_load option to ReportView
 - Fix issue with group_by_custom_queryset with time series
 - Fix issue with No group by report 
-
+- Fix issue with traversing fields not showing up on ListViewReport
+- Fix issue with date filter not being respected in ListViewReport
 
 ## [1.0.2] - 2023-08-31
 - Add a demo project for exploration and also containing all documentation code for proofing.
