@@ -5,7 +5,7 @@ from django.db.models import Sum
 from django.test import TestCase
 
 from slick_reporting.fields import ComputationField
-from slick_reporting.generator import ReportGenerator
+from slick_reporting.generator import ReportGenerator, ListViewReportGenerator
 from slick_reporting.helpers import get_foreign_keys
 from .models import OrderLine, ComplexSales
 from django.utils.translation import gettext_lazy as _
@@ -27,15 +27,11 @@ from .models import SimpleSales, Client
 
 class CrosstabTests(BaseTestData, TestCase):
     def test_matrix_column_included(self):
-        report = CrosstabOnClient(
-            crosstab_ids=[self.client1.pk], crosstab_compute_remainder=False
-        )
+        report = CrosstabOnClient(crosstab_ids=[self.client1.pk], crosstab_compute_remainder=False)
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 3, columns)
 
-        report = CrosstabOnClient(
-            crosstab_ids=[self.client1.pk], crosstab_compute_remainder=True
-        )
+        report = CrosstabOnClient(crosstab_ids=[self.client1.pk], crosstab_compute_remainder=True)
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 4, columns)
 
@@ -49,9 +45,7 @@ class CrosstabTests(BaseTestData, TestCase):
         self.assertEqual(len(columns), 3, columns)
         self.assertEqual(columns[0]["name"], "value__sumCT1")
 
-        report = CrosstabOnClient(
-            crosstab_ids=[self.client1.pk], crosstab_compute_remainder=True
-        )
+        report = CrosstabOnClient(crosstab_ids=[self.client1.pk], crosstab_compute_remainder=True)
         columns = report.get_list_display_columns()
         self.assertEqual(len(columns), 4, columns)
 
@@ -72,9 +66,7 @@ class CrosstabTests(BaseTestData, TestCase):
         Test important attributes are passed .
         :return:
         """
-        report = CrosstabOnClient(
-            crosstab_ids=[self.client1.pk], crosstab_compute_remainder=False
-        )
+        report = CrosstabOnClient(crosstab_ids=[self.client1.pk], crosstab_compute_remainder=False)
         columns = report.get_crosstab_parsed_columns()
         for col in columns:
             self.assertTrue("is_summable" in col.keys(), col)
@@ -114,19 +106,13 @@ class CrosstabTests(BaseTestData, TestCase):
             columns=["name", "__total_quantity__"],
             time_series_pattern="monthly",
             crosstab_field="client",
-            crosstab_columns=[
-                ComputationField.create(
-                    Sum, "quantity", name="value__sum", verbose_name=_("Sales")
-                )
-            ],
+            crosstab_columns=[ComputationField.create(Sum, "quantity", name="value__sum", verbose_name=_("Sales"))],
             crosstab_ids=[self.client2.pk, self.client3.pk],
             crosstab_compute_remainder=False,
         )
         columns = report.get_list_display_columns()
         time_series_columns = report.get_time_series_parsed_columns()
-        expected_num_of_columns = (
-                2 * datetime.today().month
-        )  # 2 client + 1 remainder * months since start of year
+        expected_num_of_columns = 2 * datetime.today().month  # 2 client + 1 remainder * months since start of year
 
         self.assertEqual(len(time_series_columns), expected_num_of_columns, columns)
         data = report.get_report_data()
@@ -180,34 +166,20 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
 
         dates = report._get_time_series_dates()
         self.assertEqual(len(dates), 12)
-        self.assertIsNotNone(
-            report.get_time_series_field_verbose_name(
-                TotalReportField, dates[0], 0, dates
-            )
-        )
+        self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates))
 
         dates = report._get_time_series_dates("daily")
         self.assertEqual(len(dates), 365, len(dates))
-        self.assertIsNotNone(
-            report.get_time_series_field_verbose_name(
-                TotalReportField, dates[0], 0, dates, "daily"
-            )
-        )
+        self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates, "daily"))
 
         dates = report._get_time_series_dates("weekly")
         self.assertEqual(len(dates), 53, len(dates))
-        self.assertIsNotNone(
-            report.get_time_series_field_verbose_name(
-                TotalReportField, dates[0], 0, dates, "weekly"
-            )
-        )
+        self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates, "weekly"))
 
         dates = report._get_time_series_dates("bi-weekly")
         self.assertEqual(len(dates), 27, len(dates))
         self.assertIsNotNone(
-            report.get_time_series_field_verbose_name(
-                TotalReportField, dates[0], 0, dates, "semimonthly"
-            )
+            report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates, "semimonthly")
         )
 
         dates = report._get_time_series_dates("quarterly")
@@ -217,11 +189,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         self.assertEqual(len(dates), 2, len(dates))
         dates = report._get_time_series_dates("annually")
         self.assertEqual(len(dates), 1, len(dates))
-        self.assertIsNotNone(
-            report.get_time_series_field_verbose_name(
-                TotalReportField, dates[0], 0, dates
-            )
-        )
+        self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates))
 
         def not_known_pattern():
             report._get_time_series_dates("each_spring")
@@ -262,17 +230,13 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
 
     def test_improper_group_by(self):
         def load():
-            ReportGenerator(
-                OrderLine, group_by="no_field", date_field="order__date_placed"
-            )
+            ReportGenerator(OrderLine, group_by="no_field", date_field="order__date_placed")
 
         self.assertRaises(Exception, load)
 
     def test_missing_report_model(self):
         def load():
-            ReportGenerator(
-                report_model=None, group_by="product", date_field="order__date_placed"
-            )
+            ReportGenerator(report_model=None, group_by="product", date_field="order__date_placed")
 
         self.assertRaises(Exception, load)
 
@@ -284,9 +248,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
 
     def test_wrong_date_field(self):
         def load():
-            ReportGenerator(
-                report_model=OrderLine, group_by="product", date_field="not_here"
-            )
+            ReportGenerator(report_model=OrderLine, group_by="product", date_field="not_here")
 
         self.assertRaises(Exception, load)
 
@@ -373,9 +335,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         report = ReportGenerator(
             report_model=SimpleSales,
             group_by_custom_querysets=[
-                SimpleSales.objects.filter(
-                    client_id__in=[self.client1.pk, self.client2.pk]
-                ),
+                SimpleSales.objects.filter(client_id__in=[self.client1.pk, self.client2.pk]),
                 SimpleSales.objects.filter(client_id__in=[self.client3.pk]),
             ],
             group_by_custom_querysets_column_verbose_name="Custom Title",
@@ -394,19 +354,15 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         columns_data = report.get_columns_data()
         self.assertEqual(columns_data[0]["verbose_name"], "Custom Title")
 
-
     def test_custom_group_by_with_index(self):
         report = ReportGenerator(
             report_model=SimpleSales,
             group_by_custom_querysets=[
-                SimpleSales.objects.filter(
-                    client_id__in=[self.client1.pk, self.client2.pk]
-                ),
+                SimpleSales.objects.filter(client_id__in=[self.client1.pk, self.client2.pk]),
                 SimpleSales.objects.filter(client_id__in=[self.client3.pk]),
             ],
             columns=[
                 "__index__",  # assert that no issue if added manually , issue 68
-
                 ComputationField.create(Sum, "value"),
                 "__total__",
             ],
@@ -478,3 +434,16 @@ class TestHelpers(TestCase):
     def test_get_model_for_keys(self):
         keys = get_foreign_keys(OrderLine)
         self.assertEqual(len(keys), 3)
+
+
+class TestListViewGenerator(BaseTestData, TestCase):
+    def test_traversing_field_in_column(self):
+        report = ListViewReportGenerator(
+            report_model=SimpleSales,
+            columns=["id", "product__name", "client__name", "value"],
+            date_field="doc_date",
+        )
+        data = report.get_report_data()
+        self.assertEqual(len(data), SimpleSales.objects.count())
+        self.assertEqual(data[0]["product__name"], "Product 1")
+        self.assertEqual(data[0]["client__name"], "Client 1")

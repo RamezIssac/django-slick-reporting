@@ -316,30 +316,30 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         # Preparing actions
         self._parse()
+
+        self.main_queryset = self.prepare_queryset(main_queryset)
+        self._prepare_report_dependencies()
+
+    def prepare_queryset(self, queryset):
         if self.group_by_custom_querysets:
-            self.main_queryset = [{"__index__": i} for i, v in enumerate(self.group_by_custom_querysets)]
+            return [{"__index__": i} for i, v in enumerate(self.group_by_custom_querysets)]
         elif self.group_by:
-            self.main_queryset = self._apply_queryset_options(main_queryset)
+            main_queryset = self._apply_queryset_options(queryset)
 
             if type(self.group_by_field) is ForeignKey:
-                ids = self.main_queryset.values_list(self.group_by_field_attname).distinct()
+                ids = main_queryset.values_list(self.group_by_field_attname).distinct()
                 # uses the same logic that is in Django's query.py when fields is empty in values() call
                 concrete_fields = [f.name for f in self.group_by_field.related_model._meta.concrete_fields]
                 # add database columns that are not already in concrete_fields
                 final_fields = concrete_fields + list(set(self.get_database_columns()) - set(concrete_fields))
-                self.main_queryset = self.group_by_field.related_model.objects.filter(
+                return self.group_by_field.related_model.objects.filter(
                     **{f"{self.group_by_field.target_field.name}__in": ids}
                 ).values(*final_fields)
             else:
-                self.main_queryset = self.main_queryset.distinct().values(self.group_by_field_attname)
+                return main_queryset.distinct().values(self.group_by_field_attname)
         else:
             # if self.time_series_pattern:
-            self.main_queryset = [{}]
-            # else:
-            #     self.main_queryset = self._apply_queryset_options(
-            #         main_queryset, self.get_database_columns()
-            #     )
-        self._prepare_report_dependencies()
+            return [{}]
 
     def _remove_order(self, main_queryset):
         """
@@ -947,6 +947,9 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
 
 class ListViewReportGenerator(ReportGenerator):
+    def prepare_queryset(self, queryset):
+        return self._apply_queryset_options(queryset, self.get_database_columns())
+
     def _apply_queryset_options(self, query, fields=None):
         """
         Apply the filters to the main queryset which will computed results be mapped to
@@ -964,8 +967,8 @@ class ListViewReportGenerator(ReportGenerator):
 
         if filters:
             query = query.filter(**filters)
-        # if fields:
-        #     return query.values(*fields)
+        if fields:
+            return query.values(*fields)
         return query
 
     def _get_record_data(self, obj, columns):
@@ -1015,10 +1018,7 @@ class ListViewReportGenerator(ReportGenerator):
                     data[name] = value
 
                 else:
-                    if col_data.get("type", "") == "choice":
-                        data[name] = getattr(obj, f"get_{name}_display", "")()
-                    else:
-                        data[name] = getattr(obj, name, "")
+                    data[name] = obj[name]
         return data
 
     def _remove_order(self, main_queryset):
