@@ -1,0 +1,31 @@
+{% load  slick_reporting_tags %}
+
+
+<div class="card">
+    {% if display_title %}
+        <div class="card-header">
+            <h5 class="card-title">{{ title }}</h5>
+        </div>
+    {% endif %}
+    <div class="card-body">
+        <div data-report-widget
+             data-report-url="{{ report_url }}"
+             data-extra-params="{{ extra_params|default:'' }}"
+             data-success-callback="{{ success_callback|default:'' }}"
+             data-chart-id="{{ chart_id|default:'' }}"
+             data-display-chart-selector="{{ display_chart_selector }}"
+             data-failure-callback="{{ failure_callback|default:'' }}"
+        >
+            {% block widget_content %}
+                {% if display_chart %}
+                    <div data-report-chart></div>
+                {% endif %}
+                {% if display_table %}
+                    <div data-report-table>
+                    </div>
+                {% endif %}
+            {% endblock %}
+
+        </div>
+    </div>
+</div>

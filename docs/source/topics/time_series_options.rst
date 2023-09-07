@@ -6,7 +6,10 @@ Time Series Reports
 A Time series report is a report that is generated for a periods of time.
 The period can be daily, weekly, monthly, yearly or custom, calculations will be performed for each period in the time series.
 
-Here is a quick look at the Typical use case
+General use case
+----------------
+
+Here is a quick look at the general use case
 
 
 .. code-block:: python
@@ -20,13 +23,13 @@ Here is a quick look at the Typical use case
             group_by = "client"
 
             time_series_pattern = "monthly"
-            # options are : "daily", "weekly", "bi-weekly", "monthly", "quarterly", "semiannually", "annually" and "custom"
+            # options are: "daily", "weekly", "bi-weekly", "monthly", "quarterly", "semiannually", "annually" and "custom"
 
             date_field = "date"
 
             # These columns will be calculated for each period in the time series.
             time_series_columns = [
-                SlickReportField.create(Sum, "value", verbose_name=_("Sales For Month")),
+                ComputationField.create(Sum, "value", verbose_name=_("Sales For Month")),
             ]
 
             columns = [
@@ -34,7 +37,7 @@ Here is a quick look at the Typical use case
                 "__time_series__",
 
                 # This is the same as the time_series_columns, but this one will be on the whole set
-                SlickReportField.create(Sum, "value", verbose_name=_("Total Sales")),
+                ComputationField.create(Sum, "value", verbose_name=_("Total Sales")),
 
             ]
 
@@ -113,7 +116,7 @@ Let's see how you can do that, inheriting from teh same Time series we did first
 Customize the Computation Field label
 -------------------------------------
 Maybe you want to customize how the title of the time series computation field.
-For this you want to Subclass ``SlickReportField``, where you can customize
+For this you want to Subclass ``ComputationField``, where you can customize
 how the title is created and use it in the time_series_column instead of the one created on the fly.
 
 Example:
@@ -121,9 +124,9 @@ Example:
 .. code-block:: python
 
 
-    class SumOfFieldValue(SlickReportField):
+    class SumOfFieldValue(ComputationField):
         # A custom computation Field identical to the one created like this
-        # Similar to `SlickReportField.create(Sum, "value", verbose_name=_("Total Sales"))`
+        # Similar to `ComputationField.create(Sum, "value", verbose_name=_("Total Sales"))`
 
         calculation_method = Sum
         calculation_field = "value"
@@ -142,7 +145,7 @@ Example:
         report_title = _("Time Series Report With Custom Dates and custom Title")
 
         time_series_columns = [
-            SumOfFieldValue,  # Use our newly created SlickReportField with the custom time series verbose name
+            SumOfFieldValue,  # Use our newly created ComputationField with the custom time series verbose name
         ]
 
         chart_settings = [
@@ -158,6 +161,44 @@ Example:
                   plot_total=True,
                   ),
         ]
+
+
+Time Series without a group by
+------------------------------
+Maybe you want to get the time series calculated on the whole set, without grouping by anything.
+You can do that by omitting the `group_by` attribute, and having only time series (or other computation fields) columns.
+
+Example:
+
+.. code-block:: python
+
+    class TimeSeriesWithoutGroupBy(ReportView):
+        report_title = _("Time Series without a group by")
+        report_model = SalesTransaction
+        time_series_pattern = "monthly"
+        date_field = "date"
+        time_series_columns = [
+            ComputationField.create(Sum, "value", verbose_name=_("Sales For ")),
+        ]
+
+        columns = [
+            "__time_series__",
+            ComputationField.create(Sum, "value", verbose_name=_("Total Sales")),
+        ]
+
+        chart_settings = [
+            Chart("Total Sales [Bar]",
+                  Chart.BAR,
+                  data_source=["sum__value"],
+                  title_source=["name"],
+                  ),
+            Chart("Total Sales [Pie]",
+                  Chart.PIE,
+                  data_source=["sum__value"],
+                  title_source=["name"],
+                  ),
+        ]
+
 
 
 
@@ -185,10 +226,10 @@ Time Series Options
                     class MyReport(ReportView):
 
                         time_series_columns = [
-                            SlickReportField.create(
+                            ComputationField.create(
                                 Sum, "value", verbose_name=_("Value"), is_summable=True, name="sum__value"
                             ),
-                            SlickReportField.create(
+                            ComputationField.create(
                                 Avg, "Price", verbose_name=_("Avg Price"), is_summable=False
                             ),
                         ]

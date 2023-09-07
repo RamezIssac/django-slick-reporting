@@ -440,7 +440,12 @@
 
         function displayChart(data, $elem, chart_id) {
             chart_id = chart_id || $elem.attr('data-report-default-chart') || '';
-            let chart = $elem;
+            if ($elem.find("div[data-inner-chart-container]").length === 0) {
+                $elem.append('<div data-inner-chart-container style="width:100%; height:400px;"></div>')
+            }
+
+            let chart = $elem.find("div[data-inner-chart-container]")
+            // chart.append("<canvas width=\"400\" height=\"100\"></canvas>");
             // let chartObject = getObjFromArray(data.chart_settings, 'id', chart_id, true);
             let cache_key = data.report_slug + ':' + chart_id
             try {

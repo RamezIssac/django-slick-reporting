@@ -1,5 +1,5 @@
 from slick_reporting.views import ReportView
-from slick_reporting.fields import SlickReportField, TotalReportField
+from slick_reporting.fields import ComputationField, TotalReportField
 from django.db.models import Sum, Count
 from .models import SimpleSales, ComplexSales, SimpleSales2
 from django.utils.translation import gettext_lazy as _
@@ -73,7 +73,7 @@ class CrossTabColumnOnFly(ReportView):
 
     crosstab_field = "client"
     crosstab_columns = [
-        SlickReportField.create(
+        ComputationField.create(
             Sum, "value", name="value__sum", verbose_name=_("Sales")
         )
     ]
@@ -97,7 +97,7 @@ class CrossTabColumnOnFlyToFieldSet(ReportView):
 
     crosstab_field = "client"
     crosstab_columns = [
-        SlickReportField.create(
+        ComputationField.create(
             Sum, "value", name="value__sum", verbose_name=_("Sales")
         )
     ]
@@ -127,7 +127,7 @@ class TaxSales(ReportView):
     group_by = "tax__name"
     columns = [
         "tax__name",
-        SlickReportField.create(
+        ComputationField.create(
             Count, "tax", name="tax__count", verbose_name=_("Sales")
         ),
     ]
@@ -156,7 +156,7 @@ class TaxSales(ReportView):
     group_by = "tax__name"
     columns = [
         "tax__name",
-        SlickReportField.create(
+        ComputationField.create(
             Count, "tax", name="tax__count", verbose_name=_("Sales")
         ),
     ]

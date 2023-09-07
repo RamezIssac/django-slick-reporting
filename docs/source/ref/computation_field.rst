@@ -16,12 +16,12 @@ Let's see how it's written in `slick_reporting.fields`
 
 .. code-block:: python
 
-    from slick_reporting.fields import SlickReportField
+    from slick_reporting.fields import ComputationField
     from slick_reporting.decorators import report_field_register
 
 
     @report_field_register
-    class TotalQTYReportField(SlickReportField):
+    class TotalQTYReportField(ComputationField):
 
         # The name to use when using this field in the generator
         name = '__total_quantity__'
@@ -43,7 +43,7 @@ If you want AVG to the field `price` then the ReportField would look like this
     from django.db.models import Avg
 
     @report_field_register
-    class TotalQTYReportField(SlickReportField):
+    class TotalQTYReportField(ComputationField):
 
         name = '__avg_price__'
         calculation_field = 'price'
@@ -101,10 +101,10 @@ Two side calculation
 # Document how a single field can be computed like a debit and credit.
 
 
-SlickReportField API
+ComputationField API
 --------------------
 
-.. autoclass:: slick_reporting.fields.SlickReportField
+.. autoclass:: slick_reporting.fields.ComputationField
 
     .. autoattribute:: name
     .. autoattribute:: calculation_field

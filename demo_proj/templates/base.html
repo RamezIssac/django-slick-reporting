@@ -1,0 +1,97 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>{% block meta_page_title %}{{ report_title }}{% endblock %}</title>
+    <!-- CSS files -->
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler.min.css">
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler-flags.min.css">
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler-payments.min.css">
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler-vendors.min.css">
+
+
+    <style>
+        @import url('https://rsms.me/inter/inter.css');
+
+        :root {
+            --tblr-font-sans-serif: 'Inter Var', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+        }
+
+        body {
+            font-feature-settings: "cv03", "cv04", "cv11";
+        }
+
+        @media (min-width: 576px)
+
+        .navbar-expand-sm.navbar-vertical ~ .navbar, .navbar-expand-sm.navbar-vertical ~ .page-wrapper {
+            margin-left: 18rem;
+        }
+
+        @media (min-width: 576px)
+
+        .navbar-vertical.navbar-expand-sm {
+            width: 18rem;
+        }
+
+    </style>
+</head>
+<body class=" layout-fluid">
+{#    <script src="./dist/js/demo-theme.min.js?1684106062"></script>#}
+<div class="page">
+    <!-- Sidebar -->
+    <aside class="navbar navbar-vertical navbar-expand-sm navbar-dark">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <h1 class="navbar-brand navbar-brand-autodark">
+                <a href="#">
+                    {#          <img src="https://preview.tabler.io/static/logo-white.svg" width="110" height="32" alt="Tabler" class="navbar-brand-image">#}
+                    Django Slick Reporting
+                </a>
+            </h1>
+            <div class="collapse navbar-collapse" id="sidebar-menu">
+                {% include "menu.html" %}
+            </div>
+        </div>
+    </aside>
+    <div class="page-wrapper">
+        <div class="page-header d-print-none">
+            <div class="container-xl">
+                <div class="row g-2 align-items-center">
+                    <div class="col">
+                        <h2 class="page-title">
+                            {#                            Vertical layout#}
+                            {% block page_title %}
+                            {% endblock %}
+                        </h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="page-body">
+            <div class="container-xl">
+                {% block content %}
+                {% endblock %}
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Libs JS -->
+<!-- Tabler Core -->
+{#    <script src="./dist/js/tabler.min.js?1684106062" defer></script>#}
+{#    <script src="./dist/js/demo.min.js?1684106062" defer></script>#}
+<script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+{% block extrajs %}
+{% endblock %}
+</body>
+</html>

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <section class="jumbotron text-center">
+        <div class="container">
+            <h1 class="jumbotron-heading">Welcome to Django Slick Reporting</h1>
+            <p class="lead text-muted">Powerful and Efficient reporting engine with Charting capabilities.
+                Allowing you to create professional analytics that are customizable and efficient.</p>
+            <p>
+                <a href="{% url 'product-sales' %}" class="btn btn-primary my-2">Start walk through</a>
+                <a href="https://github.com/ra-systems/django-slick-reporting" class="btn btn-secondary my-2">Github</a>
+            </p>
+        </div>
+    </section>
+
+    <div class="container">
+        <!-- Example row of columns Create powerful analytics with a simple class syntax.  -->
+        <div class="row">
+            <div class="col-md-4">
+                <h2>Powerful</h2>
+                <p>Effortlessly create Simple, Grouped, Time series and Crosstab reports in a handful of code lines.
+                    You can also create your Custom Calculation easily, which will be integrated with the above reports
+                    types</p>
+                <p>
+{#                    <a class="btn btn-secondary" href="https://github.com/ra-systems/slick-reporting-demo" role="button">This#}
+{#                    site on Github »</a>#}
+                    <a   href="{% url 'product-sales' %}" class="btn btn-primary my-2 btn btn-primary">Begin Walk through</a>
+                </p>
+            </div>
+            <div class="col-md-4">
+                <h2>Chart Wrappers</h2>
+                <p>Slick reporting comes with <a href="https://www.highcharts.com/"> Highcharts </a> and <a
+                        href="https://www.chartjs.org/"> Charts.js </a> wrappers to transform the generated data into
+                    attractive charts in handfule of lines</p>
+                <p>You can check Django Slick Reporting documentation for more in depth information</p>
+                <p><a class="btn btn-secondary" href="https://django-slick-reporting.readthedocs.io/" role="button">Read
+                    the docs »</a></p>
+            </div>
+            <div class="col-md-4">
+                <h2>Open source</h2>
+                <p>Optimized for speed. You can also check this same website and generate more data and test this package on million on records yourself
+
+                    <p><a class="btn btn-secondary" href="https://github.com/ra-systems/slick-reporting-demo" role="button">This
+                    site on Github »</a></p>
+
+{#                    <a class="github-button" href="https://github.com/ra-systems/django-slick-reporting"#}
+{#                       data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-star"#}
+{#                       data-show-count="true" aria-label="Star ra-systems/django-slick-reporting on GitHub">Star</a>#}
+                </p>
+{#                <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>#}
+            </div>
+        </div>
+
+        <hr>
+
+    </div>
+
+
+{% endblock %}

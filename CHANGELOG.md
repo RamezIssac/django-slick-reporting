@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] -
+- Breaking: changed ``report_title_context_key`` default value to `report_title`
+- Breaking: Renamed simple_report.html to report.html
+- Breaking: Renamed ``SlickReportField`` to ``ComputationField``. SlickReportField will continue to work till next release.
+- Revised and renamed js files
+- Add dashboard capabilities.
+- Added auto_load option to ReportView
+- Unified report loading to use the report loader
+- Fix issue with group_by_custom_queryset with time series
+- Fix issue with No group by report 
+- Fix issue with traversing fields not showing up on ListViewReport
+- Fix issue with date filter not being respected in ListViewReport
+
 ## [1.0.2] - 2023-08-31
 - Add a demo project for exploration and also containing all documentation code for proofing.
 - Revise and Enhancing Tutorial , Group by and Time series documentation.

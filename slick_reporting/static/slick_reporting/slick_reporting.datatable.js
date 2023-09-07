@@ -20,7 +20,7 @@
         let footer_th = '';
         let footer_colspan = 0;
         let stop_colspan_detection = false;
-        let totals_container = calculateTotalOnObjectArray(data, total_fields);
+        let totals_container = $.slick_reporting.calculateTotalOnObjectArray(data, total_fields);
         if (data.length <= 1) {
             add_footer = false;
         }
@@ -53,7 +53,7 @@
     function buildAndInitializeDataTable(data, $elem, extraOptions, successFunction) {
         // Responsible for turning a ReportView Response into a datatable.
 
-        let opts = $.extend({}, $.erp_framework.datatable.defaults, extraOptions);
+        let opts = $.extend({}, $.slick_reporting.datatable.defaults, extraOptions);
         opts['datatableContainer'] = $elem;
 
         let datatable_container = opts.datatableContainer;
@@ -72,7 +72,7 @@
         if (total_fields.length === 0) provide_total = false;
 
         datatable_container.html(constructTable(
-            $.erp_framework.datatable.defaults.tableCssClass, data['columns'], column_names,
+            $.slick_reporting.datatable.defaults.tableCssClass, data['columns'], column_names,
             provide_total, opts.messages.total, total_fields, data.data));
         initializeReportDatatable(datatable_container.find('table'), data, opts);
 
@@ -104,7 +104,7 @@
         tableSelector = typeof tableSelector != 'undefined' ? tableSelector : '.datatable';
         extraOptions = typeof extraOptions != 'undefined' ? extraOptions : {};
 
-        let opts = $.extend({}, $.erp_framework.datatable.defaults, extraOptions);
+        let opts = $.extend({}, $.slick_reporting.datatable.defaults, extraOptions);
 
 
         let dom = typeof (extraOptions.dom) == 'undefined' ? 'lfrtip' : extraOptions.dom;
@@ -138,7 +138,7 @@
     }
 
 
-    $.erp_framework.datatable = {
+    $.slick_reporting.datatable = {
         initializeDataTable: initializeReportDatatable,
         _cache: _cache,
         buildAdnInitializeDatatable: buildAndInitializeDataTable,
@@ -147,12 +147,12 @@
     }
 }(jQuery));
 
-$.erp_framework.datatable.defaults = {
+$.slick_reporting.datatable.defaults = {
 
     enableFixedHeader: false,
     fixedHeaderZindex: 2001,
     messages: {
-        total: $.erp_framework.defaults.messages.total,
+        total: $.slick_reporting.defaults.total_label,
     },
     tableCssClass: 'table table-xxs datatable-basic table-bordered table-striped table-hover ',
 

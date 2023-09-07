@@ -10,12 +10,12 @@ def report_field_register(report_field, *args, **kwargs):
     A kwarg of `site` can be passed as the admin site, otherwise the default
     admin site will be used.
     """
-    from .fields import SlickReportField
+    from .fields import ComputationField
     from .registry import field_registry
 
     def _model_admin_wrapper(admin_class):
-        if not issubclass(admin_class, SlickReportField):
-            raise ValueError("Wrapped class must subclass SlickReportField.")
+        if not issubclass(admin_class, ComputationField):
+            raise ValueError("Wrapped class must subclass ComputationField.")
 
         field_registry.register(report_field)
 
