@@ -21,10 +21,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # create clients
-        models_list = [
-            Client,
-            Product,
-        ]
         client_countries = [
             "US",
             "DE",
@@ -48,7 +44,7 @@ class Command(BaseCommand):
         for i in range(10):
             User.objects.create_user(username=f"user {i}", password="password")
 
-        users_id = list(User.objects.values_list("id", flat=True))
+        list(User.objects.values_list("id", flat=True))
         for i in range(1, 4):
             ProductCategory.objects.create(name=f"Product Category {i}")
 

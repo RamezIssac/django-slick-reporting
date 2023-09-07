@@ -1,3 +1,5 @@
+from warnings import warn
+
 from django.db.models import Sum, Q
 from django.template.defaultfilters import date as date_filter
 from django.utils.translation import gettext_lazy as _
@@ -6,7 +8,7 @@ from .helpers import get_calculation_annotation
 from .registry import field_registry
 
 
-class SlickReportField(object):
+class ComputationField(object):
     """
     Computation field responsible for making the calculation unit
     """
@@ -65,7 +67,7 @@ class SlickReportField(object):
         """
         if not cls.name:
             raise ValueError(f"ReportField {cls} must have a name")
-        return super(SlickReportField, cls).__new__(cls)
+        return super(ComputationField, cls).__new__(cls)
 
     @classmethod
     def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
@@ -108,26 +110,16 @@ class SlickReportField(object):
         group_by=None,
         group_by_custom_querysets=None,
     ):
-        super(SlickReportField, self).__init__()
+        super(ComputationField, self).__init__()
         self.date_field = date_field
         self.report_model = self.report_model or report_model
         self.queryset = self.queryset or queryset
-        self.queryset = (
-            self.report_model._default_manager.all()
-            if self.queryset is None
-            else self.queryset
-        )
+        self.queryset = self.report_model._default_manager.all() if self.queryset is None else self.queryset
 
-        self.group_by_custom_querysets = (
-            self.group_by_custom_querysets or group_by_custom_querysets
-        )
+        self.group_by_custom_querysets = self.group_by_custom_querysets or group_by_custom_querysets
 
-        self.calculation_field = (
-            calculation_field if calculation_field else self.calculation_field
-        )
-        self.calculation_method = (
-            calculation_method if calculation_method else self.calculation_method
-        )
+        self.calculation_field = calculation_field if calculation_field else self.calculation_field
+        self.calculation_method = calculation_method if calculation_method else self.calculation_method
         self.plus_side_q = self.plus_side_q or plus_side_q
         self.minus_side_q = self.minus_side_q or minus_side_q
         self.requires = self.requires or []
@@ -141,10 +133,7 @@ class SlickReportField(object):
     @classmethod
     def _get_required_classes(cls):
         requires = cls.requires or []
-        return [
-            field_registry.get_field_by_name(x) if type(x) is str else x
-            for x in requires
-        ]
+        return [field_registry.get_field_by_name(x) if isinstance(x, str) else x for x in requires]
 
     def apply_q_plus_filter(self, qs):
         return qs.filter(*self.plus_side_q)
@@ -174,14 +163,9 @@ class SlickReportField(object):
 
         dep_values = self._prepare_dependencies(q_filters, kwargs_filters.copy())
         if self.group_by_custom_querysets:
-            debit_results, credit_results = self.prepare_custom_group_by_queryset(
-                q_filters, kwargs_filters, **kwargs
-            )
+            debit_results, credit_results = self.prepare_custom_group_by_queryset(q_filters, kwargs_filters, **kwargs)
         else:
-
-            debit_results, credit_results = self.prepare(
-                q_filters, kwargs_filters, **kwargs
-            )
+            debit_results, credit_results = self.prepare(q_filters, kwargs_filters, **kwargs)
         self._cache = debit_results, credit_results, dep_values
 
     def prepare_custom_group_by_queryset(self, q_filters=None, kwargs_filters=None, **kwargs):
@@ -246,9 +230,7 @@ class SlickReportField(object):
         Get the annotation per the database
         :return: string used ex:
         """
-        return get_calculation_annotation(
-            self.calculation_field, self.calculation_method
-        )
+        return get_calculation_annotation(self.calculation_field, self.calculation_method)
 
     def _prepare_dependencies(
         self,
@@ -311,11 +293,7 @@ class SlickReportField(object):
         return dep_results
 
     def extract_data(self, cached, current_obj):
-        group_by = (
-            ""
-            if self.prevent_group_by
-            else (self.group_by or self.group_by_custom_querysets)
-        )
+        group_by = "" if self.prevent_group_by else (self.group_by or self.group_by_custom_querysets)
         debit_value = 0
         credit_value = 0
         annotation = self.get_annotation_name()
@@ -417,7 +395,7 @@ class SlickReportField(object):
         return f"{cls.verbose_name} {date_period[0].strftime(dt_format)} - {date_period[1].strftime(dt_format)}"
 
 
-class FirstBalanceField(SlickReportField):
+class FirstBalanceField(ComputationField):
     name = "__fb__"
     verbose_name = _("opening balance")
 
@@ -433,7 +411,7 @@ class FirstBalanceField(SlickReportField):
 field_registry.register(FirstBalanceField)
 
 
-class TotalReportField(SlickReportField):
+class TotalReportField(ComputationField):
     name = "__total__"
     verbose_name = _("Sum of value")
     requires = ["__debit__", "__credit__"]
@@ -442,7 +420,7 @@ class TotalReportField(SlickReportField):
 field_registry.register(TotalReportField)
 
 
-class BalanceReportField(SlickReportField):
+class BalanceReportField(ComputationField):
     name = "__balance__"
     verbose_name = _("Closing Total")
     requires = ["__fb__"]
@@ -458,7 +436,7 @@ class BalanceReportField(SlickReportField):
 field_registry.register(BalanceReportField)
 
 
-class PercentageToBalance(SlickReportField):
+class PercentageToBalance(ComputationField):
     requires = [BalanceReportField]
     name = "PercentageToBalance"
     verbose_name = _("%")
@@ -471,7 +449,7 @@ class PercentageToBalance(SlickReportField):
         return (obj_balance / total) * 100
 
 
-class CreditReportField(SlickReportField):
+class CreditReportField(ComputationField):
     name = "__credit__"
     verbose_name = _("Credit")
 
@@ -483,7 +461,7 @@ field_registry.register(CreditReportField)
 
 
 @field_registry.register
-class DebitReportField(SlickReportField):
+class DebitReportField(ComputationField):
     name = "__debit__"
     verbose_name = _("Debit")
 
@@ -492,7 +470,7 @@ class DebitReportField(SlickReportField):
 
 
 @field_registry.register
-class CreditQuantityReportField(SlickReportField):
+class CreditQuantityReportField(ComputationField):
     name = "__credit_quantity__"
     verbose_name = _("Credit QTY")
     calculation_field = "quantity"
@@ -503,7 +481,7 @@ class CreditQuantityReportField(SlickReportField):
 
 
 @field_registry.register
-class DebitQuantityReportField(SlickReportField):
+class DebitQuantityReportField(ComputationField):
     name = "__debit_quantity__"
     calculation_field = "quantity"
     verbose_name = _("Debit QTY")
@@ -513,7 +491,7 @@ class DebitQuantityReportField(SlickReportField):
         return debit
 
 
-class TotalQTYReportField(SlickReportField):
+class TotalQTYReportField(ComputationField):
     name = "__total_quantity__"
     verbose_name = _("Total QTY")
     calculation_field = "quantity"
@@ -533,7 +511,7 @@ class FirstBalanceQTYReportField(FirstBalanceField):
 field_registry.register(FirstBalanceQTYReportField)
 
 
-class BalanceQTYReportField(SlickReportField):
+class BalanceQTYReportField(ComputationField):
     name = "__balance_quantity__"
     verbose_name = _("Closing QTY")
     calculation_field = "quantity"
@@ -548,3 +526,22 @@ class BalanceQTYReportField(SlickReportField):
 
 
 field_registry.register(BalanceQTYReportField)
+
+
+class SlickReportField(ComputationField):
+    @staticmethod
+    def warn():
+        warn(
+            "SlickReportField name is deprecated, please use ComputationField instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+    @classmethod
+    def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
+        cls.warn()
+        return super().create(method, field, name, verbose_name, is_summable)
+
+    def __new__(cls, *args, **kwargs):
+        cls.warn()
+        return super().__new__(cls, *args, **kwargs)

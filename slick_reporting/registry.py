@@ -16,9 +16,7 @@ class ReportFieldRegistry(object):
         :return: report_field passed
         """
         if report_field.name in self._registry and not override:
-            raise AlreadyRegistered(
-                f"The field name {report_field.name} is used before and `override` is False"
-            )
+            raise AlreadyRegistered(f"The field name {report_field.name} is used before and `override` is False")
 
         self._registry[report_field.name] = report_field
         return report_field
@@ -29,7 +27,7 @@ class ReportFieldRegistry(object):
         :param report_field: a Report field class or a ReportField Name
         :return: None
         """
-        name = report_field if type(report_field) is str else report_field.name
+        name = report_field if isinstance(report_field, str) else report_field.name
         if name not in self._registry:
             raise NotRegistered(report_field)
         del self._registry[name]

@@ -28,14 +28,14 @@ Here is a general use case:
             "__crosstab__",
             # You can customize where the crosstab columns are displayed in relation to the other columns
 
-            SlickReportField.create(Sum, "value", verbose_name=_("Total Value")),
+            ComputationField.create(Sum, "value", verbose_name=_("Total Value")),
             # This is the same as the calculation in the crosstab,
             # but this one will be on the whole set. IE total value.
         ]
 
         crosstab_field = "product"
         crosstab_columns = [
-            SlickReportField.create(Sum, "value", verbose_name=_("Value")),
+            ComputationField.create(Sum, "value", verbose_name=_("Value")),
         ]
 
 Crosstab on a Traversing Field
@@ -86,7 +86,7 @@ Example:
 Customizing the verbose name of the crosstab columns
 ----------------------------------------------------
 Similar to what we did in customizing the verbose name of the computation field for the time series,
-Here, We also can customize the verbose name of the crosstab columns by Subclass ``SlickReportField`` and setting the ``crosstab_field_verbose_name`` attribute on your custom class.
+Here, We also can customize the verbose name of the crosstab columns by Subclass ``ComputationField`` and setting the ``crosstab_field_verbose_name`` attribute on your custom class.
 Default is that the verbose name will display the id of the crosstab field, and the remainder column will be called "The remainder".
 
 Let's see two examples on how we can customize the verbose name.
@@ -95,7 +95,7 @@ Example 1: On a "regular" crosstab report
 
 .. code-block:: python
 
-        class CustomCrossTabTotalField(SlickReportField):
+        class CustomCrossTabTotalField(ComputationField):
             calculation_field = "value"
             calculation_method = Sum
             verbose_name = _("Sales for")

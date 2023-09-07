@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 
-from slick_reporting.fields import SlickReportField, BalanceReportField
+from slick_reporting.fields import ComputationField, BalanceReportField
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.views import ReportView
 from slick_reporting.registry import field_registry
@@ -68,22 +68,12 @@ class BaseTestData:
         cls.client3.save()
         cls.clientIdle = Client.objects.create(name="Client Idle")
 
-        cls.product1 = Product.objects.create(
-            name="Product 1", category="small", sku="a1b1"
-        )
-        cls.product2 = Product.objects.create(
-            name="Product 2", category="medium", sku="a2b2"
-        )
-        cls.product3 = Product.objects.create(
-            name="Product 3", category="big", sku="3333"
-        )
+        cls.product1 = Product.objects.create(name="Product 1", category="small", sku="a1b1")
+        cls.product2 = Product.objects.create(name="Product 2", category="medium", sku="a2b2")
+        cls.product3 = Product.objects.create(name="Product 3", category="big", sku="3333")
 
-        cls.product_w_custom_id1 = ProductCustomID.objects.create(
-            name="Product 1", category="small"
-        )
-        cls.product_w_custom_id2 = ProductCustomID.objects.create(
-            name="Product 2", category="medium"
-        )
+        cls.product_w_custom_id1 = ProductCustomID.objects.create(name="Product 1", category="small")
+        cls.product_w_custom_id2 = ProductCustomID.objects.create(name="Product 2", category="medium")
 
         SimpleSales.objects.create(
             doc_date=datetime.datetime(year, 1, 2),
@@ -384,22 +374,8 @@ class ReportTest(BaseTestData, TestCase):
 
         # todo add __fb__ to time series and check the balance
 
-    @skip("This Test should be refactored to use the List Report Generator")
-    def test_client_statement_detail(self):
-        """
-        Test the detail statement
-        This is do pass by making a document slug clickable (<a> elem)
-        and it also passes by the slug search of the model admin
-        :return:
-        """
-        report = report_generators.ClientDetailedStatement()
-        data = report.get_report_data()
-        self.assertEqual(len(data), 9)
-
     def test_productclientsalesmatrix(self):
-        report = report_generators.ProductClientSalesMatrix(
-            crosstab_ids=[self.client1.pk, self.client2.pk]
-        )
+        report = report_generators.ProductClientSalesMatrix(crosstab_ids=[self.client1.pk, self.client2.pk])
         data = report.get_report_data()
         self.assertEqual(data[0]["__total__CT%s" % self.client1.pk], 300)
         self.assertEqual(data[0]["__total__CT%s" % self.client2.pk], 600)
@@ -423,15 +399,11 @@ class ReportTest(BaseTestData, TestCase):
         # self.assertEqual(data[0].get('__balance__'), 300, data[0])
 
     def test_filters(self):
-        report = ClientTotalBalance(
-            kwargs_filters={"client": self.client1.pk}, show_empty_records=True
-        )
+        report = ClientTotalBalance(kwargs_filters={"client": self.client1.pk}, show_empty_records=True)
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
-        report = ClientTotalBalance(
-            kwargs_filters={"client": self.client1.pk}, show_empty_records=False
-        )
+        report = ClientTotalBalance(kwargs_filters={"client": self.client1.pk}, show_empty_records=False)
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
@@ -459,15 +431,11 @@ class ReportTest(BaseTestData, TestCase):
         # self.assertEqual(view_report_data['data'], data)
 
     def test_filter_as_int_n_list(self):
-        report = ClientTotalBalance(
-            kwargs_filters={"client": self.client1.pk}, show_empty_records=True
-        )
+        report = ClientTotalBalance(kwargs_filters={"client": self.client1.pk}, show_empty_records=True)
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
-        report = ClientTotalBalance(
-            kwargs_filters={"client_id__in": [self.client1.pk]}, show_empty_records=True
-        )
+        report = ClientTotalBalance(kwargs_filters={"client_id__in": [self.client1.pk]}, show_empty_records=True)
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
@@ -477,9 +445,7 @@ class ReportTest(BaseTestData, TestCase):
         self.assertEqual(data[0][f"__total__TS{year}0201"], 600)
 
     def test_many_to_many_group_by(self):
-        field_registry.register(
-            SlickReportField.create(Count, "tax__name", "tax__count")
-        )
+        field_registry.register(ComputationField.create(Count, "tax__name", "tax__count"))
 
         report_generator = ReportGenerator(
             report_model=ComplexSales,
@@ -500,9 +466,12 @@ class ReportTest(BaseTestData, TestCase):
 
 class TestView(BaseTestData, TestCase):
     def test_view(self):
-        response = self.client.get(reverse("report1"))
+        response = self.client.get(
+            reverse("report1"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
         self.assertEqual(response.status_code, 200)
-        view_report_data = response.context["report_data"]["data"]
+        view_report_data = response.json()["data"]
         report_generator = ReportGenerator(
             report_model=SimpleSales,
             date_field="doc_date",
@@ -515,9 +484,12 @@ class TestView(BaseTestData, TestCase):
         self.assertEqual(view_report_data, report_generator.get_report_data())
 
     def test_qs_only(self):
-        response = self.client.get(reverse("queryset-only"))
+        response = self.client.get(
+            reverse("queryset-only"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
         self.assertEqual(response.status_code, 200)
-        view_report_data = response.context["report_data"]["data"]
+        view_report_data = response.json()["data"]
         report_generator = ReportGenerator(
             report_model=SimpleSales,
             date_field="doc_date",
@@ -584,9 +556,7 @@ class TestView(BaseTestData, TestCase):
             time_series_columns=["__total__", "__balance__"],
         )
         data = report_generator.get_report_data()
-        response = self.client.get(
-            reverse("report1"), HTTP_X_REQUESTED_WITH="XMLHttpRequest"
-        )
+        response = self.client.get(reverse("report1"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
         self.assertEqual(response.status_code, 200)
         view_report_data = response.json()
         self.assertEqual(view_report_data["data"], data)
@@ -704,7 +674,7 @@ class TestReportFieldRegistry(TestCase):
 
     def test_registering_new(self):
         def register():
-            class ReportFieldWDuplicatedName(SlickReportField):
+            class ReportFieldWDuplicatedName(ComputationField):
                 name = "__total_field__"
                 calculation_field = "field"
 
@@ -715,7 +685,7 @@ class TestReportFieldRegistry(TestCase):
 
     def test_already_registered(self):
         def register():
-            class ReportFieldWDuplicatedName(SlickReportField):
+            class ReportFieldWDuplicatedName(ComputationField):
                 name = "__total__"
 
             field_registry.register(ReportFieldWDuplicatedName)
@@ -740,13 +710,13 @@ class TestReportFieldRegistry(TestCase):
     def test_creating_a_report_field_on_the_fly(self):
         from django.db.models import Sum
 
-        name = SlickReportField.create(Sum, "value", "__sum_of_value__")
+        name = ComputationField.create(Sum, "value", "__sum_of_value__")
         self.assertNotIn(name, field_registry.get_all_report_fields_names())
 
     def test_creating_a_report_field_on_the_fly_wo_name(self):
         from django.db.models import Sum
 
-        name = SlickReportField.create(Sum, "value")
+        name = ComputationField.create(Sum, "value")
         self.assertNotIn(name, field_registry.get_all_report_fields_names())
 
 
@@ -754,19 +724,13 @@ class TestGroupByDate(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        UserJoined.objects.create(
-            username="adam", date_joined=datetime.date(2020, 1, 2)
-        )
+        UserJoined.objects.create(username="adam", date_joined=datetime.date(2020, 1, 2))
         UserJoined.objects.create(username="eve", date_joined=datetime.date(2020, 1, 3))
-        UserJoined.objects.create(
-            username="steve", date_joined=datetime.date(2020, 1, 5)
-        )
-        UserJoined.objects.create(
-            username="smiv", date_joined=datetime.date(2020, 1, 5)
-        )
+        UserJoined.objects.create(username="steve", date_joined=datetime.date(2020, 1, 5))
+        UserJoined.objects.create(username="smiv", date_joined=datetime.date(2020, 1, 5))
 
     def test_joined_per_day(self):
-        field_registry.register(SlickReportField.create(Count, "id", "count__id"))
+        field_registry.register(ComputationField.create(Count, "id", "count__id"))
         report_generator = ReportGenerator(
             report_model=UserJoined,
             date_field="date_joined",

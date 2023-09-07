@@ -3,7 +3,7 @@ import datetime
 from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 
-from slick_reporting.fields import SlickReportField, PercentageToBalance
+from slick_reporting.fields import ComputationField, PercentageToBalance
 from slick_reporting.generator import ReportGenerator
 from .models import (
     Client,
@@ -45,7 +45,7 @@ class CrosstabOnClient(GenericGenerator):
     crosstab_field = "client"
     # crosstab_columns = ['__total_quantity__']
     crosstab_columns = [
-        SlickReportField.create(
+        ComputationField.create(
             Sum, "quantity", name="value__sum", verbose_name=_("Sales")
         )
     ]
@@ -56,7 +56,7 @@ class CrosstabTimeSeries(GenericGenerator):
     columns = ["name", "__total_quantity__"]
     # crosstab_field = "client"
     # crosstab_columns = [
-    #     SlickReportField.create(
+    #     ComputationField.create(
     #         Sum, "quantity", name="value__sum", verbose_name=_("Sales")
     #     )
     # ]
@@ -76,7 +76,7 @@ class CrosstabOnField(ReportGenerator):
     crosstab_ids = ["sales", "sales-return"]
 
     crosstab_columns = [
-        SlickReportField.create(
+        ComputationField.create(
             Sum, "quantity", name="value__sum", verbose_name=_("Sales")
         )
     ]
@@ -97,7 +97,7 @@ class CrosstabCustomQueryset(ReportGenerator):
     ]
 
     crosstab_columns = [
-        SlickReportField.create(
+        ComputationField.create(
             Sum, "quantity", name="value__sum", verbose_name=_("Sales")
         )
     ]
@@ -114,7 +114,7 @@ class CrosstabOnTraversingField(ReportGenerator):
     crosstab_ids = ["FEMALE", "MALE", "OTHER"]
 
     crosstab_columns = [
-        SlickReportField.create(
+        ComputationField.create(
             Sum, "quantity", name="value__sum", verbose_name=_("Sales")
         )
     ]
@@ -146,17 +146,17 @@ class GroupByCharField(ReportGenerator):
     report_model = SalesWithFlag
     date_field = "doc_date"
     group_by = "flag"
-    columns = ["flag", "__balance__", SlickReportField.create(Sum, "quantity")]
+    columns = ["flag", "__balance__", ComputationField.create(Sum, "quantity")]
 
 
 class GroupByCharFieldPlusTimeSeries(ReportGenerator):
     report_model = SalesWithFlag
     date_field = "doc_date"
     group_by = "flag"
-    columns = ["flag", SlickReportField.create(Sum, "quantity")]
+    columns = ["flag", ComputationField.create(Sum, "quantity")]
 
     time_series_pattern = "monthly"
-    time_series_columns = [SlickReportField.create(Sum, "quantity")]
+    time_series_columns = [ComputationField.create(Sum, "quantity")]
 
 
 class ClientTotalBalancesOrdered(ClientTotalBalance):
@@ -388,7 +388,7 @@ class ProductClientSalesMatrix2(ReportGenerator):
 
     crosstab_field = "client"
     crosstab_columns = [
-        SlickReportField.create(
+        ComputationField.create(
             Sum, "value", name="value__sum", verbose_name=_("Sales")
         )
     ]
@@ -403,7 +403,7 @@ class ProductClientSalesMatrixwSimpleSales2(ReportGenerator):
 
     crosstab_field = "client"
     crosstab_columns = [
-        SlickReportField.create(
+        ComputationField.create(
             Sum, "value", name="value__sum", verbose_name=_("Sales")
         )
     ]

@@ -44,9 +44,7 @@ class ExportToCSV(object):
 
     def get_response(self):
         response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = "attachment; filename={filename}.csv".format(
-            filename=self.get_filename()
-        )
+        response["Content-Disposition"] = "attachment; filename={filename}.csv".format(filename=self.get_filename())
 
         writer = csv.writer(response)
         for rows in self.get_rows():
@@ -61,9 +59,7 @@ class ExportToCSV(object):
             yield [line[col_name] for col_name in columns]
 
     def get_columns(self, extra_context=None):
-        return list(
-            zip(*[(x["name"], x["verbose_name"]) for x in self.report_data["columns"]])
-        )
+        return list(zip(*[(x["name"], x["verbose_name"]) for x in self.report_data["columns"]]))
 
     def __init__(self, request, report_data, report_title, **kwargs):
         self.request = request
@@ -85,9 +81,7 @@ class ExportToStreamingCSV(ExportToCSV):
             (writer.writerow(row) for row in self.get_rows()),
             content_type="text/csv",
             headers={
-                "Content-Disposition": 'attachment; filename="{filename}.csv"'.format(
-                    filename=self.get_filename()
-                )
+                "Content-Disposition": 'attachment; filename="{filename}.csv"'.format(filename=self.get_filename())
             },
         )
 
@@ -122,7 +116,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     default_order_by = ""
 
-    template_name = "slick_reporting/simple_report.html"
+    template_name = "slick_reporting/report.html"
 
     @staticmethod
     def form_filter_func(fkeys_dict):
@@ -145,9 +139,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         :param data: List of Dict to be ordered
         :return: Ordered data
         """
-        order_field, asc = OrderByForm(self.request.GET).get_order_by(
-            self.default_order_by
-        )
+        order_field, asc = OrderByForm(self.request.GET).get_order_by(self.default_order_by)
         if order_field:
             data = dictsort(data, order_field, asc)
         return data
@@ -155,13 +147,9 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
     def get_doc_types_q_filters(self):
         if self.doc_type_plus_list or self.doc_type_minus_list:
             return (
-                [Q(**{f"{self.doc_type_field_name}__in": self.doc_type_plus_list})]
-                if self.doc_type_plus_list
-                else []
+                [Q(**{f"{self.doc_type_field_name}__in": self.doc_type_plus_list})] if self.doc_type_plus_list else []
             ), (
-                [Q(**{f"{self.doc_type_field_name}__in": self.doc_type_minus_list})]
-                if self.doc_type_minus_list
-                else []
+                [Q(**{f"{self.doc_type_field_name}__in": self.doc_type_minus_list})] if self.doc_type_minus_list else []
             )
 
         return [], []
@@ -186,18 +174,14 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
                 if request.headers.get("x-requested-with") == "XMLHttpRequest":
                     return self.ajax_render_to_response(report_data)
 
-            return self.render_to_response(
-                self.get_context_data(report_data=report_data)
-            )
+            return self.render_to_response(self.get_context_data(report_data=report_data))
         else:
             return self.form_invalid(self.form)
 
         # return self.render_to_response(self.get_context_data())
 
     def export_csv(self, report_data):
-        return self.csv_export_class(
-            self.request, report_data, self.report_title
-        ).get_response()
+        return self.csv_export_class(self.request, report_data, self.report_title).get_response()
 
     @classmethod
     def get_report_model(cls):
@@ -206,9 +190,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         return cls.report_model
 
     def ajax_render_to_response(self, report_data):
-        return HttpResponse(
-            self.serialize_to_json(report_data), content_type="application/json"
-        )
+        return HttpResponse(self.serialize_to_json(report_data), content_type="application/json")
 
     def serialize_to_json(self, response_data):
         """Returns the JSON string for the compiled data object."""
@@ -225,9 +207,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         if settings.DEBUG:
             indent = 4
 
-        return json.dumps(
-            response_data, indent=indent, use_decimal=True, default=date_handler
-        )
+        return json.dumps(response_data, indent=indent, use_decimal=True, default=date_handler)
 
     def get_form_class(self):
         """
@@ -379,9 +359,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         Ensure the sane settings are passed to the front end.
         """
-        return generator.get_chart_settings(
-            self.chart_settings or [], self.report_title
-        )
+        return generator.get_chart_settings(self.chart_settings or [], self.report_title)
 
     @classmethod
     def get_queryset(cls):
@@ -502,6 +480,8 @@ class SlickReportingListViewMixin:
 
         return self.report_generator_class(
             self.get_report_model(),
+            start_date=self.form.get_start_date(),
+            end_date=self.form.get_end_date(),
             q_filters=q_filters,
             kwargs_filters=kw_filters,
             date_field=self.date_field,

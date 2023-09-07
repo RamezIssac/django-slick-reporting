@@ -65,7 +65,7 @@ In Slick Reporting, you can do the same thing by creating a report view looking 
 
             from django.db.models import Sum
             from slick_reporting.views import ReportView, Chart
-            from slick_reporting.fields import SlickReportField
+            from slick_reporting.fields import ComputationField
             from .models import Sales
 
 
@@ -75,8 +75,8 @@ In Slick Reporting, you can do the same thing by creating a report view looking 
                 group_by = "product"
                 columns = [
                     "name",
-                    SlickReportField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
-                    SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
+                    ComputationField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
+                    ComputationField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
                 ]
 
                 chart_settings = [
@@ -122,7 +122,7 @@ You can also export the report to CSV.
 
             from django.db.models import Sum
             from slick_reporting.views import ReportView, Chart
-            from slick_reporting.fields import SlickReportField
+            from slick_reporting.fields import ComputationField
             from .models import SalesTransaction
 
 
@@ -132,7 +132,7 @@ You can also export the report to CSV.
                 group_by = "client__country"  # notice the double underscore
                 columns = [
                     "client__country",
-                    SlickReportField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold by country $"),
+                    ComputationField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold by country $"),
                 ]
 
                 chart_settings = [
@@ -154,10 +154,10 @@ A time series report is a report that computes the data for each period of time.
 .. code-block:: python
 
     from django.utils.translation import gettext_lazy as _
-    from slick_reporting.fields import SlickReportField
+    from slick_reporting.fields import ComputationField
 
 
-    class SumValueComputationField(SlickReportField):
+    class SumValueComputationField(ComputationField):
         computation_method = Sum
         computation_field = "value"
         verbose_name = _("Sales Value")
