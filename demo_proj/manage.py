@@ -11,6 +11,10 @@ def main():
     # add slick reporting to path so that it can be imported
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(os.path.abspath(BASE_DIR))
+    # PARENT = os.path.dirname(os.path.join((os.path.dirname(os.path.abspath(__file__))), "../"))
+    # sys.path.append(os.path.abspath(PARENT))
+    # print("path", sys.path)
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
