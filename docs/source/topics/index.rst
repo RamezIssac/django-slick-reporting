@@ -31,6 +31,6 @@ You saw how to use the ReportView class in the tutorial and you identified the t
    crosstab_options
    list_report_options
    filter_form
+   widgets
+   integrating_slick_reporting
    exporting
-
-

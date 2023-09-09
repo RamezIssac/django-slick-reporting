@@ -8,6 +8,7 @@ from django.urls import reverse, resolve
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.utils.safestring import mark_safe
+from slick_reporting.app_settings import SLICK_REPORTING_JQUERY_URL
 
 register = template.Library()
 
@@ -72,3 +73,10 @@ def get_widget(report, template_name="", url_name="", report_url=None, **kwargs)
     template = get_template(template_name or "slick_reporting/widget_template.html")
 
     return template.render(context=kwargs)
+
+
+@register.simple_tag
+def add_jquery():
+    if SLICK_REPORTING_JQUERY_URL:
+        return mark_safe(f'<script src="{SLICK_REPORTING_JQUERY_URL}"></script>')
+    return ""

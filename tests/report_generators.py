@@ -1,6 +1,6 @@
 import datetime
 
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import ComputationField, PercentageToBalance
@@ -44,11 +44,7 @@ class CrosstabOnClient(GenericGenerator):
     columns = ["name", "__total_quantity__"]
     crosstab_field = "client"
     # crosstab_columns = ['__total_quantity__']
-    crosstab_columns = [
-        ComputationField.create(
-            Sum, "quantity", name="value__sum", verbose_name=_("Sales")
-        )
-    ]
+    crosstab_columns = [ComputationField.create(Sum, "quantity", name="value__sum", verbose_name=_("Sales"))]
 
 
 class CrosstabTimeSeries(GenericGenerator):
@@ -75,11 +71,7 @@ class CrosstabOnField(ReportGenerator):
     crosstab_field = "flag"
     crosstab_ids = ["sales", "sales-return"]
 
-    crosstab_columns = [
-        ComputationField.create(
-            Sum, "quantity", name="value__sum", verbose_name=_("Sales")
-        )
-    ]
+    crosstab_columns = [ComputationField.create(Sum, "quantity", name="value__sum", verbose_name=_("Sales"))]
 
 
 class CrosstabCustomQueryset(ReportGenerator):
@@ -96,11 +88,7 @@ class CrosstabCustomQueryset(ReportGenerator):
         (None, dict(flag="sales-return")),
     ]
 
-    crosstab_columns = [
-        ComputationField.create(
-            Sum, "quantity", name="value__sum", verbose_name=_("Sales")
-        )
-    ]
+    crosstab_columns = [ComputationField.create(Sum, "quantity", name="value__sum", verbose_name=_("Sales"))]
 
 
 class CrosstabOnTraversingField(ReportGenerator):
@@ -113,11 +101,7 @@ class CrosstabOnTraversingField(ReportGenerator):
     crosstab_field = "client__sex"
     crosstab_ids = ["FEMALE", "MALE", "OTHER"]
 
-    crosstab_columns = [
-        ComputationField.create(
-            Sum, "quantity", name="value__sum", verbose_name=_("Sales")
-        )
-    ]
+    crosstab_columns = [ComputationField.create(Sum, "quantity", name="value__sum", verbose_name=_("Sales"))]
 
 
 class ClientTotalBalance(ReportGenerator):
@@ -214,10 +198,6 @@ class ProductTotalSalesWithPercentage(ReportGenerator):
 
 
 class ClientList(ReportGenerator):
-    report_title = _("Our Clients")
-
-    # report_slug = 'client_list'
-    base_model = Client
     report_model = SimpleSales
 
     group_by = "client"
@@ -315,6 +295,21 @@ class ClientSalesMonthlySeries(ReportGenerator):
     time_series_columns = ["__debit__", "__credit__", "__balance__", "__total__"]
 
 
+class CountField(ComputationField):
+    calculation_field = "id"
+    calculation_method = Count
+    verbose_name = _("Count")
+    name = "count__id"
+
+
+class TestCountField(ReportGenerator):
+    report_model = ComplexSales
+
+    group_by = "product"
+    columns = ["slug", "name", CountField]
+    date_field = "doc_date"
+
+
 #
 
 
@@ -387,11 +382,7 @@ class ProductClientSalesMatrix2(ReportGenerator):
     columns = ["slug", "name"]
 
     crosstab_field = "client"
-    crosstab_columns = [
-        ComputationField.create(
-            Sum, "value", name="value__sum", verbose_name=_("Sales")
-        )
-    ]
+    crosstab_columns = [ComputationField.create(Sum, "value", name="value__sum", verbose_name=_("Sales"))]
 
 
 class ProductClientSalesMatrixwSimpleSales2(ReportGenerator):
@@ -402,11 +393,7 @@ class ProductClientSalesMatrixwSimpleSales2(ReportGenerator):
     columns = ["slug", "name"]
 
     crosstab_field = "client"
-    crosstab_columns = [
-        ComputationField.create(
-            Sum, "value", name="value__sum", verbose_name=_("Sales")
-        )
-    ]
+    crosstab_columns = [ComputationField.create(Sum, "value", name="value__sum", verbose_name=_("Sales"))]
 
 
 class GeneratorClassWithAttrsAs(ReportGenerator):

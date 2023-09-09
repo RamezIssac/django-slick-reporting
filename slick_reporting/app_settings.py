@@ -4,7 +4,6 @@ from django.utils.functional import lazy
 import datetime
 
 
-
 def get_first_of_this_year():
     d = datetime.datetime.today()
     return datetime.datetime(d.year, 1, 1, 0, 0)
@@ -44,9 +43,10 @@ SLICK_REPORTING_FORM_MEDIA_DEFAULT = {
     # ),
 }
 
-SLICK_REPORTING_FORM_MEDIA = getattr(
-    settings, "SLICK_REPORTING_FORM_MEDIA", SLICK_REPORTING_FORM_MEDIA_DEFAULT
-)
-SLICK_REPORTING_DEFAULT_CHARTS_ENGINE = getattr(
-    settings, "SLICK_REPORTING_DEFAULT_CHARTS_ENGINE", "highcharts"
+SLICK_REPORTING_FORM_MEDIA = getattr(settings, "SLICK_REPORTING_FORM_MEDIA", SLICK_REPORTING_FORM_MEDIA_DEFAULT)
+SLICK_REPORTING_DEFAULT_CHARTS_ENGINE = getattr(settings, "SLICK_REPORTING_DEFAULT_CHARTS_ENGINE", "highcharts")
+
+
+SLICK_REPORTING_JQUERY_URL = getattr(
+    settings, "SLICK_REPORTING_JQUERY_URL", "https://code.jquery.com/jquery-3.7.0.min.js"
 )
