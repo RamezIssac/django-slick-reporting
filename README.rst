@@ -64,8 +64,12 @@ Let's start by a "Group by" report. This will generate a report how much quantit
         group_by = "product"
         columns = [
             "name",
-            ComputationField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
-            ComputationField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
+            ComputationField.create(
+                Sum, "quantity", verbose_name="Total quantity sold", is_summable=False
+            ),
+            ComputationField.create(
+                Sum, "value", name="sum__value", verbose_name="Total Value sold $"
+            ),
         ]
 
         chart_settings = [
@@ -82,6 +86,7 @@ Let's start by a "Group by" report. This will generate a report how much quantit
                 title_source=["name"],
             ),
         ]
+
 
     # then, in urls.py
     path("total-sales-report", TotalProductSales.as_view())
@@ -122,7 +127,7 @@ Example: How much was sold in value for each product monthly within a date perio
         time_series_columns = [
             ComputationField.create(
                 Sum, "value", verbose_name=_("Sales Value"), name="value"
-            ) # what will be calculated for each month
+            )  # what will be calculated for each month
         ]
 
         chart_settings = [
@@ -133,12 +138,13 @@ Example: How much was sold in value for each product monthly within a date perio
                 title_source=["name"],
                 plot_total=True,
             ),
-            Chart("Total Sales [Area chart]",
-              Chart.AREA,
-              data_source=["value"],
-              title_source=["name"],
-              plot_total=False,
-              )
+            Chart(
+                "Total Sales [Area chart]",
+                Chart.AREA,
+                data_source=["value"],
+                title_source=["name"],
+                plot_total=False,
+            ),
         ]
 
 
@@ -233,17 +239,6 @@ You can also use locally
 
 the ``create_entries`` command will generate data for the demo app
 
-
-Batteries Included
-------------------
-
-Slick Reporting comes with
-
-* An auto-generated, bootstrap-ready Filter Form
-* Carts.js Charting support `Chart.js <https://www.chartjs.org/>`_
-* Highcharts.js Charting support `Highcharts.js <https://www.highcharts.com//>`_
-* Datatables `datatables.net <https://datatables.net/>`_
-
 A Preview:
 
 .. image:: https://i.ibb.co/SvxTM23/Selection-294.png
@@ -255,6 +250,16 @@ Documentation
 -------------
 
 Available on `Read The Docs <https://django-slick-reporting.readthedocs.io/en/latest/>`_
+
+You can run documentation locally
+
+.. code-block:: console
+
+    <activate your virtual environment>
+    cd docs
+    pip install -r requirements.txt
+    sphinx-build -b html source build
+
 
 Road Ahead
 ----------
