@@ -1,6 +1,5 @@
 {% extends 'slick_reporting/base.html' %}
-{% load crispy_forms_tags i18n slick_reporting_tags static %}
-
+{% load crispy_forms_tags i18n %}
 
 {% block content %}
     <div class="col-12">
@@ -16,7 +15,6 @@
                     <input type="submit" value="{% trans "Filter" %}"
                            class="btn btn-primary  refreshReport">
                     <input type="button" value="{% trans "Export CSV" %}" class="btn btn-secondary exportCsvBtn">
-
                 </div>
             </form>
         {% endif %}
@@ -26,7 +24,6 @@
                 <h5 class="card-title">{% trans "Results" %}</h5>
             </div>
             <div class="card-body">
-
                 <div data-report-widget
                      data-report-url="{{ request.path }}"
                      data-extra-params=""
@@ -37,11 +34,8 @@
                     </div>
                     <div data-report-table>
                     </div>
-
                 </div>
             </div>
         </div>
-
     </div>
-
 {% endblock %}

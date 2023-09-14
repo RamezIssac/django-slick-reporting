@@ -337,9 +337,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 ).values(*final_fields)
             else:
                 return main_queryset.distinct().values(self.group_by_field_attname)
-        else:
-            # if self.time_series_pattern:
-            return [{}]
+
+        return [{}]
 
     def _remove_order(self, main_queryset):
         """

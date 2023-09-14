@@ -8,6 +8,7 @@ from django.urls import reverse, resolve
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.utils.safestring import mark_safe
+from slick_reporting.app_settings import SLICK_REPORTING_JQUERY_URL
 
 register = template.Library()
 
@@ -32,6 +33,7 @@ def jsonify(object):
 
 register.filter("jsonify", jsonify)
 
+
 @register.simple_tag
 def get_widget_from_url(url_name=None, url=None, **kwargs):
     _url = ""
@@ -45,14 +47,11 @@ def get_widget_from_url(url_name=None, url=None, **kwargs):
     return get_widget(**kwargs)
 
 
-
 @register.simple_tag
 def get_widget(report, template_name="", url_name="", report_url=None, **kwargs):
     kwargs["report"] = report
     if not report:
-        raise ValueError(
-            "report argument is empty. Are you sure you're using the correct report name"
-        )
+        raise ValueError("report argument is empty. Are you sure you're using the correct report name")
     if not (report_url or url_name):
         raise ValueError("report_url or url_name must be provided")
 
@@ -75,3 +74,9 @@ def get_widget(report, template_name="", url_name="", report_url=None, **kwargs)
 
     return template.render(context=kwargs)
 
+
+@register.simple_tag
+def add_jquery():
+    if SLICK_REPORTING_JQUERY_URL:
+        return mark_safe(f'<script src="{SLICK_REPORTING_JQUERY_URL}"></script>')
+    return ""

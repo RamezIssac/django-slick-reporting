@@ -19,6 +19,7 @@ from .report_generators import (
     CrosstabOnField,
     CrosstabOnTraversingField,
     CrosstabCustomQueryset,
+    TestCountField,
 )
 
 from .tests import BaseTestData, year
@@ -422,12 +423,19 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
 
 
 # test that columns are a straight forward list
-class TestReportFields(TestCase):
+class TestReportFields(BaseTestData, TestCase):
     def test_get_full_dependency_list(self):
         from slick_reporting.fields import BalanceReportField
 
         deps = BalanceReportField.get_full_dependency_list()
         self.assertEqual(len(deps), 1)
+
+    def test_computation_field_count(self):
+        # test case for issue #77
+        report = TestCountField()
+        data = report.get_report_data()
+        self.assertEqual(data[0]["count__id"], 5)
+        self.assertEqual(data[1]["count__id"], 1)
 
 
 class TestHelpers(TestCase):
