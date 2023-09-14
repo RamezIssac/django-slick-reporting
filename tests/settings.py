@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "slick_reporting",
     "crispy_forms",
+    "crispy_bootstrap4",
     "tests",
 ]
 
@@ -55,4 +56,4 @@ STATIC_URL = "/static/"
 MIGRATION_MODULES = {"contenttypes": None, "auth": None}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# CRISPY_TEMPLATE_PACK = "bootstrap4"
+CRISPY_TEMPLATE_PACK = "bootstrap4"
