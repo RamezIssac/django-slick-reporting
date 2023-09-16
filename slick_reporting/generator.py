@@ -21,7 +21,7 @@ class Chart:
     data_source: list
     title_source: list
     plot_total: bool = False
-    engine: str = SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
+    engine: str = ""
     COLUMN = "column"
     LINE = "line"
     PIE = "pie"
@@ -270,7 +270,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
             self.time_series_pattern or self.crosstab_field or self.group_by
         ):
             raise ImproperlyConfigured(
-                f"date_field or [start_date_field_name and end_date_field_name] must be set for {container_class or self}"
+                f"date_field or [start_date_field_name and end_date_field_name] must "
+                f"be set for {container_class or self}"
             )
 
         self._prepared_results = {}
@@ -572,7 +573,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 group_by_field = [x for x in report_model._meta.get_fields() if x.name == group_by.split("__")[0]][0]
             except IndexError:
                 raise ImproperlyConfigured(
-                    f"ReportView {cls}: Could not find the group_by field: `{group_by}` in report_model: `{report_model}`"
+                    f"ReportView {cls}: Could not find the group_by field: `{group_by}` in "
+                    f"report_model: `{report_model}`"
                 )
             if group_by_field.is_relation:
                 group_by_model = group_by_field.related_model
@@ -911,21 +913,26 @@ class ReportGenerator(ReportGeneratorAPI, object):
             )
         return data
 
-    def get_full_response(self, data=None, report_slug=None, chart_settings=None, default_chart_title=None):
+    def get_full_response(
+        self, data=None, report_slug=None, chart_settings=None, default_chart_title=None, default_chart_engine=None
+    ):
         data = data or self.get_report_data()
         data = {
             "report_slug": report_slug or self.__class__.__name__,
             "data": data,
             "columns": self.get_columns_data(),
             "metadata": self.get_metadata(),
-            "chart_settings": self.get_chart_settings(chart_settings, default_chart_title=default_chart_title),
+            "chart_settings": self.get_chart_settings(
+                chart_settings, default_chart_title=default_chart_title, chart_engine=default_chart_engine
+            ),
         }
         return data
 
-    def get_chart_settings(self, chart_settings=None, default_chart_title=None):
+    def get_chart_settings(self, chart_settings=None, default_chart_title=None, chart_engine=None):
         """
         Ensure the sane settings are passed to the front end.
         """
+        chart_engine = chart_engine or SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
         output = []
         chart_settings = chart_settings or []
         report_title = default_chart_title or ""
@@ -940,7 +947,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
             if not chart.get("title", False):
                 chart["title"] = report_title
-            chart["engine_name"] = chart.get("engine_name", SLICK_REPORTING_DEFAULT_CHARTS_ENGINE)
+            chart["engine_name"] = chart.get("engine_name", chart_engine)
             output.append(chart)
         return output
 

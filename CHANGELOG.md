@@ -1,6 +1,10 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.1.1] -
+- Change settings to be a dict , adding support JQUERY_URL and FONT AWESOME customization
+- Fix issue with chartjs not being loaded
+- Enhance Font Awesome mapping by adding it to the settings 
 
 ## [1.1.0] -
 - Breaking: changed ``report_title_context_key`` default value to `report_title`
