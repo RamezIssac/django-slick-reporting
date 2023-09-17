@@ -11,7 +11,6 @@ TUTORIAL = [
     ("product-sales-per-country-crosstab", reports.ProductSalesPerCountryCrosstab),
     ("last-10-sales", reports.LastTenSales),
     ("total-product-sales-with-custom-form", reports.TotalProductSalesWithCustomForm),
-
 ]
 
 GROUP_BY = [
@@ -27,7 +26,7 @@ TIME_SERIES = [
     ("time-series-with-custom-dates", reports.TimeSeriesReportWithCustomDates),
     ("time-series-with-custom-dates-and-title", reports.TimeSeriesReportWithCustomDatesAndCustomTitle),
     ("time-series-without-group-by", reports.TimeSeriesWithoutGroupBy),
-    ('time-series-with-group-by-custom-queryset', reports.TimeSeriesReportWithCustomGroupByQueryset),
+    ("time-series-with-group-by-custom-queryset", reports.TimeSeriesReportWithCustomGroupByQueryset),
 ]
 
 CROSSTAB = [
@@ -38,14 +37,14 @@ CROSSTAB = [
     ("crosstab-report-custom-verbose-name", reports.CrossTabReportWithCustomVerboseName),
     ("crosstab-report-custom-verbose-name-2", reports.CrossTabReportWithCustomVerboseNameCustomFilter),
     ("crosstab-report-with-time-series", reports.CrossTabWithTimeSeries),
-
+]
+OTHER = [
+    ("chartjs-examples", reports.ChartJSExample),
 ]
 
 
 def get_urls_patterns():
     urls = []
-    for name, report in TUTORIAL + GROUP_BY + TIME_SERIES + CROSSTAB:
+    for name, report in TUTORIAL + GROUP_BY + TIME_SERIES + CROSSTAB + OTHER:
         urls.append(path(f"{name}/", report.as_view(), name=name))
     return urls
-
-

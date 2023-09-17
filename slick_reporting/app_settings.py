@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.utils.functional import lazy
+from django.utils.translation import gettext_lazy as _
 
 import datetime
 
@@ -50,3 +51,30 @@ SLICK_REPORTING_DEFAULT_CHARTS_ENGINE = getattr(settings, "SLICK_REPORTING_DEFAU
 SLICK_REPORTING_JQUERY_URL = getattr(
     settings, "SLICK_REPORTING_JQUERY_URL", "https://code.jquery.com/jquery-3.7.0.min.js"
 )
+
+SLICK_REPORTING_SETTINGS = getattr(settings, "SLICK_REPORTING_SETTINGS", {})
+
+SLICK_REPORTING_SETTINGS_DEFAULT = {
+    "JQUERY_URL": SLICK_REPORTING_JQUERY_URL,
+    "DEFAULT_START_DATE": SLICK_REPORTING_DEFAULT_START_DATE,
+    "DEFAULT_END_DATE": SLICK_REPORTING_DEFAULT_END_DATE,
+    "FONT_AWESOME": {
+        "CSS_URL": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css",
+        "ICONS": {
+            "pie": "fas fa-chart-pie",
+            "bar": "fas fa-chart-bar",
+            "line": "fas fa-chart-line",
+            "area": "fas fa-chart-area",
+            "column": "fas fa-chart-column",
+        },
+    },
+    "CHARTS": {
+        "highcharts": "$.slick_reporting.highcharts.displayChart",
+        "chartjs": "$.slick_reporting.chartjs.displayChart",
+    },
+    "MESSAGES": {
+        "total": _("Total"),
+    },
+}
+
+SLICK_REPORTING_SETTINGS = {**SLICK_REPORTING_SETTINGS_DEFAULT, **SLICK_REPORTING_SETTINGS}

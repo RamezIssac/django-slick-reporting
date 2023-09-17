@@ -113,6 +113,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
     doc_type_plus_list = None
     doc_type_minus_list = None
     auto_load = True
+    chart_engine = ""
 
     default_order_by = ""
 
@@ -345,6 +346,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             report_slug=self.get_report_slug(),
             chart_settings=self.chart_settings,
             default_chart_title=self.report_title,
+            default_chart_engine=self.chart_engine,
         )
 
     @classmethod
@@ -359,7 +361,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         Ensure the sane settings are passed to the front end.
         """
-        return generator.get_chart_settings(self.chart_settings or [], self.report_title)
+        return generator.get_chart_settings(self.chart_settings or [], self.report_title, self.chart_engine)
 
     @classmethod
     def get_queryset(cls):

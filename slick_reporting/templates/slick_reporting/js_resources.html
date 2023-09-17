@@ -1,5 +1,6 @@
 {% load i18n static slick_reporting_tags %}
 
+{% get_slick_reporting_settings as slick_reporting_settings %}
 
 {% add_jquery %}
 <script src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
@@ -11,8 +12,9 @@
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css"/>
+
 <link rel="stylesheet" type="text/css"
-      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"/>
+      href="{{ slick_reporting_settings.FONT_AWESOME.CSS_URL }}"/>
 
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -24,7 +26,7 @@
 <script src="{% static 'slick_reporting/slick_reporting.highchart.js' %}"></script>
 <script src="{% static 'slick_reporting/slick_reporting.chartsjs.js' %}"></script>
 <script src="{% static 'slick_reporting/slick_reporting.datatable.js' %}"></script>
-
+{{ slick_reporting_settings|json_script:"slick_reporting_settings" }}
 <script>
 
     jQuery(document).ready(function () {

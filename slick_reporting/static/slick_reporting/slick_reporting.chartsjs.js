@@ -7,6 +7,7 @@
     var COLORS = ['#7cb5ec', '#f7a35c', '#90ee7e', '#7798BF', '#aaeeee', '#ff0066', '#eeaaee', '#55BF3B', '#DF5353', '#7798BF', '#aaeeee'];
 
     let _chart_cache = {};
+
     function is_time_series(response, chartOptions) {
         if (chartOptions.time_series_support === false) return false;
         return response['metadata']['time_series_pattern'] !== ""
@@ -79,9 +80,6 @@
 
         if (isTimeSeries) {
             legendResults = response.metadata['time_series_column_verbose_names'];
-            // let seriesColNames = $.map(response.series, function (element, i) {
-            //     return dataFieldName + 'TS' + element
-            // });
             let seriesColNames = getTimeSeriesColumnNames(response);
 
             if (chartOptions.plot_total) {
@@ -113,11 +111,6 @@
                         borderColor: getBackgroundColors(i),
                         fill: chartOptions.stacked === true,
                     })
-                    // if (titleFieldName !== '') {
-                    //     let txt = row[titleFieldName];
-                    //     txt = $(txt).text() || txt; // the title is an <a tag , we want teh text only
-                    //     legendResults.push(txt)
-                    // }
                 }
             }
 
@@ -155,8 +148,10 @@
 
     function displayChart(data, $elem, chart_id) {
         chart_id = chart_id || $elem.attr('data-report-default-chart') || '';
-        // let chart = $elem;
-        // let chartObject = getObjFromArray(data.chart_settings, 'id', chart_id, true);
+        if ($elem.find('canvas').length === 0) {
+            $elem.append("<canvas width=\"400\" height=\"100\"></canvas>");
+        }
+
         let cache_key = data.report_slug
         try {
             let existing_chart = _chart_cache[cache_key];
@@ -168,9 +163,13 @@
         }
 
         let chartObject = $.slick_reporting.chartsjs.createChartObject(data, chart_id);
-        // _chart_cache[cache_key] = chart.highcharts(chartObject);
-        var $chart = $elem.find('canvas');
-        _chart_cache[cache_key] = new Chart($chart, chartObject);
+        let $chart = $elem.find('canvas');
+        try {
+            _chart_cache[cache_key] = new Chart($chart, chartObject);
+        } catch (e) {
+            $elem.find('canvas').remove();
+        }
+
 
     }
 

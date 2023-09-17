@@ -19,7 +19,11 @@ class ProductSales(ReportView):
     columns = [
         "name",
         ComputationField.create(
-            method=Sum, field="value", name="value__sum", verbose_name="Total sold $", is_summable=True,
+            method=Sum,
+            field="value",
+            name="value__sum",
+            verbose_name="Total sold $",
+            is_summable=True,
         ),
     ]
 
@@ -198,7 +202,11 @@ class GroupByReport(ReportView):
     columns = [
         "name",
         ComputationField.create(
-            method=Sum, field="value", name="value__sum", verbose_name="Total sold $", is_summable=True,
+            method=Sum,
+            field="value",
+            name="value__sum",
+            verbose_name="Total sold $",
+            is_summable=True,
         ),
     ]
 
@@ -252,13 +260,13 @@ class GroupByCustomQueryset(ReportView):
 
     def format_row(self, row_obj):
         # Put the verbose names we need instead of the integer index
-        index = row_obj['__index__']
+        index = row_obj["__index__"]
         if index == 0:
             row_obj["__index__"] = "Big"
         elif index == 1:
-            row_obj['__index__'] = "Small"
+            row_obj["__index__"] = "Small"
         elif index == 2:
-            row_obj['__index__'] = "Medium"
+            row_obj["__index__"] = "Medium"
         return row_obj
 
 
@@ -270,7 +278,11 @@ class NoGroupByReport(ReportView):
 
     columns = [
         ComputationField.create(
-            method=Sum, field="value", name="value__sum", verbose_name="Total sold $", is_summable=True,
+            method=Sum,
+            field="value",
+            name="value__sum",
+            verbose_name="Total sold $",
+            is_summable=True,
         ),
     ]
 
@@ -292,29 +304,30 @@ class TimeSeriesReport(ReportView):
         "name",
         "__time_series__",
         # placeholder for the generated time series columns
-
         ComputationField.create(Sum, "value", verbose_name=_("Total Sales")),
         # This is the same as the time_series_columns, but this one will be on the whole set
-
     ]
 
     chart_settings = [
-        Chart("Client Sales",
-              Chart.BAR,
-              data_source=["sum__value"],
-              title_source=["name"],
-              ),
-        Chart("Total Sales [Pie]",
-              Chart.PIE,
-              data_source=["sum__value"],
-              title_source=["name"],
-              plot_total=True,
-              ),
-        Chart("Total Sales [Area chart]",
-              Chart.AREA,
-              data_source=["sum__value"],
-              title_source=["name"],
-              )
+        Chart(
+            "Client Sales",
+            Chart.BAR,
+            data_source=["sum__value"],
+            title_source=["name"],
+        ),
+        Chart(
+            "Total Sales [Pie]",
+            Chart.PIE,
+            data_source=["sum__value"],
+            title_source=["name"],
+            plot_total=True,
+        ),
+        Chart(
+            "Total Sales [Area chart]",
+            Chart.AREA,
+            data_source=["sum__value"],
+            title_source=["name"],
+        ),
     ]
 
 
@@ -354,8 +367,8 @@ class TimeSeriesReportWithCustomGroupByQueryset(ReportView):
     report_title = _("Time Series Report")
     report_model = SalesTransaction
     group_by_custom_querysets = (
-        SalesTransaction.objects.filter(client__country='US'),
-        SalesTransaction.objects.filter(client__country__in=['RS', 'DE']),
+        SalesTransaction.objects.filter(client__country="US"),
+        SalesTransaction.objects.filter(client__country__in=["RS", "DE"]),
     )
 
     time_series_pattern = "monthly"
@@ -370,29 +383,30 @@ class TimeSeriesReportWithCustomGroupByQueryset(ReportView):
         "__index__",
         "__time_series__",
         # placeholder for the generated time series columns
-
         ComputationField.create(Sum, "value", verbose_name=_("Total Sales")),
         # This is the same as the time_series_columns, but this one will be on the whole set
-
     ]
 
     chart_settings = [
-        Chart("Client Sales",
-              Chart.BAR,
-              data_source=["sum__value"],
-              title_source=["__index__"],
-              ),
-        Chart("Total Sales [Pie]",
-              Chart.PIE,
-              data_source=["sum__value"],
-              title_source=["__index__"],
-              plot_total=True,
-              ),
-        Chart("Total Sales [Area chart]",
-              Chart.AREA,
-              data_source=["sum__value"],
-              title_source=["name"],
-              )
+        Chart(
+            "Client Sales",
+            Chart.BAR,
+            data_source=["sum__value"],
+            title_source=["__index__"],
+        ),
+        Chart(
+            "Total Sales [Pie]",
+            Chart.PIE,
+            data_source=["sum__value"],
+            title_source=["__index__"],
+            plot_total=True,
+        ),
+        Chart(
+            "Total Sales [Area chart]",
+            Chart.AREA,
+            data_source=["sum__value"],
+            title_source=["name"],
+        ),
     ]
 
 
@@ -421,17 +435,19 @@ class TimeSeriesReportWithCustomDatesAndCustomTitle(TimeSeriesReportWithCustomDa
     ]
 
     chart_settings = [
-        Chart("Client Sales",
-              Chart.BAR,
-              data_source=["sum_of_value"],  # Note:  This is the name of our `TotalSalesField` `field
-              title_source=["name"],
-              ),
-        Chart("Total Sales [Pie]",
-              Chart.PIE,
-              data_source=["sum_of_value"],
-              title_source=["name"],
-              plot_total=True,
-              ),
+        Chart(
+            "Client Sales",
+            Chart.BAR,
+            data_source=["sum_of_value"],  # Note:  This is the name of our `TotalSalesField` `field
+            title_source=["name"],
+        ),
+        Chart(
+            "Total Sales [Pie]",
+            Chart.PIE,
+            data_source=["sum_of_value"],
+            title_source=["name"],
+            plot_total=True,
+        ),
     ]
 
 
@@ -450,16 +466,18 @@ class TimeSeriesWithoutGroupBy(ReportView):
     ]
 
     chart_settings = [
-        Chart("Total Sales [Bar]",
-              Chart.BAR,
-              data_source=["sum__value"],
-              title_source=["name"],
-              ),
-        Chart("Total Sales [Pie]",
-              Chart.PIE,
-              data_source=["sum__value"],
-              title_source=["name"],
-              ),
+        Chart(
+            "Total Sales [Bar]",
+            Chart.BAR,
+            data_source=["sum__value"],
+            title_source=["name"],
+        ),
+        Chart(
+            "Total Sales [Pie]",
+            Chart.PIE,
+            data_source=["sum__value"],
+            title_source=["name"],
+        ),
     ]
 
 
@@ -473,7 +491,6 @@ class CrosstabReport(ReportView):
         "name",
         "__crosstab__",
         # You can customize where the crosstab columns are displayed in relation to the other columns
-
         ComputationField.create(Sum, "value", verbose_name=_("Total Value")),
         # This is the same as the calculation in the crosstab,
         # but this one will be on the whole set. IE total value.
@@ -501,7 +518,6 @@ class CrosstabWithIdsCustomFilter(CrosstabReport):
     report_title = _("Crosstab with Custom Filters")
     crosstab_ids_custom_filters = [
         (~Q(product__size__in=["extra_big", "big"]), dict()),
-
         (None, dict(product__size__in=["extra_big", "big"])),
     ]
     # Note:
@@ -528,9 +544,7 @@ class CustomCrossTabTotalField(ComputationField):
 
 class CrossTabReportWithCustomVerboseName(CrosstabReport):
     report_title = _("Crosstab with customized verbose name")
-    crosstab_columns = [
-        CustomCrossTabTotalField
-    ]
+    crosstab_columns = [CustomCrossTabTotalField]
 
 
 class CustomCrossTabTotalField2(CustomCrossTabTotalField):
@@ -550,16 +564,46 @@ class CustomCrossTabTotalField2(CustomCrossTabTotalField):
 class CrossTabReportWithCustomVerboseNameCustomFilter(CrosstabWithIdsCustomFilter):
     report_title = _("Crosstab customized verbose name with custom filter")
 
-    crosstab_columns = [
-        CustomCrossTabTotalField2
-    ]
+    crosstab_columns = [CustomCrossTabTotalField2]
 
 
 class CrossTabWithTimeSeries(CrossTabReportWithCustomVerboseNameCustomFilter):
     report_title = _("Crosstab with time series")
     time_series_pattern = "monthly"
 
-    columns = [
-        "name",
-        "__time_series__"
+    columns = ["name", "__time_series__"]
+
+
+class ChartJSExample(TimeSeriesReport):
+    report_title = _("ChartJS Examples ")
+
+    chart_engine = "chartsjs"
+    chart_settings = [
+        Chart(
+            "Client Sales",
+            Chart.BAR,
+            data_source=["sum__value"],
+            title_source=["name"],
+        ),
+        Chart(
+            "Total Sales [Pie]",
+            Chart.PIE,
+            data_source=["sum__value"],
+            title_source=["name"],
+            plot_total=True,
+        ),
+        Chart(
+            "Total Sales [Line total]",
+            Chart.LINE,
+            data_source=["sum__value"],
+            title_source=["name"],
+            plot_total=True,
+        ),
+        Chart(
+            "Total Sales [Line details]",
+            Chart.LINE,
+            data_source=["sum__value"],
+            title_source=["name"],
+            # plot_total=True,
+        ),
     ]
