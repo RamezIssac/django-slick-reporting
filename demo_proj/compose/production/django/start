@@ -1,0 +1,29 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+
+python /app/manage.py collectstatic --noinput
+
+compress_enabled() {
+python << END
+import sys
+
+from environ import Env
+
+env = Env(COMPRESS_ENABLED=(bool, True))
+if env('COMPRESS_ENABLED'):
+    sys.exit(0)
+else:
+    sys.exit(1)
+
+END
+}
+
+if compress_enabled; then
+  # NOTE this command will fail if django-compressor is disabled
+  python /app/manage.py compress
+fi
+exec /usr/local/bin/gunicorn config.wsgi --bind 0.0.0.0:5000 --chdir=/app
