@@ -149,15 +149,6 @@ class SlickReportForm(BaseReportForm):
     Holds basic function
     """
 
-    @property
-    def media(self):
-        from .app_settings import SLICK_REPORTING_FORM_MEDIA
-
-        return forms.Media(
-            css=SLICK_REPORTING_FORM_MEDIA.get("css", {}),
-            js=SLICK_REPORTING_FORM_MEDIA.get("js", []),
-        )
-
     def get_start_date(self):
         return self.cleaned_data.get("start_date")
 
