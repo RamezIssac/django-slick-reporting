@@ -239,13 +239,6 @@ You can also use locally
 
 the ``create_entries`` command will generate data for the demo app
 
-A Preview:
-
-.. image:: https://i.ibb.co/SvxTM23/Selection-294.png
-    :target: https://i.ibb.co/SvxTM23/Selection-294.png
-    :alt: Shipped in View Page
-
-
 Documentation
 -------------
 

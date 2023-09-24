@@ -12,12 +12,12 @@ Below are the default settings for django-slick-reporting. You can override them
 
 .. code-block:: python
 
-    SLICK_REPORTING_SETTINGS_DEFAULT = {
+    SLICK_REPORTING_SETTINGS = {
         "JQUERY_URL": "https://code.jquery.com/jquery-3.7.0.min.js",
         "DEFAULT_START_DATE_TIME": datetime(
             datetime.now().year, 1, 1, 0, 0, 0, tzinfo=timezone.utc
-        ),  # 1st Jan of current year
-        "DEFAULT_END_DATE_TIME": datetime.datetime.today(),  # today
+        ),  # Default: 1st Jan of current year
+        "DEFAULT_END_DATE_TIME": datetime.datetime.today(),  # Default to today
         "FONT_AWESOME": {
             "CSS_URL": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css",
             "ICONS": {
@@ -37,18 +37,33 @@ Below are the default settings for django-slick-reporting. You can override them
         },
     }
 
+* JQUERY_URL:
 
-*. FONT_AWESOME
+    Link to the jquery file, You can use set it to False and manage the jQuery addition to your liking
+
+* DEFAULT_START_DATE_TIME
+
+    Default date time that would appear on the filter form in the start date
+
+* DEFAULT_END_DATE_TIME
+
+    Default date time that would appear on the filter form in the end date
+
+* FONT_AWESOME:
+
     Font awesome is used to display the icon next to the chart title. You can override the following settings:
+
     1. ``CSS_URL``: URL to the font-awesome css file
     2. ``ICONS``: Icons used for different chart types.
 
-*. CHARTS:
+* CHARTS:
+
     The entry points for displaying charts on the front end.
-    YOu can add your own chart engine by adding an entry to this dictionary.
+    You can add your own chart engine by adding an entry to this dictionary.
 
 * MESSAGES:
-    The strings used in the front end. You can override them here, it also gives a chance to set and translate them per your requirements.
+
+   The strings used in the front end. You can override them here, it also gives a chance to set and translate them per your requirements.
 
 
 Old versions settings:
