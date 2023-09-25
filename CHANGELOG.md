@@ -1,10 +1,10 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-## [1.1.1] -
-- Change settings to be a dict , adding support JQUERY_URL and FONT AWESOME customization
-- Fix issue with chartjs not being loaded
-- Enhance Font Awesome mapping by adding it to the settings
+
+## [1.1.1] - 2023-09-25
+- Change settings to be a dict , adding support JQUERY_URL and FONT AWESOME customization #79 & #81
+- Fix issue with chartjs not being loaded  #80
 - Remove `SLICK_REPORTING_FORM_MEDIA`
 
 ## [1.1.0] -
