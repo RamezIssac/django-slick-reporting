@@ -1,3 +1,4 @@
+.. _ settings:
 
 Settings
 ========
