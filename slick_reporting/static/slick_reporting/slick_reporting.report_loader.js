@@ -5,6 +5,7 @@
  */
 
 (function ($) {
+    let settings = {};
 
     function failFunction(data, $elem) {
         if (data.status === 403) {
@@ -18,7 +19,6 @@
         let chartElem = $elem.find('[data-report-chart]');
         let chart_id = $elem.attr('data-chart-id');
         let display_chart_selector = $elem.attr('data-display-chart-selector');
-        // chartElem.append("<canvas width=\"400\" height=\"100\"></canvas>");
         if (chartElem.length !== 0 && data.chart_settings.length !== 0) {
 
             $.slick_reporting.report_loader.displayChart(data, chartElem, chart_id);
@@ -37,17 +37,13 @@
 
     function displayChart(data, $elem, chart_id) {
         let engine = "highcharts";
-        // if ( typeof (chart_id) !== "undefined"){
-        //     engine = "chartsjs"
-        // }
         try {
             if (chart_id === '' || typeof (chart_id) === "undefined") {
                 engine = data.chart_settings[0]['engine_name'];
             } else {
                 engine = data.chart_settings.find(x => x.id === chart_id).engine_name;
             }
-        }
-        catch (e){
+        } catch (e) {
             console.error(e);
         }
         $.slick_reporting.executeFunctionByName($.slick_reporting.report_loader.chart_engines[engine], window, data, $elem, chart_id);
@@ -89,9 +85,19 @@
 
 
     function initialize() {
+        settings = JSON.parse(document.getElementById('slick_reporting_settings').textContent);
         $('[data-report-widget]').not('[data-no-auto-load]').each(function (i, elem) {
             refreshReportWidget($(elem));
         });
+    }
+
+    function _get_chart_icon(chart_type) {
+        try {
+            return "<i class='" + settings.FONT_AWESOME.ICONS[chart_type] +"'></i>";
+        } catch (e) {
+            console.error(e);
+        }
+        return '';
     }
 
     function createChartsUIfromResponse(data, $elem, a_class) {
@@ -112,10 +118,7 @@
             if (chart.disabled) continue;
 
             let chart_type = chart.type;
-            if (chart_type === 'pie') icon = '<i class="fas fa-chart-pie"></i>';
-            else if (chart_type === 'line') icon = '<i class="fas fa-chart-line"></i>';
-            else if (chart_type === 'area') icon = '<i class="fas fa-chart-area"></i>';
-            else icon = '<i class="fas fa-chart-bar"></i>';
+            icon = _get_chart_icon(chart_type);
 
             ul.append('<li class="nav-link"><a href class="' + a_class + '" data-chart-id="' + chart.id + '" ' +
                 'data-report-slug="' + report_slug + '">' + icon + ' ' + chart.title + '</a></li>')

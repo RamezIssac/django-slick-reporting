@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2023-09-25
+- Change settings to be a dict , adding support JQUERY_URL and FONT AWESOME customization #79 & #81
+- Fix issue with chartjs not being loaded  #80
+- Remove `SLICK_REPORTING_FORM_MEDIA`
+
 ## [1.1.0] -
 - Breaking: changed ``report_title_context_key`` default value to `report_title`
 - Breaking: Renamed simple_report.html to report.html

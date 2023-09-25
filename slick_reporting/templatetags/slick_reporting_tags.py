@@ -1,13 +1,9 @@
-import simplejson as json
-
 from django import template
-from django.core.serializers import serialize
-from django.db.models import QuerySet
 from django.template.loader import get_template
 from django.urls import reverse, resolve
-from django.utils.encoding import force_str
-from django.utils.functional import Promise
 from django.utils.safestring import mark_safe
+
+from slick_reporting.app_settings import SLICK_REPORTING_JQUERY_URL
 
 register = template.Library()
 
@@ -17,20 +13,21 @@ def get_data(row, column):
     return row[column["name"]]
 
 
-def jsonify(object):
-    def date_handler(obj):
-        if hasattr(obj, "isoformat"):
-            return obj.isoformat()
-        elif isinstance(obj, Promise):
-            return force_str(obj)
-
-    if isinstance(object, QuerySet):
-        return serialize("json", object)
-
-    return mark_safe(json.dumps(object, use_decimal=True, default=date_handler))
-
-
-register.filter("jsonify", jsonify)
+#
+# def jsonify(object):
+#     def date_handler(obj):
+#         if hasattr(obj, "isoformat"):
+#             return obj.isoformat()
+#         elif isinstance(obj, Promise):
+#             return force_str(obj)
+#
+#     if isinstance(object, QuerySet):
+#         return serialize("json", object)
+#
+#     return mark_safe(json.dumps(object, use_decimal=True, default=date_handler))
+#
+#
+# register.filter("jsonify", jsonify)
 
 
 @register.simple_tag
@@ -72,3 +69,17 @@ def get_widget(report, template_name="", url_name="", report_url=None, **kwargs)
     template = get_template(template_name or "slick_reporting/widget_template.html")
 
     return template.render(context=kwargs)
+
+
+@register.simple_tag
+def add_jquery():
+    if SLICK_REPORTING_JQUERY_URL:
+        return mark_safe(f'<script src="{SLICK_REPORTING_JQUERY_URL}"></script>')
+    return ""
+
+
+@register.simple_tag
+def get_slick_reporting_settings():
+    from slick_reporting.app_settings import SLICK_REPORTING_SETTINGS
+
+    return SLICK_REPORTING_SETTINGS

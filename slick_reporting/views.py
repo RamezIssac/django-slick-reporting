@@ -12,10 +12,7 @@ from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
-from .app_settings import (
-    SLICK_REPORTING_DEFAULT_END_DATE,
-    SLICK_REPORTING_DEFAULT_START_DATE,
-)
+from .app_settings import SLICK_REPORTING_SETTINGS
 from .forms import (
     report_form_factory,
     get_crispy_helper,
@@ -113,6 +110,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
     doc_type_plus_list = None
     doc_type_minus_list = None
     auto_load = True
+    chart_engine = ""
 
     default_order_by = ""
 
@@ -220,7 +218,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             display_compute_remainder=self.crosstab_compute_remainder,
             excluded_fields=self.excluded_fields,
             fkeys_filter_func=self.form_filter_func,
-            initial=self.get_form_initial(),
+            initial=self.get_initial(),
             show_time_series_selector=self.time_series_selector,
             time_series_selector_choices=self.time_series_selector_choices,
             time_series_selector_default=self.time_series_selector_default,
@@ -345,6 +343,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             report_slug=self.get_report_slug(),
             chart_settings=self.chart_settings,
             default_chart_title=self.report_title,
+            default_chart_engine=self.chart_engine,
         )
 
     @classmethod
@@ -359,7 +358,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         Ensure the sane settings are passed to the front end.
         """
-        return generator.get_chart_settings(self.chart_settings or [], self.report_title)
+        return generator.get_chart_settings(self.chart_settings or [], self.report_title, self.chart_engine)
 
     @classmethod
     def get_queryset(cls):
@@ -381,12 +380,10 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
     def get_report_slug(cls):
         return cls.report_slug or cls.__name__.lower()
 
-    @staticmethod
-    def get_form_initial():
-        # todo revise why not actually displaying datetime on screen
+    def get_initial(self):
         return {
-            "start_date": SLICK_REPORTING_DEFAULT_START_DATE,
-            "end_date": SLICK_REPORTING_DEFAULT_END_DATE,
+            "start_date": SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"],
+            "end_date": SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],
         }
 
     def get_form_crispy_helper(self):

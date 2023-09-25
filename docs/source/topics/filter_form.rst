@@ -120,4 +120,4 @@ Example a full example of a custom form:
         class RequestCountByPath(ReportView):
             form_class = RequestLogForm
 
-You can view this code snippet in action on the demo project https://my-shop.django-erp-framework.com/requests-dashboard/reports/request_analytics/requestlog/
+You can view this code snippet in action on the demo project https://django-slick-reporting.com/total-product-sales-with-custom-form/
