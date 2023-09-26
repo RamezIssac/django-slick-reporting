@@ -12,9 +12,9 @@ services:
       context: .
       dockerfile: ./compose/production/django/Dockerfile
 
-    image: docker_test_production_django
+    image: slick_reporting_demo_production_django
     volumes:
-      - production_django_media:/app/docker_test/media
+      - production_django_media:/app/slick_reporting_demo/media
     depends_on:
       - postgres
       - redis
@@ -27,7 +27,7 @@ services:
     build:
       context: .
       dockerfile: ./compose/production/postgres/Dockerfile
-    image: docker_test_production_postgres
+    image: slick_reporting_demo_production_postgres
     volumes:
       - production_postgres_data:/var/lib/postgresql/data
       - production_postgres_data_backups:/backups
@@ -38,7 +38,7 @@ services:
     build:
       context: .
       dockerfile: ./compose/production/traefik/Dockerfile
-    image: docker_test_production_traefik
+    image: slick_reporting_demo_production_traefik
     depends_on:
       - django
     volumes:
@@ -53,24 +53,24 @@ services:
 
   celeryworker:
     <<: *django
-    image: docker_test_production_celeryworker
+    image: slick_reporting_demo_production_celeryworker
     command: /start-celeryworker
 
   celerybeat:
     <<: *django
-    image: docker_test_production_celerybeat
+    image: slick_reporting_demo_production_celerybeat
     command: /start-celerybeat
 
   flower:
     <<: *django
-    image: docker_test_production_flower
+    image: slick_reporting_demo_production_flower
     command: /start-flower
 
   nginx:
     build:
       context: .
       dockerfile: ./compose/production/nginx/Dockerfile
-    image: docker_test_local_nginx
+    image: slick_reporting_demo_local_nginx
     depends_on:
       - django
     volumes:

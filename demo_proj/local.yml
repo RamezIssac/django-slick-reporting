@@ -1,16 +1,16 @@
 version: '3'
 
 volumes:
-  docker_test_local_postgres_data: {}
-  docker_test_local_postgres_data_backups: {}
+  slick_reporting_demo_local_postgres_data: {}
+  slick_reporting_demo_local_postgres_data_backups: {}
 
 services:
   django: &django
     build:
       context: .
       dockerfile: ./compose/local/django/Dockerfile
-    image: docker_test_local_django
-    container_name: docker_test_local_django
+    image: slick_reporting_demo_local_django
+    container_name: slick_reporting_demo_local_django
     depends_on:
       - postgres
       - redis
@@ -27,17 +27,17 @@ services:
     build:
       context: .
       dockerfile: ./compose/production/postgres/Dockerfile
-    image: docker_test_production_postgres
-    container_name: docker_test_local_postgres
+    image: slick_reporting_demo_production_postgres
+    container_name: slick_reporting_demo_local_postgres
     volumes:
-      - docker_test_local_postgres_data:/var/lib/postgresql/data
-      - docker_test_local_postgres_data_backups:/backups
+      - slick_reporting_demo_local_postgres_data:/var/lib/postgresql/data
+      - slick_reporting_demo_local_postgres_data_backups:/backups
     env_file:
       - ./.envs/.local/.postgres
 
 #  docs:
-#    image: docker_test_local_docs
-#    container_name: docker_test_local_docs
+#    image: slick_reporting_demo_local_docs
+#    container_name: slick_reporting_demo_local_docs
 #    build:
 #      context: .
 #      dockerfile: ./compose/local/docs/Dockerfile
@@ -46,39 +46,39 @@ services:
 #    volumes:
 #      - ./docs:/docs:z
 #      - ./config:/app/config:z
-#      - ./docker_test:/app/docker_test:z
+#      - ./slick_reporting_demo:/app/slick_reporting_demo:z
 #    ports:
 #      - '9000:9000'
 #    command: /start-docs
 
   redis:
     image: redis:6
-    container_name: docker_test_local_redis
+    container_name: slick_reporting_demo_local_redis
 
-  celeryworker:
-    <<: *django
-    image: docker_test_local_celeryworker
-    container_name: docker_test_local_celeryworker
-    depends_on:
-      - redis
-      - postgres
-    ports: []
-    command: /start-celeryworker
+#  celeryworker:
+#    <<: *django
+#    image: slick_reporting_demo_local_celeryworker
+#    container_name: slick_reporting_demo_local_celeryworker
+#    depends_on:
+#      - redis
+#      - postgres
+#    ports: []
+#    command: /start-celeryworker
+#
+#  celerybeat:
+#    <<: *django
+#    image: slick_reporting_demo_local_celerybeat
+#    container_name: slick_reporting_demo_local_celerybeat
+#    depends_on:
+#      - redis
+#      - postgres
+#    ports: []
+#    command: /start-celerybeat
 
-  celerybeat:
-    <<: *django
-    image: docker_test_local_celerybeat
-    container_name: docker_test_local_celerybeat
-    depends_on:
-      - redis
-      - postgres
-    ports: []
-    command: /start-celerybeat
-
-  flower:
-    <<: *django
-    image: docker_test_local_flower
-    container_name: docker_test_local_flower
-    ports:
-      - '5555:5555'
-    command: /start-flower
+#  flower:
+#    <<: *django
+#    image: slick_reporting_demo_local_flower
+#    container_name: slick_reporting_demo_local_flower
+#    ports:
+#      - '5555:5555'
+#    command: /start-flower
