@@ -1,0 +1,35 @@
+{% extends "slick_reporting/report.html" %}
+
+{% block content %}
+    {{ block.super }}
+
+    <script>
+
+        function DisplayApexPieChart(data, $elem, chartOptions) {
+            let legendAndSeries = $.slick_reporting.chartsjs.getGroupByLabelAndSeries(data, chartOptions);
+            let options = {
+                series: legendAndSeries.series,
+                chart: {
+                    type: 'pie',
+                    height: 350
+                },
+                labels: legendAndSeries.labels,
+                responsive: [{
+                    breakpoint: 480,
+                    options: {
+                        chart: {
+                            width: 200
+                        },
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }]
+            };
+
+            let chart = new ApexCharts($elem[0], options);
+            chart.render();
+
+        }
+    </script>
+{% endblock %}

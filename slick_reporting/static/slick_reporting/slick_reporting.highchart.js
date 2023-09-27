@@ -19,39 +19,7 @@
             return output
         }
 
-        function getObjFromArray(objList, obj_key, key_value, failToFirst) {
-            failToFirst = typeof (failToFirst) !== 'undefined';
-            if (key_value !== '') {
-                for (let i = 0; i < objList.length; i++) {
-                    if (objList[i][obj_key] === key_value) {
-                        return objList[i];
-                    }
-                }
-            }
-            if (failToFirst && objList.length > 0) {
-                return objList[0]
-            }
 
-            return false;
-        }
-
-        var ra_chart_settings = {
-
-
-            //exporting: {
-            //    allowHTML:true,
-            //    enabled: faelse,
-            //},
-
-
-            func2: function () {
-                var tooltip = '<small>' + this.point.key + '</small><table><tr><td style="color:' + this.series.color +
-                    '">' + this.series.name + ': </td> <td style="text-align: right"><b>' +
-                    this.point.y + ' </b></td></tr>' +
-                    '<tr><td style="color: ' + this.series.color + '">{Percentage}:</td>' +
-                    '<td style="text-align: right"><b>' + this.point.percentage + ' %</b></td></tr></table>'
-            }
-        };
         let _chart_cache = {};
 
         function normalStackedTooltipFormatter() {
@@ -87,7 +55,7 @@
             // First specifying the global default
             // second, Get the data from the serponse
             // Adjust the Chart Object accordingly
-            let chartOptions = getObjFromArray(response.chart_settings, 'id', chart_id, true)
+            let chartOptions = $.slick_reporting.getObjFromArray(response.chart_settings, 'id', chart_id, true)
 
             try {
 

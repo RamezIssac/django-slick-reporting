@@ -400,6 +400,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         context[self.report_title_context_key] = self.report_title
         context["crispy_helper"] = self.get_form_crispy_helper()
         context["auto_load"] = self.auto_load
+        context["report"] = self
 
         if not (self.request.POST or self.request.GET):
             # initialize empty form with initials if the no data is in the get or the post

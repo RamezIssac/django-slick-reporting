@@ -3,7 +3,7 @@ from django.template.loader import get_template
 from django.urls import reverse, resolve
 from django.utils.safestring import mark_safe
 
-from slick_reporting.app_settings import SLICK_REPORTING_JQUERY_URL
+from ..app_settings import SLICK_REPORTING_JQUERY_URL, SLICK_REPORTING_SETTINGS
 
 register = template.Library()
 
@@ -79,7 +79,20 @@ def add_jquery():
 
 
 @register.simple_tag
+def get_charts_resources(chart_settings):
+    available_types = [chart["type"] for chart in chart_settings]
+    css = []
+    js = []
+    for type in available_types:
+        css.append(SLICK_REPORTING_SETTINGS["CHARTS"][type]["css"])
+        js.append(SLICK_REPORTING_SETTINGS["CHARTS"][type]["js"])
+    # css = "\n".join(css)
+    # js = "\n".join(js)
+    return css, css
+
+
+@register.simple_tag
 def get_slick_reporting_settings():
     from slick_reporting.app_settings import SLICK_REPORTING_SETTINGS
 
-    return SLICK_REPORTING_SETTINGS
+    return dict(SLICK_REPORTING_SETTINGS)

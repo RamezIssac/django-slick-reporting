@@ -607,3 +607,33 @@ class ChartJSExample(TimeSeriesReport):
             # plot_total=True,
         ),
     ]
+
+
+class ProductSalesApexChart(ReportView):
+    report_title = _("Product Sales Apex Charts")
+    report_model = SalesTransaction
+    date_field = "date"
+    group_by = "product"
+    chart_engine = "apexcharts"
+    template_name = "demo/apex_report.html"
+
+    columns = [
+        "name",
+        ComputationField.create(
+            method=Sum,
+            field="value",
+            name="value__sum",
+            verbose_name="Total sold $",
+            is_summable=True,
+        ),
+    ]
+
+    # Charts
+    chart_settings = [
+        Chart(
+            "Total sold $",
+            type="pie",
+            data_source=["value__sum"],
+            title_source=["name"],
+        ),
+    ]

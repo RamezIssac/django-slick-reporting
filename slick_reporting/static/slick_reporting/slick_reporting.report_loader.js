@@ -37,6 +37,7 @@
 
     function displayChart(data, $elem, chart_id) {
         let engine = "highcharts";
+        let chartOptions = $.slick_reporting.getObjFromArray(data.chart_settings, 'id', chart_id, true);
         try {
             if (chart_id === '' || typeof (chart_id) === "undefined") {
                 engine = data.chart_settings[0]['engine_name'];
@@ -46,7 +47,7 @@
         } catch (e) {
             console.error(e);
         }
-        $.slick_reporting.executeFunctionByName($.slick_reporting.report_loader.chart_engines[engine], window, data, $elem, chart_id);
+        $.slick_reporting.executeFunctionByName($.slick_reporting.report_loader.chart_engines[engine], window, data, $elem, chartOptions);
     }
 
 
@@ -86,14 +87,20 @@
 
     function initialize() {
         settings = JSON.parse(document.getElementById('slick_reporting_settings').textContent);
+        let chartSettings = {};
         $('[data-report-widget]').not('[data-no-auto-load]').each(function (i, elem) {
             refreshReportWidget($(elem));
         });
+
+        Object.keys(settings["CHARTS"]).forEach(function (key) {
+            chartSettings[key] = settings.CHARTS[key].entryPoint;
+        })
+        $.slick_reporting.report_loader.chart_engines = chartSettings;
     }
 
     function _get_chart_icon(chart_type) {
         try {
-            return "<i class='" + settings.FONT_AWESOME.ICONS[chart_type] +"'></i>";
+            return "<i class='" + settings.FONT_AWESOME.ICONS[chart_type] + "'></i>";
         } catch (e) {
             console.error(e);
         }
@@ -136,8 +143,11 @@
 
     });
 
+
+
     $.slick_reporting.report_loader = {
         cache: $.slick_reporting.cache,
+        // "extractDataFromResponse": extractDataFromResponse,
         initialize: initialize,
         refreshReportWidget: refreshReportWidget,
         failFunction: failFunction,

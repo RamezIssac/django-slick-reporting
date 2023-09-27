@@ -40,6 +40,7 @@ CROSSTAB = [
 ]
 OTHER = [
     ("chartjs-examples", reports.ChartJSExample),
+    ("apexcharts-examples", reports.ProductSalesApexChart),
 ]
 
 

@@ -19,7 +19,7 @@
             </form>
         {% endif %}
 
-        <div class="card" id="{{ report_data.report_slug }}">
+        <div class="card" id="{{ report.report_slug }}">
             <div class="card-header">
                 <h5 class="card-title">{% trans "Results" %}</h5>
             </div>
@@ -38,4 +38,7 @@
             </div>
         </div>
     </div>
+
+{#    {% get_charts_js_resources report %}#}
+{#    {% get_charts_css_resources report %}#}
 {% endblock %}

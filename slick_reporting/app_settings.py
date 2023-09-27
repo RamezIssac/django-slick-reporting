@@ -52,8 +52,14 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
         },
     },
     "CHARTS": {
-        "highcharts": "$.slick_reporting.highcharts.displayChart",
-        "chartjs": "$.slick_reporting.chartjs.displayChart",
+        "highcharts": {
+            "entryPoint": "$.slick_reporting.highcharts.displayChart",
+        },
+        "chartsjs": {
+            "entryPoint": "$.slick_reporting.chartsjs.displayChart",
+        }
+        # "highcharts": "$.slick_reporting.highcharts.displayChart",
+        # "chartjs": "$.slick_reporting.chartjs.displayChart",
     },
     "MESSAGES": {
         "total": _("Total"),
@@ -62,7 +68,17 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
 
 
 def get_slick_reporting_settings():
-    slick_settings = {**SLICK_REPORTING_SETTINGS_DEFAULT, **getattr(settings, "SLICK_REPORTING_SETTINGS", {})}
+    slick_settings = SLICK_REPORTING_SETTINGS_DEFAULT.copy()
+    slick_chart_settings = slick_settings["CHARTS"].copy()
+
+    user_settings = getattr(settings, "SLICK_REPORTING_SETTINGS", {})
+    user_chart_settings = user_settings.get("CHARTS", {})
+
+    slick_chart_settings.update(user_chart_settings)
+    slick_settings.update(user_settings)
+    slick_settings["CHARTS"] = slick_chart_settings
+
+    # slick_settings = {**SLICK_REPORTING_SETTINGS_DEFAULT, **getattr(settings, "SLICK_REPORTING_SETTINGS", {})}
     start_date = getattr(settings, "SLICK_REPORTING_DEFAULT_START_DATE", False)
     end_date = getattr(settings, "SLICK_REPORTING_DEFAULT_END_DATE", False)
     # backward compatibility, todo remove in next major release

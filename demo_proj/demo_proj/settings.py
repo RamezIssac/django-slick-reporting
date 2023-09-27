@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "demo_app",
     "crispy_forms",
     "crispy_bootstrap5",
@@ -130,3 +129,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+
+SLICK_REPORTING_SETTINGS = {
+    "CHARTS": {
+        "apexcharts": {
+            "entryPoint": "DisplayApexPieChart",
+            "js": "https://cdn.jsdelivr.net/npm/apexcharts",
+            "css": "https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.css",
+        },
+    },
+}
