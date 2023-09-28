@@ -1,31 +1,47 @@
 Custom Charting Engine
 ======================
 
+In this guide we will add some Apex charts to the demo app.
+to demonstrate how you can add your own charting engine to slick reporting.
 
-To add a new chart engine you add it to the settings and provide an entry point function for the front end
+#. We need to add the new chart Engine to the settings
 
 .. code-block:: python
 
-    SLICK_REPORTING_SETTINGS_DEFAULT = {
+    SLICK_REPORTING_SETTINGS = {
         "CHARTS": {
             "apexcharts": {
                 "entryPoint": "DisplayChart",
                 "js": ("https://cdn.jsdelivr.net/npm/apexcharts",),
-                "css": "https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.css",
+                "css": {
+                    "all": "https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.css"
+                },
             }
         },
     }
 
-and then you add the entry point function to the front end
+#. and then you add the entry point function to the front end javascript
 
 .. code-block:: javascript
 
-    function displayChart(data, $elem, chart_id) {
+    function displayChart(data, $elem, chartOptions) {
         // data is the ajax response coming from server
         // $elem is the jquery element where the chart should be rendered
-       // chart_id is the id of the chart, which is teh index of teh needed chart in the [data.chart_settings] array
+       // chartOptions is the relevant chart dictionary/object in your ReportView chart_settings
 
     }
 
 
-The data is a json object with the following structure
+Complete example:
+-----------------
+
+.. code-block:: python
+
+    class ProductSalesApexChart(ReportView):
+        report_title = _("Product Sales Apex Charts")
+        report_model = SalesTransaction
+        date_field = "date"
+        group_by = "product"
+
+        chart_engine = "apexcharts"  #
+        template_name = "demo/apex_report.html"

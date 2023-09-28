@@ -1,5 +1,5 @@
 {% extends 'slick_reporting/base.html' %}
-{% load crispy_forms_tags i18n %}
+{% load crispy_forms_tags i18n slick_reporting_tags %}
 
 {% block content %}
     <div class="col-12">
@@ -41,4 +41,9 @@
 
 {#    {% get_charts_js_resources report %}#}
 {#    {% get_charts_css_resources report %}#}
+{% endblock %}
+
+{% block extrajs %}
+    {{ block.super }}
+    {% get_charts_media report.get_chart_settings %}
 {% endblock %}

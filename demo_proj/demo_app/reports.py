@@ -609,6 +609,10 @@ class ChartJSExample(TimeSeriesReport):
     ]
 
 
+class HighChartExample(ChartJSExample):
+    chart_engine = "highcharts"
+
+
 class ProductSalesApexChart(ReportView):
     report_title = _("Product Sales Apex Charts")
     report_model = SalesTransaction
@@ -633,6 +637,12 @@ class ProductSalesApexChart(ReportView):
         Chart(
             "Total sold $",
             type="pie",
+            data_source=["value__sum"],
+            title_source=["name"],
+        ),
+        Chart(
+            "Total sold $",
+            type="bar",
             data_source=["value__sum"],
             title_source=["name"],
         ),

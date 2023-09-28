@@ -41,6 +41,24 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
     "JQUERY_URL": SLICK_REPORTING_JQUERY_URL,
     "DEFAULT_START_DATE_TIME": get_start_date(),
     "DEFAULT_END_DATE_TIME": get_end_date(),
+    "MEDIA": {
+        "override": False,
+        "js": (
+            "https://cdn.jsdelivr.net/momentjs/latest/moment.min.js",
+            "https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js",
+            "https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js",
+            "https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js",
+            "slick_reporting/slick_reporting.js",
+            "slick_reporting/slick_reporting.report_loader.js",
+            "slick_reporting/slick_reporting.datatable.js",
+        ),
+        "css": {
+            "all": (
+                "https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css",
+                "https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css",
+            )
+        },
+    },
     "FONT_AWESOME": {
         "CSS_URL": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css",
         "ICONS": {
@@ -54,12 +72,12 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
     "CHARTS": {
         "highcharts": {
             "entryPoint": "$.slick_reporting.highcharts.displayChart",
+            "js": ("https://code.highcharts.com/highcharts.js", "slick_reporting/slick_reporting.highchart.js"),
         },
         "chartsjs": {
             "entryPoint": "$.slick_reporting.chartsjs.displayChart",
-        }
-        # "highcharts": "$.slick_reporting.highcharts.displayChart",
-        # "chartjs": "$.slick_reporting.chartjs.displayChart",
+            "js": ("https://cdn.jsdelivr.net/npm/chart.js", "slick_reporting/slick_reporting.chartsjs.js"),
+        },
     },
     "MESSAGES": {
         "total": _("Total"),
@@ -91,3 +109,7 @@ def get_slick_reporting_settings():
 
 
 SLICK_REPORTING_SETTINGS = lazy(get_slick_reporting_settings, dict)()
+
+
+def get_media():
+    return SLICK_REPORTING_SETTINGS["MEDIA"]

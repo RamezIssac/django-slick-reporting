@@ -134,8 +134,8 @@ SLICK_REPORTING_SETTINGS = {
     "CHARTS": {
         "apexcharts": {
             "entryPoint": "DisplayApexPieChart",
-            "js": "https://cdn.jsdelivr.net/npm/apexcharts",
-            "css": "https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.css",
+            "js": ("https://cdn.jsdelivr.net/npm/apexcharts", "slick_reporting/slick_reporting.chartsjs.js"),
+            "css": {"all": ("https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.css",)},
         },
     },
 }

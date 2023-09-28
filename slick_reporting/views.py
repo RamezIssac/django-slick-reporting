@@ -257,7 +257,8 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         return self.form.get_crosstab_ids()
 
-    def get_report_generator(self, queryset, for_print):
+    def get_report_generator(self, queryset=None, for_print=False):
+        queryset = queryset or self.get_queryset()
         q_filters, kw_filters = self.form.get_filters()
         crosstab_compute_remainder = False
         if self.crosstab_field:
@@ -354,10 +355,11 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         return generator.get_metadata()
 
-    def get_chart_settings(self, generator):
+    def get_chart_settings(self, generator=None):
         """
         Ensure the sane settings are passed to the front end.
         """
+        generator = generator or self.get_report_generator()
         return generator.get_chart_settings(self.chart_settings or [], self.report_title, self.chart_engine)
 
     @classmethod

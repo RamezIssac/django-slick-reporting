@@ -1,35 +1,57 @@
 {% extends "slick_reporting/report.html" %}
+{% load i18n slick_reporting_tags %}
 
 {% block content %}
     {{ block.super }}
 
+{% endblock %}
+
+{% block extrajs %}
+{{ block.super }}
+    {% get_charts_media report.get_chart_settings %}
+
     <script>
 
-        function DisplayApexPieChart(data, $elem, chartOptions) {
-            let legendAndSeries = $.slick_reporting.chartsjs.getGroupByLabelAndSeries(data, chartOptions);
-            let options = {
-                series: legendAndSeries.series,
-                chart: {
-                    type: 'pie',
-                    height: 350
-                },
-                labels: legendAndSeries.labels,
-                responsive: [{
-                    breakpoint: 480,
-                    options: {
-                        chart: {
-                            width: 200
-                        },
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }]
-            };
+        let chart = null;
 
-            let chart = new ApexCharts($elem[0], options);
+        function DisplayApexPieChart(data, $elem, chartOptions) {
+
+            let legendAndSeries = $.slick_reporting.chartsjs.getGroupByLabelAndSeries(data, chartOptions);
+            let options = {}
+            if (chartOptions.type === "pie") {
+                options = {
+                    series: legendAndSeries.series,
+                    chart: {
+                        type: "pie",
+                        height: 350
+                    },
+                    labels: legendAndSeries.labels,
+                };
+            } else {
+                options = {
+                    chart: {
+                        type: 'bar'
+                    },
+                    series: [{
+                        name: 'Sales',
+                        data: legendAndSeries.series
+                    }],
+                    xaxis: {
+                        categories: legendAndSeries.labels,
+                    }
+                }
+            }
+
+            try {
+                chart.destroy();
+            } catch (e) {
+                // do nothing
+            }
+
+            chart = new ApexCharts($elem[0], options);
             chart.render();
 
         }
     </script>
+
 {% endblock %}

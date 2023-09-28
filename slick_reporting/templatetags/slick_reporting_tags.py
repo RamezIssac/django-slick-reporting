@@ -3,7 +3,7 @@ from django.template.loader import get_template
 from django.urls import reverse, resolve
 from django.utils.safestring import mark_safe
 
-from ..app_settings import SLICK_REPORTING_JQUERY_URL, SLICK_REPORTING_SETTINGS
+from ..app_settings import SLICK_REPORTING_JQUERY_URL, SLICK_REPORTING_SETTINGS, get_media
 
 register = template.Library()
 
@@ -79,16 +79,25 @@ def add_jquery():
 
 
 @register.simple_tag
-def get_charts_resources(chart_settings):
-    available_types = [chart["type"] for chart in chart_settings]
-    css = []
-    js = []
+def get_charts_media(chart_settings):
+    from django.forms import Media
+
+    available_types = [chart["engine_name"] for chart in chart_settings]
+    available_types = set(available_types)
+    media = Media()
+    charts_dict = SLICK_REPORTING_SETTINGS["CHARTS"]
+
     for type in available_types:
-        css.append(SLICK_REPORTING_SETTINGS["CHARTS"][type]["css"])
-        js.append(SLICK_REPORTING_SETTINGS["CHARTS"][type]["js"])
-    # css = "\n".join(css)
-    # js = "\n".join(js)
-    return css, css
+        media += Media(css=charts_dict.get(type, {}).get("css", {}), js=charts_dict.get(type, {}).get("js", []))
+    return media
+
+
+@register.simple_tag
+def get_slick_reporting_media():
+    from django.forms import Media
+
+    media = get_media()
+    return Media(css=media["css"], js=media["js"])
 
 
 @register.simple_tag
