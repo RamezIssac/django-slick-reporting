@@ -1,5 +1,6 @@
 from django import template
 from django.template.loader import get_template
+from django.forms import Media
 from django.urls import reverse, resolve
 from django.utils.safestring import mark_safe
 
@@ -80,12 +81,13 @@ def add_jquery():
 
 @register.simple_tag
 def get_charts_media(chart_settings):
-    from django.forms import Media
-
-    available_types = [chart["engine_name"] for chart in chart_settings]
-    available_types = set(available_types)
-    media = Media()
     charts_dict = SLICK_REPORTING_SETTINGS["CHARTS"]
+    media = Media()
+    if chart_settings == "all":
+        available_types = charts_dict.keys()
+    else:
+        available_types = [chart["engine_name"] for chart in chart_settings]
+        available_types = set(available_types)
 
     for type in available_types:
         media += Media(css=charts_dict.get(type, {}).get("css", {}), js=charts_dict.get(type, {}).get("js", []))

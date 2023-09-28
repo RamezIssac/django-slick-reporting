@@ -41,6 +41,7 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
     "JQUERY_URL": SLICK_REPORTING_JQUERY_URL,
     "DEFAULT_START_DATE_TIME": get_start_date(),
     "DEFAULT_END_DATE_TIME": get_end_date(),
+    "DEFAULT_CHARTS_ENGINE": SLICK_REPORTING_DEFAULT_CHARTS_ENGINE,
     "MEDIA": {
         "override": False,
         "js": (

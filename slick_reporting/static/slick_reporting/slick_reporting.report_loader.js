@@ -38,16 +38,8 @@
     function displayChart(data, $elem, chart_id) {
         let engine = "highcharts";
         let chartOptions = $.slick_reporting.getObjFromArray(data.chart_settings, 'id', chart_id, true);
-        try {
-            if (chart_id === '' || typeof (chart_id) === "undefined") {
-                engine = data.chart_settings[0]['engine_name'];
-            } else {
-                engine = data.chart_settings.find(x => x.id === chart_id).engine_name;
-            }
-        } catch (e) {
-            console.error(e);
-        }
-        $.slick_reporting.executeFunctionByName($.slick_reporting.report_loader.chart_engines[engine], window, data, $elem, chartOptions);
+        let entryPoint = chartOptions.entryPoint || $.slick_reporting.report_loader.chart_engines[engine];
+        $.slick_reporting.executeFunctionByName(entryPoint, window, data, $elem, chartOptions);
     }
 
 
@@ -154,9 +146,6 @@
         displayChart: displayChart,
         createChartsUIfromResponse: createChartsUIfromResponse,
         successCallback: loadComponents,
-        "chart_engines": {
-            'highcharts': '$.slick_reporting.highcharts.displayChart',
-            "chartsjs": '$.slick_reporting.chartsjs.displayChart',
-        }
+
     }
 })(jQuery);

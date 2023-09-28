@@ -7,15 +7,21 @@
 {% endblock %}
 
 {% block extrajs %}
-{{ block.super }}
-    {% get_charts_media report.get_chart_settings %}
+    {{ block.super }}
 
     <script>
 
         let chart = null;
+        function displayChartCustomEntryPoint(data, $elem, chartOptions) {
+            alert("This is a custom entry point for displaying charts. " +
+                "Check the console for the sent arguments")
+            console.log("data:",  data);
+            console.log("$elem:",  $elem);
+            console.log("chartOptions:",  chartOptions);
+
+        }
 
         function DisplayApexPieChart(data, $elem, chartOptions) {
-
             let legendAndSeries = $.slick_reporting.chartsjs.getGroupByLabelAndSeries(data, chartOptions);
             let options = {}
             if (chartOptions.type === "pie") {
@@ -43,6 +49,7 @@
             }
 
             try {
+                // destroy old chart, if any
                 chart.destroy();
             } catch (e) {
                 // do nothing

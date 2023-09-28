@@ -10,6 +10,7 @@ from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import ComputationField
 from .helpers import get_field_from_query_text
 from .registry import field_registry
+from . import app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class Chart:
     title_source: list
     plot_total: bool = False
     engine: str = ""
+    entryPoint: str = ""
     COLUMN = "column"
     LINE = "line"
     PIE = "pie"
@@ -36,6 +38,7 @@ class Chart:
             title_source=self.title_source,
             plot_total=self.plot_total,
             engine=self.engine,
+            entryPoint=self.entryPoint,
         )
 
 
@@ -948,6 +951,11 @@ class ReportGenerator(ReportGeneratorAPI, object):
             if not chart.get("title", False):
                 chart["title"] = report_title
             chart["engine_name"] = chart.get("engine_name", chart_engine)
+            chart["entryPoint"] = (
+                chart.get("entryPoint")
+                or app_settings.SLICK_REPORTING_SETTINGS["CHARTS"][chart["engine_name"]]["entryPoint"]
+            )
+
             output.append(chart)
         return output
 

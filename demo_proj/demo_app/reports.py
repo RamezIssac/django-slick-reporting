@@ -646,4 +646,11 @@ class ProductSalesApexChart(ReportView):
             data_source=["value__sum"],
             title_source=["name"],
         ),
+        Chart(
+            "A custom Entry Point $",
+            type="bar",
+            data_source=["value__sum"],
+            title_source=["name"],
+            entryPoint="displayChartCustomEntryPoint",
+        ),
     ]
