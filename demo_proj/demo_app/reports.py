@@ -1,6 +1,7 @@
 import datetime
 
 from django.db.models import Sum, Q
+from django.http import HttpResponse
 from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import ComputationField
@@ -607,3 +608,67 @@ class ChartJSExample(TimeSeriesReport):
             # plot_total=True,
         ),
     ]
+
+
+class HighChartExample(ChartJSExample):
+    chart_engine = "highcharts"
+
+
+class ProductSalesApexChart(ReportView):
+    report_title = _("Product Sales Apex Charts")
+    report_model = SalesTransaction
+    date_field = "date"
+    group_by = "product"
+    chart_engine = "apexcharts"
+    template_name = "demo/apex_report.html"
+
+    columns = [
+        "name",
+        ComputationField.create(
+            method=Sum,
+            field="value",
+            name="value__sum",
+            verbose_name="Total sold $",
+            is_summable=True,
+        ),
+    ]
+
+    # Charts
+    chart_settings = [
+        Chart(
+            "Total sold $",
+            type="pie",
+            data_source=["value__sum"],
+            title_source=["name"],
+        ),
+        Chart(
+            "Total sold $",
+            type="bar",
+            data_source=["value__sum"],
+            title_source=["name"],
+        ),
+        Chart(
+            "A custom Entry Point $",
+            type="bar",
+            data_source=["value__sum"],
+            title_source=["name"],
+            entryPoint="displayChartCustomEntryPoint",
+        ),
+    ]
+
+
+class CustomExportReport(GroupByReport):
+    report_title = _("Custom Export Report")
+    export_actions = ["export_pdf"]
+
+    def export_pdf(self, report_data):
+        return HttpResponse(f"Dummy PDF Exported \n {report_data}")
+
+    export_pdf.title = _("Export PDF")
+    export_pdf.css_class = "btn btn-secondary"
+
+    def export_csv(self, report_data):
+        return super().export_csv(report_data)
+
+    export_csv.title = _("My Custom CSV export Title")
+    export_csv.css_class = "btn btn-primary"

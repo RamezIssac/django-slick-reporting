@@ -37,16 +37,9 @@
 
     function displayChart(data, $elem, chart_id) {
         let engine = "highcharts";
-        try {
-            if (chart_id === '' || typeof (chart_id) === "undefined") {
-                engine = data.chart_settings[0]['engine_name'];
-            } else {
-                engine = data.chart_settings.find(x => x.id === chart_id).engine_name;
-            }
-        } catch (e) {
-            console.error(e);
-        }
-        $.slick_reporting.executeFunctionByName($.slick_reporting.report_loader.chart_engines[engine], window, data, $elem, chart_id);
+        let chartOptions = $.slick_reporting.getObjFromArray(data.chart_settings, 'id', chart_id, true);
+        let entryPoint = chartOptions.entryPoint || $.slick_reporting.report_loader.chart_engines[engine];
+        $.slick_reporting.executeFunctionByName(entryPoint, window, data, $elem, chartOptions);
     }
 
 
@@ -86,14 +79,26 @@
 
     function initialize() {
         settings = JSON.parse(document.getElementById('slick_reporting_settings').textContent);
+        let chartSettings = {};
         $('[data-report-widget]').not('[data-no-auto-load]').each(function (i, elem) {
             refreshReportWidget($(elem));
         });
+
+        Object.keys(settings["CHARTS"]).forEach(function (key) {
+            chartSettings[key] = settings.CHARTS[key].entryPoint;
+        })
+        $.slick_reporting.report_loader.chart_engines = chartSettings;
+        try {
+            $("select").select2();
+        } catch (e) {
+            console.error(e);
+        }
+        $.slick_reporting.defaults.total_label = settings["MESSAGES"]["TOTAL_LABEL"];
     }
 
     function _get_chart_icon(chart_type) {
         try {
-            return "<i class='" + settings.FONT_AWESOME.ICONS[chart_type] +"'></i>";
+            return "<i class='" + settings.FONT_AWESOME.ICONS[chart_type] + "'></i>";
         } catch (e) {
             console.error(e);
         }
@@ -136,17 +141,34 @@
 
     });
 
+    $('[data-export-btn]').on('click', function (e) {
+        let $elem = $(this);
+        e.preventDefault()
+        let form = $($elem.attr('data-form-selector'));
+        window.location = '?' + form.serialize() + '&_export=' + $elem.attr('data-export-parameter');
+    });
+    $('[data-get-results-button]').not(".vanilla-btn-flag").on('click', function (event) {
+        event.preventDefault();
+        let $elem = $('[data-report-widget]')
+        $.slick_reporting.report_loader.refreshReportWidget($elem)
+    });
+
+    jQuery(document).ready(function () {
+        // $.slick_reporting.defaults.total_label = "{% trans "Total" %}";
+        $.slick_reporting.report_loader.initialize();
+    });
+
+
+
     $.slick_reporting.report_loader = {
         cache: $.slick_reporting.cache,
+        // "extractDataFromResponse": extractDataFromResponse,
         initialize: initialize,
         refreshReportWidget: refreshReportWidget,
         failFunction: failFunction,
         displayChart: displayChart,
         createChartsUIfromResponse: createChartsUIfromResponse,
         successCallback: loadComponents,
-        "chart_engines": {
-            'highcharts': '$.slick_reporting.highcharts.displayChart',
-            "chartsjs": '$.slick_reporting.chartsjs.displayChart',
-        }
+
     }
 })(jQuery);

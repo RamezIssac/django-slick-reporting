@@ -116,6 +116,8 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     template_name = "slick_reporting/report.html"
 
+    export_actions = None
+
     @staticmethod
     def form_filter_func(fkeys_dict):
         # todo revise
@@ -152,6 +154,33 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
         return [], []
 
+    def get_export_actions(self):
+        """
+        Hook to get the export options
+        :return: list of export options
+        """
+        actions = ["export_csv"] if self.csv_export_class else []
+
+        if self.export_actions:
+            actions = actions + self.export_actions
+
+        export_actions = []
+
+        for action in actions:
+            func = getattr(self, action, None)
+            parameter = action.replace("export_", "")
+
+            export_actions.append(
+                {
+                    "name": action,
+                    "title": getattr(func, "title", action.replace("_", " ").title()),
+                    "icon": getattr(func, "icon", ""),
+                    "css_class": getattr(func, "css_class", ""),
+                    "parameter": parameter,
+                }
+            )
+        return export_actions
+
     def get(self, request, *args, **kwargs):
         form_class = self.get_form_class()
         self.form = self.get_form(form_class)
@@ -180,6 +209,10 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     def export_csv(self, report_data):
         return self.csv_export_class(self.request, report_data, self.report_title).get_response()
+
+    export_csv.title = SLICK_REPORTING_SETTINGS["MESSAGES"]["export_to_csv"]
+    export_csv.css_class = "btn btn-primary"
+    export_csv.icon = ""
 
     @classmethod
     def get_report_model(cls):
@@ -257,7 +290,8 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         return self.form.get_crosstab_ids()
 
-    def get_report_generator(self, queryset, for_print):
+    def get_report_generator(self, queryset=None, for_print=False):
+        queryset = queryset or self.get_queryset()
         q_filters, kw_filters = self.form.get_filters()
         crosstab_compute_remainder = False
         if self.crosstab_field:
@@ -354,10 +388,11 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         return generator.get_metadata()
 
-    def get_chart_settings(self, generator):
+    def get_chart_settings(self, generator=None):
         """
         Ensure the sane settings are passed to the front end.
         """
+        generator = generator or self.get_report_generator()
         return generator.get_chart_settings(self.chart_settings or [], self.report_title, self.chart_engine)
 
     @classmethod
@@ -400,6 +435,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         context[self.report_title_context_key] = self.report_title
         context["crispy_helper"] = self.get_form_crispy_helper()
         context["auto_load"] = self.auto_load
+        context["report"] = self
 
         if not (self.request.POST or self.request.GET):
             # initialize empty form with initials if the no data is in the get or the post

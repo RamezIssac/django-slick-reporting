@@ -1,5 +1,5 @@
 {% extends 'slick_reporting/base.html' %}
-{% load crispy_forms_tags i18n %}
+{% load crispy_forms_tags i18n slick_reporting_tags %}
 
 {% block content %}
     <div class="col-12">
@@ -13,13 +13,22 @@
                 </div>
                 <div class="card-footer text-end">
                     <input type="submit" value="{% trans "Filter" %}"
-                           class="btn btn-primary  refreshReport">
-                    <input type="button" value="{% trans "Export CSV" %}" class="btn btn-secondary exportCsvBtn">
+                           class="btn btn-primary  refreshReport" data-get-results-button>
+
+
+                    {% for export_action in report.get_export_actions %}
+                        <button class="btn {{ export_action.css_class }}" data-export-btn data-export-parameter="{{ export_action.parameter }}" data-form-selector="#reportForm">
+                        {% if export_action.icon %}<i class="{{ export_action.icon}}"></i> {% endif %}
+                            {{ export_action.title }} </button>
+
+{#                        <input type="button" value="{{ export_action.title }}" class="{{ export_action.css_class }}" data-export-btn data-export-parameter="{{ export_action.parameter }}" data-form-selector="#reportForm">#}
+                    {% endfor %}
+{#                    <input type="button" value="{% trans "Export CSV" %}" class="btn btn-secondary exportCsvBtn">#}
                 </div>
             </form>
         {% endif %}
 
-        <div class="card" id="{{ report_data.report_slug }}">
+        <div class="card" id="{{ report.report_slug }}">
             <div class="card-header">
                 <h5 class="card-title">{% trans "Results" %}</h5>
             </div>
@@ -38,4 +47,12 @@
             </div>
         </div>
     </div>
+
+{#    {% get_charts_js_resources report %}#}
+{#    {% get_charts_css_resources report %}#}
+{% endblock %}
+
+{% block extrajs %}
+    {{ block.super }}
+    {% get_charts_media report.get_chart_settings %}
 {% endblock %}

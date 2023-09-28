@@ -3,51 +3,37 @@
 {% get_slick_reporting_settings as slick_reporting_settings %}
 
 {% add_jquery %}
-<script src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"
-        integrity="sha384-JnbsSLBmv2/R0fUmF2XYIcAEMPHEAO51Gitn9IjL4l89uFTIgtLF1+jqIqqd9FSk"
-        crossorigin="anonymous"></script>
+{% get_slick_reporting_media as media %}
+{{ media }}
+{#<script src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>#}
+{#<link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet"/>#}
+{#<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"#}
+{#        integrity="sha384-JnbsSLBmv2/R0fUmF2XYIcAEMPHEAO51Gitn9IjL4l89uFTIgtLF1+jqIqqd9FSk"#}
+{#        crossorigin="anonymous"></script>#}
 
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css"/>
+{#<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>#}
+{#<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>#}
+{#<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css"/>#}
 
 <link rel="stylesheet" type="text/css"
       href="{{ slick_reporting_settings.FONT_AWESOME.CSS_URL }}"/>
 
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://code.highcharts.com/highcharts.js"></script>
+{#<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>#}
+{#<script src="https://code.highcharts.com/highcharts.js"></script>#}
 
 
-<script src="{% static 'slick_reporting/slick_reporting.js' %}"></script>
-<script src="{% static 'slick_reporting/slick_reporting.report_loader.js' %}"></script>
-<script src="{% static 'slick_reporting/slick_reporting.highchart.js' %}"></script>
-<script src="{% static 'slick_reporting/slick_reporting.chartsjs.js' %}"></script>
-<script src="{% static 'slick_reporting/slick_reporting.datatable.js' %}"></script>
+{#<script src="{% static 'slick_reporting/slick_reporting.js' %}"></script>#}
+{#<script src="{% static 'slick_reporting/slick_reporting.report_loader.js' %}"></script>#}
+{#<script src="{% static 'slick_reporting/slick_reporting.highchart.js' %}"></script>#}
+{#<script src="{% static 'slick_reporting/slick_reporting.chartsjs.js' %}"></script>#}
+{#<script src="{% static 'slick_reporting/slick_reporting.datatable.js' %}"></script>#}
+
+{#<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>#}
+
 {{ slick_reporting_settings|json_script:"slick_reporting_settings" }}
 <script>
 
-    jQuery(document).ready(function () {
-        $.slick_reporting.defaults.total_label = "{% trans "Total" %}";
-        $.slick_reporting.report_loader.initialize();
-        $("select").select2();
 
-
-        $('.exportCsvBtn').on('click', function (e) {
-            e.preventDefault()
-            let form = $('#reportForm');
-            window.location = '?' + form.serialize() + '&_export=csv'
-        });
-
-
-        $('.refreshReport').not(".vanilla-btn-flag").on('click', function (event) {
-            event.preventDefault();
-            let $elem = $('[data-report-widget]')
-            $.slick_reporting.report_loader.refreshReportWidget($elem)
-        });
-
-    });
 </script>
 

@@ -112,3 +112,26 @@ Let's have a look
     }
 
 
+The ajax response structure
+---------------------------
+
+Understanding how the response is structured is imperative in order to customize how the report is displayed on the front end
+
+Let's have a look
+
+.. code-block:: python
+
+
+    # Ajax response or `report_results` template context variable.
+    response = {
+        "report_slug": "",  # the report slug, defaults to the class name all lower
+        "data": [],  # a list of objects representing the actual results of the report
+        "columns": [],  # A list explaining the columns/keys in the data results.
+        # ie: len(response.columns) == len(response.data[i].keys())
+        # A List of objects. each object contain field needed information like verbose name , if summable and hints about the data type.
+        "metadata": {},  # Contains information about the report as whole if it's time series or a a crosstab
+        # And what's the actual and verbose names of the time series or crosstab specific columns.
+        "chart_settings": [],  # a list of objects  mirror of the set charts_settings
+    }
+
+
