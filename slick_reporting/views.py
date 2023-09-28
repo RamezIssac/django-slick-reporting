@@ -116,6 +116,8 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     template_name = "slick_reporting/report.html"
 
+    export_actions = None
+
     @staticmethod
     def form_filter_func(fkeys_dict):
         # todo revise
@@ -152,6 +154,33 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
         return [], []
 
+    def get_export_actions(self):
+        """
+        Hook to get the export options
+        :return: list of export options
+        """
+        actions = ["export_csv"] if self.csv_export_class else []
+
+        if self.export_actions:
+            actions = actions + self.export_actions
+
+        export_actions = []
+
+        for action in actions:
+            func = getattr(self, action, None)
+            parameter = action.replace("export_", "")
+
+            export_actions.append(
+                {
+                    "name": action,
+                    "title": getattr(func, "title", action.replace("_", " ").title()),
+                    "icon": getattr(func, "icon", ""),
+                    "css_class": getattr(func, "css_class", ""),
+                    "parameter": parameter,
+                }
+            )
+        return export_actions
+
     def get(self, request, *args, **kwargs):
         form_class = self.get_form_class()
         self.form = self.get_form(form_class)
@@ -180,6 +209,10 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     def export_csv(self, report_data):
         return self.csv_export_class(self.request, report_data, self.report_title).get_response()
+
+    export_csv.title = SLICK_REPORTING_SETTINGS["MESSAGES"]["export_to_csv"]
+    export_csv.css_class = "btn btn-primary"
+    export_csv.icon = ""
 
     @classmethod
     def get_report_model(cls):

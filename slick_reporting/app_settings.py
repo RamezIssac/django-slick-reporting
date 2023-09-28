@@ -82,6 +82,7 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
     },
     "MESSAGES": {
         "total": _("Total"),
+        "export_to_csv": _("Export to CSV"),
     },
 }
 

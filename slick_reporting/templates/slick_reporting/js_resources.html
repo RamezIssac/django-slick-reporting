@@ -34,25 +34,6 @@
 {{ slick_reporting_settings|json_script:"slick_reporting_settings" }}
 <script>
 
-    jQuery(document).ready(function () {
-        $.slick_reporting.defaults.total_label = "{% trans "Total" %}";
-        $.slick_reporting.report_loader.initialize();
-        $("select").select2();
 
-
-        $('.exportCsvBtn').on('click', function (e) {
-            e.preventDefault()
-            let form = $('#reportForm');
-            window.location = '?' + form.serialize() + '&_export=csv'
-        });
-
-
-        $('.refreshReport').not(".vanilla-btn-flag").on('click', function (event) {
-            event.preventDefault();
-            let $elem = $('[data-report-widget]')
-            $.slick_reporting.report_loader.refreshReportWidget($elem)
-        });
-
-    });
 </script>
 

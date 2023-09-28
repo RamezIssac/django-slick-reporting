@@ -88,6 +88,12 @@
             chartSettings[key] = settings.CHARTS[key].entryPoint;
         })
         $.slick_reporting.report_loader.chart_engines = chartSettings;
+        try {
+            $("select").select2();
+        } catch (e) {
+            console.error(e);
+        }
+        $.slick_reporting.defaults.total_label = settings["MESSAGES"]["TOTAL_LABEL"];
     }
 
     function _get_chart_icon(chart_type) {
@@ -133,6 +139,23 @@
         let chart_id = $this.attr('data-chart-id')
         $.slick_reporting.report_loader.displayChart(data, $this.parents('[data-report-widget]').find('[data-report-chart]'), chart_id)
 
+    });
+
+    $('[data-export-btn]').on('click', function (e) {
+        let $elem = $(this);
+        e.preventDefault()
+        let form = $($elem.attr('data-form-selector'));
+        window.location = '?' + form.serialize() + '&_export=' + $elem.attr('data-export-parameter');
+    });
+    $('[data-get-results-button]').not(".vanilla-btn-flag").on('click', function (event) {
+        event.preventDefault();
+        let $elem = $('[data-report-widget]')
+        $.slick_reporting.report_loader.refreshReportWidget($elem)
+    });
+
+    jQuery(document).ready(function () {
+        // $.slick_reporting.defaults.total_label = "{% trans "Total" %}";
+        $.slick_reporting.report_loader.initialize();
     });
 
 
