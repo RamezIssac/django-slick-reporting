@@ -1,5 +1,5 @@
 {% extends "slick_reporting/report.html" %}
-{% load i18n slick_reporting_tags %}
+{% load  slick_reporting_tags %}
 
 {% block content %}
     {{ block.super }}
@@ -12,13 +12,13 @@
     <script>
 
         let chart = null;
+
         function displayChartCustomEntryPoint(data, $elem, chartOptions) {
             alert("This is a custom entry point for displaying charts. " +
                 "Check the console for the sent arguments")
-            console.log("data:",  data);
-            console.log("$elem:",  $elem);
-            console.log("chartOptions:",  chartOptions);
-
+            console.log("data:", data);
+            console.log("$elem:", $elem);
+            console.log("chartOptions:", chartOptions);
         }
 
         function DisplayApexPieChart(data, $elem, chartOptions) {
