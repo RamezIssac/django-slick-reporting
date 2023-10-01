@@ -154,7 +154,6 @@
     });
 
     jQuery(document).ready(function () {
-        // $.slick_reporting.defaults.total_label = "{% trans "Total" %}";
         $.slick_reporting.report_loader.initialize();
     });
 

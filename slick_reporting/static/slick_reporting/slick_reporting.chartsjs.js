@@ -140,15 +140,6 @@
                 'datasets': datasets,
             }
         }
-        // for (let i = 0; i < response.data.length; i++) {
-        //     let row = response.data[i];
-        //     if (titleFieldName !== '') {
-        //         let txt = row[titleFieldName];
-        //         txt = $(txt).text() || txt; // the title is an <a tag , we want teh text only
-        //         legendResults.push(txt)
-        //     }
-        //     datasetData.push(row[dataFieldName])
-        // }
         let results = getGroupByLabelAndSeries(response, chartOptions);
         datasets = [{
             data: results.series,
