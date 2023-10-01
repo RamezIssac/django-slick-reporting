@@ -510,6 +510,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
                     if source:
                         computation_class = self.report_fields_classes[source]
+                        # the computation field is being asked from another computation field that requires it.
                         value = computation_class.get_dependency_value(group_by_val, col_data["ref"].name)
                     else:
                         try:

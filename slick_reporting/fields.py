@@ -325,28 +325,25 @@ class ComputationField(object):
         prepared_result = self._cache
         return self.resolve(prepared_result, current_obj, current_row)
 
-    def get_dependency_value(self, current_obj, name=None):
+    def get_dependency_value(self, current_obj, name):
         """
         Get the values of the ReportFields specified in `requires`
 
         :param current_obj: the current object which we want the calculation for
-        :param name: Optional, the name of the specific dependency you want.
+        :param name: the name of the specific dependency you want.
 
         :return: a dict containing dependencies names as keys and their calculation as values
                  or a specific value if name is specified.
         """
-        values = self._resolve_dependencies(current_obj, name=None)
-        if name:
-            return values.get(name)
-        return values
+        values = self._resolve_dependencies(current_obj, name=name)
+        return values.get(name)
 
     def _resolve_dependencies(self, current_obj, name=None):
         dep_results = {}
         cached_debit, cached_credit, dependencies_value = self._cache
         dependencies_value = dependencies_value or {}
-        for d in dependencies_value.keys():
-            if name and d != name:
-                continue
+        needed_values = [name] if name else dependencies_value.keys()
+        for d in needed_values:
             d_instance = dependencies_value[d]["instance"]
             dep_results[d] = d_instance.do_resolve(current_obj)
         return dep_results
