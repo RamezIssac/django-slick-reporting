@@ -3,7 +3,7 @@ import datetime
 from django.db.models import Sum, Count
 from django.utils.translation import gettext_lazy as _
 
-from slick_reporting.fields import ComputationField, PercentageToBalance
+from slick_reporting.fields import ComputationField, PercentageToTotalBalance
 from slick_reporting.generator import ReportGenerator
 from .models import (
     Client,
@@ -193,7 +193,7 @@ class ProductTotalSalesWithPercentage(ReportGenerator):
         "name",
         "__balance__",
         "__balance_quantity__",
-        PercentageToBalance,
+        PercentageToTotalBalance,
     ]
 
 

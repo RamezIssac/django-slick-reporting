@@ -341,7 +341,7 @@ class ReportTest(BaseTestData, TestCase):
     def test_product_total_sales_with_percentage(self):
         report = report_generators.ProductTotalSalesWithPercentage()
         data = report.get_report_data()
-        self.assertEqual(data[2]["PercentageToBalance"], 50)
+        self.assertEqual(data[2]["__percent_to_total_balance__"], 50)
 
     @override_settings(
         SLICK_REPORTING_DEFAULT_START_DATE=datetime.datetime(2020, 1, 1),

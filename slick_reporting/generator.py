@@ -516,7 +516,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                             computation_class = self.report_fields_classes[name]
                         except KeyError:
                             continue
-                        value = computation_class.resolve(group_by_val, data)
+                        value = computation_class.do_resolve(group_by_val, data)
                     if self.swap_sign:
                         value = -value
                     data[name] = value
@@ -1026,7 +1026,7 @@ class ListViewReportGenerator(ReportGenerator):
                             computation_class = self.report_fields_classes[name]
                         except KeyError:
                             continue
-                        value = computation_class.resolve(group_by_val, data)
+                        value = computation_class.do_resolve(group_by_val, data)
                     if self.swap_sign:
                         value = -value
                     data[name] = value
