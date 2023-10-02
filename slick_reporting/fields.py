@@ -232,47 +232,6 @@ class ComputationField(object):
 
         return debit_results, credit_results
 
-    def _prepare(self, q_filters: list | object = None, kwargs_filters: dict = None, queryset=None, **kwargs):
-        """
-        This is the first hook where you can customize the calculation away from the Django Query aggregation method
-        This method is called with all available arguments, so you can prepare the results for the whole set and save
-        it in a local cache (like self._cache) .
-        The flow will later call the method `resolve`,  giving you the id, for you to return it respective calculation
-
-        :param q_filters:
-        :param kwargs_filters:
-        :param queryset:
-        :param kwargs:
-        :return:
-        """
-        main_queryset = queryset or self.get_queryset()
-        queryset = main_queryset.all()
-        group_by = "" if self.prevent_group_by else self.group_by
-        credit_results = None
-
-        if q_filters:
-            if type(q_filters) is Q:
-                q_filters = [q_filters]
-            queryset = queryset.filter(*q_filters)
-        if kwargs_filters:
-            queryset = queryset.filter(**kwargs_filters)
-
-        if self.plus_side_q:
-            queryset = queryset.filter(*self.plus_side_q)
-        debit_results = self.apply_aggregation(queryset, group_by)
-
-        if self._debit_and_credit:
-            queryset = main_queryset.all()
-            if kwargs_filters:
-                queryset = queryset.filter(**kwargs_filters)
-            if q_filters:
-                queryset = queryset.filter(*q_filters)
-            if self.minus_side_q:
-                queryset = queryset.filter(*self.minus_side_q)
-            credit_results = self.apply_aggregation(queryset, group_by)
-
-        return debit_results, credit_results
-
     def get_queryset(self):
         queryset = self.queryset
         if self.base_q_filters:
@@ -349,13 +308,13 @@ class ComputationField(object):
             dep_results[d] = d_instance.do_resolve(current_obj)
         return dep_results
 
-    def extract_data(self, cached, current_obj):
+    def extract_data(self, prepared_results, current_obj):
         group_by = "" if self.prevent_group_by else (self.group_by or self.group_by_custom_querysets)
         debit_value = 0
         credit_value = 0
-        annotation = self.get_annotation_name()
+        annotation = "__".join([self.calculation_field.lower(), self.calculation_method.name.lower()])
 
-        cached_debit, cached_credit = cached
+        cached_debit, cached_credit = prepared_results
 
         if cached_debit or cached_credit:
             debit = None
