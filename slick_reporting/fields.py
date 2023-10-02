@@ -168,7 +168,8 @@ class ComputationField(object):
                 self.prevent_group_by,
                 **kwargs,
             )
-        self._cache = debit_results, credit_results, required_prepared_results
+        self._cache = debit_results, credit_results
+        self._required_prepared_results = required_prepared_results
 
     def prepare_custom_group_by_queryset(self, q_filters=None, kwargs_filters=None, **kwargs):
         debit_output, credit_output = [], []
@@ -307,23 +308,23 @@ class ComputationField(object):
             values[dep.name] = {"results": results, "instance": dep}
         return values
 
-    def resolve(self, prepared_results, current_obj, current_row=None):
+    def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
         """
         Reponsible for getting the exact data from the prepared value
         :param prepared_results: the returned data from prepare
-        :param current_obj: he value of group by id
+        :param required_computation_results: the returned data from prepare
+        :param current_pk: he value of group by id
         :param current_row: the row in iteration
         :return: a solid number or value
         """
-        # cached = self._cache
-        debit_value, credit_value = self.extract_data(prepared_results, current_obj)
-        dependencies_value = self._resolve_dependencies(current_obj)
-
-        return self.final_calculation(debit_value, credit_value, dependencies_value)
+        debit_value, credit_value = self.extract_data(prepared_results, current_pk)
+        value = debit_value or 0 - credit_value or 0
+        return value
 
     def do_resolve(self, current_obj, current_row=None):
         prepared_result = self._cache
-        return self.resolve(prepared_result, current_obj, current_row)
+        dependencies_value = self._resolve_dependencies(current_obj)
+        return self.resolve(prepared_result, dependencies_value, current_obj, current_row)
 
     def get_dependency_value(self, current_obj, name):
         """
@@ -340,7 +341,7 @@ class ComputationField(object):
 
     def _resolve_dependencies(self, current_obj, name=None):
         dep_results = {}
-        cached_debit, cached_credit, dependencies_value = self._cache
+        dependencies_value = self._required_prepared_results
         dependencies_value = dependencies_value or {}
         needed_values = [name] if name else dependencies_value.keys()
         for d in needed_values:
@@ -354,7 +355,7 @@ class ComputationField(object):
         credit_value = 0
         annotation = self.get_annotation_name()
 
-        cached_debit, cached_credit, dependencies_value = cached
+        cached_debit, cached_credit = cached
 
         if cached_debit or cached_credit:
             debit = None
@@ -387,18 +388,6 @@ class ComputationField(object):
                         if credit:
                             credit_value = credit[annotation]
         return debit_value, credit_value
-
-    def final_calculation(self, debit: float, credit: float, required_results: dict):
-        """
-        Gets the extracted values and the required values to make the last step
-        :param debit:
-        :param credit:
-        :param required_results:
-        :return:
-        """
-        debit = debit or 0
-        credit = credit or 0
-        return debit - credit
 
     @classmethod
     def get_full_dependency_list(cls):
@@ -499,12 +488,11 @@ class BalanceReportField(ComputationField):
     verbose_name = _("Closing Total")
     requires = ["__fb__"]
 
-    def final_calculation(self, debit, credit, required_results):
-        fb = required_results.get("__fb__")
-        debit = debit or 0
-        credit = credit or 0
-        fb = fb or 0
-        return fb + debit - credit
+    def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+        result = super().resolve(prepared_results, required_computation_results, current_pk, current_row)
+        fb = required_computation_results.get("__fb__") or 0
+
+        return result + fb
 
 
 field_registry.register(BalanceReportField)
@@ -517,18 +505,18 @@ class PercentageToTotalBalance(ComputationField):
 
     prevent_group_by = True
 
-    def final_calculation(self, debit, credit, required_results):
-        obj_balance = required_results.get("__balance__")
-        total = debit - credit
-        return (obj_balance / total) * 100
+    def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+        result = super().resolve(prepared_results, required_computation_results, current_pk, current_row)
+        return required_computation_results.get("__balance__") / result * 100
 
 
 class CreditReportField(ComputationField):
     name = "__credit__"
     verbose_name = _("Credit")
 
-    def final_calculation(self, debit, credit, required_results):
-        return credit
+    def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+        debit_value, credit_value = self.extract_data(prepared_results, current_pk)
+        return credit_value
 
 
 field_registry.register(CreditReportField)
@@ -539,8 +527,9 @@ class DebitReportField(ComputationField):
     name = "__debit__"
     verbose_name = _("Debit")
 
-    def final_calculation(self, debit, credit, required_results):
-        return debit
+    def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+        debit_value, credit_value = self.extract_data(prepared_results, current_pk)
+        return debit_value
 
 
 @field_registry.register
@@ -550,8 +539,9 @@ class CreditQuantityReportField(ComputationField):
     calculation_field = "quantity"
     is_summable = False
 
-    def final_calculation(self, debit, credit, required_results):
-        return credit
+    def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+        debit_value, credit_value = self.extract_data(prepared_results, current_pk)
+        return credit_value
 
 
 @field_registry.register
@@ -561,8 +551,9 @@ class DebitQuantityReportField(ComputationField):
     verbose_name = _("Debit QTY")
     is_summable = False
 
-    def final_calculation(self, debit, credit, required_results):
-        return debit
+    def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+        debit_value, credit_value = self.extract_data(prepared_results, current_pk)
+        return debit_value
 
 
 class TotalQTYReportField(ComputationField):
@@ -592,11 +583,10 @@ class BalanceQTYReportField(ComputationField):
     requires = ["__fb_quantity__"]
     is_summable = False
 
-    def final_calculation(self, debit, credit, required_results):
-        # Use `get` so it fails loud if its not there
-        fb = required_results.get("__fb_quantity__")
-        fb = fb or 0
-        return fb + debit - credit
+    def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+        result = super().resolve(prepared_results, required_computation_results, current_pk, current_row)
+        fb = required_computation_results.get("__fb_quantity__") or 0
+        return result + fb
 
 
 field_registry.register(BalanceQTYReportField)

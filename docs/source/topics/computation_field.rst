@@ -87,21 +87,24 @@ Sometime you want to stack values on top of each other. For example: Net revenue
             total = debit - credit
             return (obj_balance / total) * 100
 
+We need to override ``final_calculation`` to do the needed calculation. The ``required_results`` is a dictionary of the results of the required fields, where the keys are the names.
 
 How it works ?
 --------------
 When the `ReportGenerator` is initialized, it generates a list of the needed fields to be displayed and computed.
 Each computation field in the report is given the filters needed and asked to get all the results prepared.
-Then for each record, the ReportGenerator again asks each ComputationField to get the data it has for each record and map it where it belongs.
+Then for each record, the ReportGenerator again asks each ComputationField to get the data it has for each record and map it back.
 
 
 Customizing the Calculation Flow:
 ---------------------------------
 
-ReportGenerator call
+The results are prepared in 2 main stages
 
-1. prepare
-2. resolve
+1. Preparation: Where you can get the whole result set for the report. Example: Sum of all the values in a model group by the products.
+2. resolve: Where you get the value for each record.
+
+
 
 
 .. code-block:: python
@@ -111,8 +114,11 @@ ReportGenerator call
 
         def prepare(self, q_filters: list | object = None, kwargs_filters: dict = None, queryset=None, **kwargs):
             # do all you calculation here for the whole set if any and return the prepared results
-            # The main implementation for example
+            pass
 
+        def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+            # does the calculation for each record, return a value
+            pass
 
 Bundled Report Fields
 ---------------------
@@ -138,8 +144,3 @@ Case: You have a client that buys 10 in Jan, 12 in Feb and 13 in March.
 
 
 
-Two side calculation
---------------------
-
-# todo:
-# Document how a single field can be computed like a debit and credit.
