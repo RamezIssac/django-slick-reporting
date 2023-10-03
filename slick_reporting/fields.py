@@ -4,7 +4,6 @@ from django.db.models import Sum, Q
 from django.template.defaultfilters import date as date_filter
 from django.utils.translation import gettext_lazy as _
 
-from .helpers import get_calculation_annotation
 from .registry import field_registry
 
 
@@ -126,9 +125,9 @@ class ComputationField(object):
         self.group_by = self.group_by or group_by
         self._cache = None, None, None
         self._require_classes = self._get_required_classes()
+        self._required_prepared_results = None
 
-        if not self.plus_side_q and not self.minus_side_q:
-            self._debit_and_credit = False
+        self._debit_and_credit = self.plus_side_q or self.minus_side_q
 
     @classmethod
     def _get_required_classes(cls):
@@ -141,6 +140,7 @@ class ComputationField(object):
             return queryset.aggregate(annotation)
         elif group_by:
             queryset = queryset.values(group_by).annotate(annotation)
+            queryset = {str(x[self.group_by]): x for x in queryset}
         else:
             queryset = queryset.aggregate(annotation)
         return queryset
@@ -240,13 +240,6 @@ class ComputationField(object):
             queryset = queryset.filter(**self.base_kwargs_filters)
         return queryset.order_by()
 
-    def get_annotation_name(self):
-        """
-        Get the annotation per the database
-        :return: string used ex:
-        """
-        return get_calculation_annotation(self.calculation_field, self.calculation_method)
-
     def _prepare_required_computations(
         self,
         q_filters=None,
@@ -310,43 +303,24 @@ class ComputationField(object):
 
     def extract_data(self, prepared_results, current_obj):
         group_by = "" if self.prevent_group_by else (self.group_by or self.group_by_custom_querysets)
-        debit_value = 0
-        credit_value = 0
         annotation = "__".join([self.calculation_field.lower(), self.calculation_method.name.lower()])
 
         cached_debit, cached_credit = prepared_results
 
-        if cached_debit or cached_credit:
-            debit = None
-            if cached_debit is not None:
+        cached = [cached_debit, cached_credit]
+        output = []
+        for results in cached:
+            value = 0
+            if results:
                 if not group_by:
-                    x = list(cached_debit.keys())[0]
-                    debit_value = cached_debit[x]
+                    x = list(results.keys())[0]
+                    value = results[x]
                 elif self.group_by_custom_querysets:
-                    debit = cached_debit[int(current_obj)]
-                    debit_value = debit[annotation]
+                    value = results[int(current_obj)][annotation]
                 else:
-                    for i, x in enumerate(cached_debit):
-                        if str(x[group_by]) == current_obj:
-                            debit = cached_debit[i]
-                            break
-                    if debit:
-                        debit_value = debit[annotation]
-
-            if cached_credit is not None:
-                credit = None
-                if cached_credit is not None:
-                    if not group_by:
-                        x = list(cached_credit.keys())[0]
-                        credit_value = cached_credit[x]
-                    else:
-                        for i, x in enumerate(cached_credit):
-                            if str(x[group_by]) == current_obj:
-                                credit = cached_credit[i]
-                                break
-                        if credit:
-                            credit_value = credit[annotation]
-        return debit_value, credit_value
+                    value = results.get(str(current_obj), {}).get(annotation, 0)
+            output.append(value)
+        return output
 
     @classmethod
     def get_full_dependency_list(cls):
@@ -419,7 +393,6 @@ class FirstBalanceField(ComputationField):
         prevent_group_by=None,
         **kwargs,
     ):
-        # def prepare(self, q_filters=None, extra_filters=None, **kwargs):
         extra_filters = kwargs_filters or {}
 
         from_date_value = extra_filters.get(f"{self.date_field}__gte")
