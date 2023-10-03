@@ -24,10 +24,10 @@ Let's say you want to compute the total quantity of a product in a report.
 
     @report_field_register
     class TotalQTYReportField(ComputationField):
-        name = '__total_quantity__' # The name to use when using this field in the generator
-        calculation_field = 'quantity' # the field we want to compute on
-        calculation_method = Sum  # What method we want, default to Sum
-        verbose name = 'Total quantity' # A verbose name
+        name = '__total_quantity__'  # The name to use when using this field in the generator
+        calculation_field = 'quantity'  # the field we want to compute on
+        calculation_method = Sum   # What method we want, default to Sum
+        verbose name = 'Total quantity'  # A verbose name
 
     class ProductSales(ReportView):
         report_title = _("Product Sales")
@@ -38,14 +38,18 @@ Let's say you want to compute the total quantity of a product in a report.
         columns = [
             "name",
             "__total_quantity__",
+            # TotalQTYReportField,
+            # ComputationField.create(Sum, "quantity", name="__total_quantity__", verbose_name=_("Total quantity"))
             ]
 
-Above we created the Computation Field
-1. Created a ComputationField subclass and gave it the needed attributes
-2. Register it via ``report_field_register`` so it can be picked up by the framework
-3. Used it by name inside the columns attribute (or in time_series_columns, or in crosstab_columns)
+What happened here is that we:
 
-So another example, If you want AVG to the field `price` then it would look like this
+1. Created a ComputationField subclass and gave it the needed attributes
+2. Register it via ``report_field_register`` so it can be picked up by the framework.
+3. Used it by name inside the columns attribute (or in time_series_columns, or in crosstab_columns)
+4. Note that this is same as using the class directly in the columns , also the same as using `ComputationField.create()`
+
+Another example, If you want AVG to the field `price` then it would look like this
 
 .. code-block:: python
 
@@ -82,12 +86,12 @@ Sometime you want to stack values on top of each other. For example: Net revenue
 
         prevent_group_by = True
 
-        def final_calculation(self, debit: float, credit: float, required_results: dict):
-            obj_balance = required_results.get("__balance__")
-            total = debit - credit
-            return (obj_balance / total) * 100
+        def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+            result = super().resolve(prepared_results, required_computation_results, current_pk, current_row)
+            return required_computation_results.get("__balance__") / result * 100
 
-We need to override ``final_calculation`` to do the needed calculation. The ``required_results`` is a dictionary of the results of the required fields, where the keys are the names.
+
+We need to override ``resolve`` to do the needed calculation. The ``required_computation_results`` is a dictionary of the results of the required fields, where the keys are the names.
 
 How it works ?
 --------------
@@ -96,8 +100,8 @@ Each computation field in the report is given the filters needed and asked to ge
 Then for each record, the ReportGenerator again asks each ComputationField to get the data it has for each record and map it back.
 
 
-Customizing the Calculation Flow:
----------------------------------
+Customizing the Calculation Flow
+--------------------------------
 
 The results are prepared in 2 main stages
 
@@ -132,15 +136,15 @@ As this project came form an ERP background, there are some bundled report field
 * __debit__: Sum of the field value for the plus list
 * __percent_to_total_balance__: Percent of the field value to the balance
 
-Difference between total and balance is:
+What is the difference between total and balance fields ?
 
 Total: Sum of the value for the period
 Balance: Sum of the value for the period + all the previous periods.
 
-Example:
-Case: You have a client that buys 10 in Jan, 12 in Feb and 13 in March.
-`__total__` will return 10 in Jan, 12 in Feb and 13 in March.
-`__balance__` will return 10 in Jan, 22 in Feb and 35 in March
+Example: You have a client who buys 10 in Jan., 12 in Feb. and 13 in March:
+
+* `__total__` will return 10 in Jan, 12 in Feb and 13 in March.
+* `__balance__` will return 10 in Jan, 22 in Feb and 35 in March
 
 
 
