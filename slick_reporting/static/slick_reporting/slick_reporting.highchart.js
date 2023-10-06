@@ -1,5 +1,5 @@
 /**
- * Created by ramez on 11/20/14.
+ * Created by Ramez on 11/20/14.
  */
 (function ($) {
 
@@ -50,20 +50,14 @@
             }
         }
 
-        function createChartObject(response, chart_id, extraOptions) {
+        function createChartObject(response, chartOptions, extraOptions) {
             // Create the chart Object
-            // First specifying the global default
-            // second, Get the data from the serponse
-            // Adjust the Chart Object accordingly
-            let chartOptions = $.slick_reporting.getObjFromArray(response.chart_settings, 'id', chart_id, true)
+            // First specifying the global defaults then apply teh specification from the response
 
             try {
-
-
                 $.extend(chartOptions, {
                     'sub_title': '',
                 });
-                // chartOptions = getChartOptions(isGroup, response, chartOptions);
                 chartOptions.data = response.data;
 
 
@@ -71,7 +65,7 @@
                 let is_crosstab = is_crosstab_support(response, chartOptions);
 
                 let chart_type = chartOptions.type;
-                var enable3d = false;
+                let enable3d = false;
                 let chart_data = {};
 
                 let rtl = false; // $.slick_reporting.highcharts.defaults.rtl;
@@ -88,25 +82,18 @@
                 let highchart_object = {
                     chart: {
                         type: '',
-                        //renderTo: 'container',
-                        //printWidth: 600
                     },
                     title: {
                         text: chartOptions.title,
-                        // useHTML: Highcharts.hasBidiBug
-                        //useHTML: true
                     },
                     subtitle: {
                         text: chartOptions.sub_title,
                         useHTML: Highcharts.hasBidiBug
-                        //useHTML: true
                     },
                     yAxis: {
-                        // title: {text: chartyAxisTitle},
                         opposite: rtl,
                     },
                     xAxis: {
-                        // title: {text: chartxAxisTitle},
                         labels: {enabled: true},
                         reversed: rtl,
                     },
@@ -118,7 +105,6 @@
                         allowHTML: true,
 
                         enabled: true,
-                        //scale:2,
                     }
                 };
 
@@ -131,9 +117,6 @@
                     if (chart_type === 'bar' || chart_type === 'column') {
                         highchart_object['xAxis'] = {
                             categories: chart_data['titles'],
-                            // title: {
-                            //     text: null
-                            // }
                         };
                     }
                     highchart_object['yAxis']['labels'] = {overflow: 'justify'};
@@ -155,18 +138,6 @@
                             }
                         }
                     };
-
-                    // highchart_object.tooltip = {
-                    //     useHTML: true,
-                    //     headerFormat: '<small>{point.key}</small><table class="chart-tooltip">',
-                    //     pointFormat: '<tr><td style="color:' + Highcharts.theme.contrastTextColor + '">{series.name}: </td>' +
-                    //         '<td style="text-align: right; color: ' + Highcharts.theme.contrastTextColor + '"><b>{point.y} </b></td></tr>' +
-                    //
-                    //         '<tr><td style="color: ' + Highcharts.theme.contrastTextColor + '">' + $.ra.highcharts.defaults.messages.percent + '</td>' +
-                    //         '<td style="text-align: right; color: ' + Highcharts.theme.contrastTextColor + '"><b>{point.percentage:.1f} %</b></td></tr>',
-                    //     footerFormat: '</table>',
-                    //     valueDecimals: 2
-                    // };
 
                     highchart_object['legend'] = {
                         layout: 'vertical',
@@ -383,10 +354,7 @@
                             'name': col_dict[col].verbose_name,
                             'data': [totalValues[col]]
                         })
-
                     })
-
-
                 })
             }
             return {
@@ -406,16 +374,13 @@
             return response.metadata.crosstab_model || ''
         }
 
-        function displayChart(data, $elem, chart_id) {
-            chart_id = chart_id || $elem.attr('data-report-default-chart') || '';
+        function displayChart(data, $elem, chartOptions) {
             if ($elem.find("div[data-inner-chart-container]").length === 0) {
                 $elem.append('<div data-inner-chart-container style="width:100%; height:400px;"></div>')
             }
 
             let chart = $elem.find("div[data-inner-chart-container]")
-            // chart.append("<canvas width=\"400\" height=\"100\"></canvas>");
-            // let chartObject = getObjFromArray(data.chart_settings, 'id', chart_id, true);
-            let cache_key = data.report_slug + ':' + chart_id
+            let cache_key = data.report_slug + ':' + chartOptions.id;
             try {
                 let existing_chart = _chart_cache[cache_key];
                 if (typeof (existing_chart) !== 'undefined') {
@@ -425,7 +390,7 @@
                 console.error(e)
             }
 
-            chartObject = $.slick_reporting.highcharts.createChartObject(data, chart_id);
+            let chartObject = $.slick_reporting.highcharts.createChartObject(data, chartOptions);
             _chart_cache[cache_key] = chart.highcharts(chartObject);
 
         }
@@ -441,15 +406,12 @@
                     percent: 'Percent',
                 },
                 credits: {
-                    // text: 'RaSystems.io',
-                    // href: 'https://rasystems.io'
+                    // text: '',
+                    // href: ''
                 },
-                // notify_error: notify_error,
                 enable3d: false,
-
             }
         };
-
     }
 
     (jQuery)

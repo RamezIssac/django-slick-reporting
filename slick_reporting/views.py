@@ -475,7 +475,7 @@ class ReportView(ReportViewBase):
         super().__init_subclass__()
 
 
-class SlickReportingListViewMixin:
+class SlickReportingListViewMixin(ReportViewBase):
     report_generator_class = ListViewReportGenerator
     filters = None
 
@@ -514,13 +514,13 @@ class SlickReportingListViewMixin:
     def get_form_crispy_helper(self):
         return get_crispy_helper(self.filters)
 
-    def get_report_generator(self, queryset, for_print):
+    def get_report_generator(self, queryset=None, for_print=False):
         q_filters, kw_filters = self.get_form_filters(self.form)
 
         return self.report_generator_class(
             self.get_report_model(),
-            start_date=self.form.get_start_date(),
-            end_date=self.form.get_end_date(),
+            # start_date=self.form.get_start_date(),
+            # end_date=self.form.get_end_date(),
             q_filters=q_filters,
             kwargs_filters=kw_filters,
             date_field=self.date_field,
@@ -538,7 +538,7 @@ class SlickReportingListViewMixin:
 
         elif self.filters:
             return modelform_factory(
-                self.get_report_model(),
+                model=self.get_report_model(),
                 fields=self.filters,
                 formfield_callback=default_formfield_callback,
             )
@@ -574,7 +574,7 @@ class SlickReportingListView(SlickReportingListViewMixin, ReportViewBase):
         super().__init_subclass__()
 
 
-class ListReportView(SlickReportingListViewMixin, ReportViewBase):
+class ListReportView(SlickReportingListViewMixin):
     pass
 
 

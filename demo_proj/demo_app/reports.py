@@ -171,9 +171,10 @@ class LastTenSales(ListReportView):
     report_model = SalesTransaction
     report_title = "Last 10 sales"
     date_field = "date"
-    filters = ["client"]
+    filters = ["client", "date"]
     columns = [
-        "product",
+        "product__name",
+        "client__name",
         "date",
         "quantity",
         "price",
