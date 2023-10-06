@@ -290,6 +290,9 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         return self.form.get_crosstab_ids()
 
+    def get_group_by_custom_querysets(self):
+        return self.group_by_custom_querysets
+
     def get_report_generator(self, queryset=None, for_print=False):
         queryset = queryset or self.get_queryset()
         q_filters, kw_filters = self.form.get_filters()
@@ -327,7 +330,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             swap_sign=self.swap_sign,
             columns=self.columns,
             group_by=self.group_by,
-            group_by_custom_querysets=self.group_by_custom_querysets,
+            group_by_custom_querysets=self.get_group_by_custom_querysets(),
             group_by_custom_querysets_column_verbose_name=self.group_by_custom_querysets_column_verbose_name,
             time_series_pattern=time_series_pattern,
             time_series_columns=self.time_series_columns,
