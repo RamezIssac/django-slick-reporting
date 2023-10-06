@@ -31,6 +31,7 @@ The interface is simple, only 3 mandatory methods to implement, The rest are man
     # forms.py
     from slick_reporting.forms import BaseReportForm
 
+
     class RequestFilterForm(BaseReportForm, forms.Form):
 
         SECURE_CHOICES = (

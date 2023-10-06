@@ -9,12 +9,16 @@ ComputationFields are the basic unit in a report.they represent a number that is
 Computation Fields can be add to a report as a class, as you saw in other examples , or by name.
 
 
-Reusing Computation Fields
+Creating Computation Fields
 ---------------------------
 
-You do not have to create the Computation Field each time you need one. You can create one and register it and reuse it.
+There are 3 ways you can create a Computation Field
 
-Let's say you want to compute the total quantity of a product in a report.
+1. Create a subclass of ComputationField and set the needed attributes and use it in the columns attribute of the ReportView
+2. Use the `ComputationField.create()` method and pass the needed attributes and use it in the columns attribute of the ReportView
+3. Use the `report_field_register` decorator to register a ComputationField subclass and use it by its name in the columns attribute of the ReportView
+
+
 
 .. code-block:: python
 
@@ -24,23 +28,24 @@ Let's say you want to compute the total quantity of a product in a report.
 
     @report_field_register
     class TotalQTYReportField(ComputationField):
-        name = '__total_quantity__'  # The name to use when using this field in the generator
-        calculation_field = 'quantity'  # the field we want to compute on
-        calculation_method = Sum   # What method we want, default to Sum
-        verbose name = 'Total quantity'  # A verbose name
+        name = "__total_quantity__"
+        calculation_field = "quantity"  # the field we want to compute on
+        calculation_method = Sum  # What method we want, default to Sum
+        verbose_name = _("Total quantity")
+
 
     class ProductSales(ReportView):
-        report_title = _("Product Sales")
         report_model = SalesTransaction
-        date_field = "date"
-        group_by = "product"
-
+        # ..
         columns = [
-            "name",
-            "__total_quantity__",
-            # TotalQTYReportField,
-            # ComputationField.create(Sum, "quantity", name="__total_quantity__", verbose_name=_("Total quantity"))
-            ]
+            # ...
+            "__total_quantity__",  # Use the ComputationField by its registered name
+            TotalQTYReportField,  # Use Computation Field as a class
+            ComputationField.create(
+                Sum, "quantity", name="__total_quantity__", verbose_name=_("Total quantity")
+            )
+            # Using the ComputationField.create() method
+        ]
 
 What happened here is that we:
 
@@ -49,26 +54,28 @@ What happened here is that we:
 3. Used it by name inside the columns attribute (or in time_series_columns, or in crosstab_columns)
 4. Note that this is same as using the class directly in the columns , also the same as using `ComputationField.create()`
 
-Another example, If you want AVG to the field `price` then it would look like this
+Another example, adding and AVG to the field `price`:
 
 .. code-block:: python
 
     from django.db.models import Avg
     from slick_reporting.decorators import report_field_register
 
+
     @report_field_register
     class TotalQTYReportField(ComputationField):
-        name = '__avg_price__'
-        calculation_field = 'price'
+        name = "__avg_price__"
+        calculation_field = "price"
         calculation_method = Avg
-        verbose name = 'Avg. Price'
+        verbose_name = _("Avg. Price")
+
 
     class ProductSales(ReportView):
         # ..
         columns = [
             "name",
             "__avg_price__",
-            ]
+        ]
 
 Using Value of a Computation Field within a another
 ---------------------------------------------------
@@ -86,12 +93,27 @@ Sometime you want to stack values on top of each other. For example: Net revenue
 
         prevent_group_by = True
 
-        def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
-            result = super().resolve(prepared_results, required_computation_results, current_pk, current_row)
+        def resolve(
+            self,
+            prepared_results,
+            required_computation_results: dict,
+            current_pk,
+            current_row=None,
+        ) -> float:
+            result = super().resolve(
+                prepared_results, required_computation_results, current_pk, current_row
+            )
             return required_computation_results.get("__balance__") / result * 100
 
 
 We need to override ``resolve`` to do the needed calculation. The ``required_computation_results`` is a dictionary of the results of the required fields, where the keys are the names.
+
+Note:
+
+1. The ``requires`` attribute is a list of the required fields to be computed before this field.
+2. The values of the ``requires`` fields are available in the ``required_computation_results`` dictionary.
+3. In the example we used the ``prevent_group_by`` attribute. It's as the name sounds, it prevents the rows from being grouped for teh ComputationField giving us the result over the whole set.
+
 
 How it works ?
 --------------
@@ -116,11 +138,23 @@ The results are prepared in 2 main stages
     class MyCustomComputationField(ComputationField):
         name = "__custom_field__"
 
-        def prepare(self, q_filters: list | object = None, kwargs_filters: dict = None, queryset=None, **kwargs):
+        def prepare(
+            self,
+            q_filters: list | object = None,
+            kwargs_filters: dict = None,
+            queryset=None,
+            **kwargs
+        ):
             # do all you calculation here for the whole set if any and return the prepared results
             pass
 
-        def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+        def resolve(
+            self,
+            prepared_results,
+            required_computation_results: dict,
+            current_pk,
+            current_row=None,
+        ) -> float:
             # does the calculation for each record, return a value
             pass
 

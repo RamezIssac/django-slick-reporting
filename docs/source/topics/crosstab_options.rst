@@ -27,7 +27,6 @@ Here is a general use case:
             "name",
             "__crosstab__",
             # You can customize where the crosstab columns are displayed in relation to the other columns
-
             ComputationField.create(Sum, "value", verbose_name=_("Total Value")),
             # This is the same as the calculation in the crosstab,
             # but this one will be on the whole set. IE total value.
@@ -72,7 +71,6 @@ Example:
         class CrosstabWithIdsCustomFilter(CrosstabReport):
             crosstab_ids_custom_filters = [
                 (~Q(product__size__in=["extra_big", "big"]), dict()),
-
                 (None, dict(product__size__in=["extra_big", "big"])),
             ]
             # Note:
@@ -111,16 +109,13 @@ Example 1: On a "regular" crosstab report
 
 
         class CrossTabReportWithCustomVerboseName(CrosstabReport):
-            crosstab_columns = [
-                CustomCrossTabTotalField
-            ]
+            crosstab_columns = [CustomCrossTabTotalField]
 
 Example 2: On the ``crosstab_ids_custom_filters`` one
 
 .. code-block:: python
 
         class CustomCrossTabTotalField2(CustomCrossTabTotalField):
-
             @classmethod
             def get_crosstab_field_verbose_name(cls, model, id):
                 if id == 0:
@@ -129,9 +124,7 @@ Example 2: On the ``crosstab_ids_custom_filters`` one
 
 
         class CrossTabReportWithCustomVerboseNameCustomFilter(CrosstabWithIdsCustomFilter):
-            crosstab_columns = [
-                CustomCrossTabTotalField2
-            ]
+            crosstab_columns = [CustomCrossTabTotalField2]
 
 
 
