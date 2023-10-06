@@ -30,7 +30,7 @@ The interface is simple, only 3 mandatory methods to implement, The rest are man
 
 * ``get_end_date``: Mandatory, return the end date of the report.
 
-* ``get_crispy_helper`` : return a crispy form helper to be used in rendering the form. (optional)
+* ``get_crispy_helper`` : Optional, return a crispy form helper to be used in rendering the form.
 
 In case you are working with a crosstab report, you need to implement the following methods:
 
@@ -81,8 +81,7 @@ Example a full example of a custom form:
             required=False, label="Show requests from other People Only"
         )
 
-        def __init__(self, request=None, *args, **kwargs):
-            self.request = request
+        def __init__(self, *args, **kwargs):
             super(RequestLogForm, self).__init__(*args, **kwargs)
             # provide initial values and ay needed customization
             self.fields["start_date"].initial = datetime.date.today()
