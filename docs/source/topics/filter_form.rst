@@ -22,7 +22,7 @@ The system expect that the form used with the ``ReportView`` to implement the ``
 The interface is simple, only 3 mandatory methods to implement, The rest are mandatory only if you are working with a crosstab report or a time series report.
 
 
-* ``get_filters``: Mandatory, return a tuple (Q_filers , kwargs filter) to be used in filtering.
+* ``get_filters``: Mandatory, return a tuple (Q_filters , kwargs filter) to be used in filtering.
   q_filter: can be none or a series of Django's Q queries
   kwargs_filter: None or a dictionary of filters
 

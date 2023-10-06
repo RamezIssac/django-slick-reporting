@@ -274,9 +274,10 @@ A list report is a report that shows a list of records. For example, if you want
         report_model = SalesTransaction
         report_title = "Last 10 sales"
         date_field = "date"
-        filters = ["client"]
+        filters = ["product", "client", "date"]
         columns = [
-            "product",
+            "product__name",
+            "client__name",
             "date",
             "quantity",
             "price",
@@ -284,6 +285,7 @@ A list report is a report that shows a list of records. For example, if you want
         ]
         default_order_by = "-date"
         limit_records = 10
+
 
 
 
@@ -320,7 +322,7 @@ The system expect that the form used with the ``ReportView`` to implement the ``
 The interface is simple, only 3 mandatory methods to implement, The rest are mandatory only if you are working with a crosstab report or a time series report.
 
 
-* ``get_filters``: Mandatory, return a tuple (Q_filers , kwargs filter) to be used in filtering.
+* ``get_filters``: Mandatory, return a tuple (Q_filters , kwargs filter) to be used in filtering.
   q_filter: can be none or a series of Django's Q queries
   kwargs_filter: None or a dictionary of filters
 
@@ -379,6 +381,13 @@ Example
             elif self.cleaned_data["product_size"] == "all-except-extra-big":
                 q_filters.append(~Q(product__size__in=["extra_big", "big"]))
             return q_filters, kw_filters
+
+        def get_start_date(self):
+            return self.cleaned_data["start_date"]
+
+        def get_end_date(self):
+            return self.cleaned_data["end_date"]
+
 
 
 Recap
