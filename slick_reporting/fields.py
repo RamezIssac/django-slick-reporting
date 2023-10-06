@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from warnings import warn
 
 from django.db.models import Sum, Q
