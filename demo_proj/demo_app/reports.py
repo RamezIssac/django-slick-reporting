@@ -672,3 +672,28 @@ class CustomExportReport(GroupByReport):
 
     export_csv.title = _("My Custom CSV export Title")
     export_csv.css_class = "btn btn-primary"
+
+
+class ReportWithFormInitial(ReportView):
+    report_title = _("Report With Form Initial")
+    report_model = SalesTransaction
+    date_field = "date"
+    group_by = "product"
+
+    columns = [
+        "name",
+        ComputationField.create(
+            method=Sum,
+            field="value",
+            name="value__sum",
+            verbose_name="Total sold $",
+            is_summable=True,
+        ),
+    ]
+
+    def get_initial(self):
+        from .models import Client
+
+        initial = super().get_initial()
+        initial["client_id"] = [Client.objects.first().pk, Client.objects.last().pk]
+        return initial

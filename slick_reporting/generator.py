@@ -932,7 +932,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
         }
         return data
 
-    def get_chart_settings(self, chart_settings=None, default_chart_title=None, chart_engine=None):
+    @staticmethod
+    def get_chart_settings(chart_settings=None, default_chart_title=None, chart_engine=None):
         """
         Ensure the sane settings are passed to the front end.
         """
@@ -943,7 +944,6 @@ class ReportGenerator(ReportGeneratorAPI, object):
         for i, chart in enumerate(chart_settings):
             if type(chart) is Chart:
                 chart = chart.to_dict()
-
             chart["id"] = chart.get("id", f"{i}")
             chart_type = chart.get("type", "line")
             if chart_type == "column" and SLICK_REPORTING_DEFAULT_CHARTS_ENGINE == "chartsjs":

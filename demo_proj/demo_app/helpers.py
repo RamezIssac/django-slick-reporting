@@ -43,6 +43,7 @@ OTHER = [
     ("chartjs-examples", reports.ChartJSExample),
     ("apexcharts-examples", reports.ProductSalesApexChart),
     ("custom-export", reports.CustomExportReport),
+    ("form-initial", reports.ReportWithFormInitial),
 ]
 
 

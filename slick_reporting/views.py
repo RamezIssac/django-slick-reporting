@@ -275,12 +275,12 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
                 }
             )
         elif self.request.method in ("GET", "PUT"):
-            # elif self.request.GET:
-            kwargs.update(
-                {
-                    "data": self.request.GET,
-                }
-            )
+            if self.request.GET or self.request.headers.get("x-requested-with") == "XMLHttpRequest":
+                kwargs.update(
+                    {
+                        "data": self.request.GET,
+                    }
+                )
         return kwargs
 
     def get_crosstab_ids(self):
@@ -392,8 +392,11 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         Ensure the sane settings are passed to the front end.
         """
-        generator = generator or self.get_report_generator()
-        return generator.get_chart_settings(self.chart_settings or [], self.report_title, self.chart_engine)
+        return self.report_generator_class.get_chart_settings(
+            chart_settings=self.chart_settings or [],
+            default_chart_title=self.report_title,
+            chart_engine=self.chart_engine,
+        )
 
     @classmethod
     def get_queryset(cls):
@@ -416,10 +419,14 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         return cls.report_slug or cls.__name__.lower()
 
     def get_initial(self):
-        return {
-            "start_date": SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"],
-            "end_date": SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],
-        }
+        initial = self.initial.copy()
+        initial.update(
+            {
+                "start_date": SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"],
+                "end_date": SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],
+            }
+        )
+        return initial
 
     def get_form_crispy_helper(self):
         """
@@ -438,8 +445,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         context["report"] = self
 
         if not (self.request.POST or self.request.GET):
-            # initialize empty form with initials if the no data is in the get or the post
-            context["form"] = self.get_form_class()()
+            context["form"] = self.get_form_class()(**self.get_form_kwargs())
         return context
 
     def form_invalid(self, form):
