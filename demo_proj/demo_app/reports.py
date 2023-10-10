@@ -89,8 +89,8 @@ class TotalProductSalesByCountry(ReportView):
 
 
 class SumValueComputationField(ComputationField):
-    computation_method = Sum
-    computation_field = "value"
+    calculation_method = Sum
+    calculation_field = "value"
     verbose_name = _("Sales Value")
     name = "my_value_sum"
 
