@@ -17,13 +17,11 @@
 
 
                     {% for export_action in report.get_export_actions %}
-                        <button class="btn {{ export_action.css_class }}" data-export-btn data-export-parameter="{{ export_action.parameter }}" data-form-selector="#reportForm">
-                        {% if export_action.icon %}<i class="{{ export_action.icon}}"></i> {% endif %}
+                        <button class="btn {{ export_action.css_class }}" data-export-btn
+                                data-export-parameter="{{ export_action.parameter }}" data-form-selector="#reportForm">
+                            {% if export_action.icon %}<i class="{{ export_action.icon }}"></i> {% endif %}
                             {{ export_action.title }} </button>
-
-{#                        <input type="button" value="{{ export_action.title }}" class="{{ export_action.css_class }}" data-export-btn data-export-parameter="{{ export_action.parameter }}" data-form-selector="#reportForm">#}
                     {% endfor %}
-{#                    <input type="button" value="{% trans "Export CSV" %}" class="btn btn-secondary exportCsvBtn">#}
                 </div>
             </form>
         {% endif %}
@@ -48,8 +46,6 @@
         </div>
     </div>
 
-{#    {% get_charts_js_resources report %}#}
-{#    {% get_charts_css_resources report %}#}
 {% endblock %}
 
 {% block extrajs %}

@@ -10,28 +10,6 @@ register = template.Library()
 
 
 @register.simple_tag
-def get_data(row, column):
-    return row[column["name"]]
-
-
-#
-# def jsonify(object):
-#     def date_handler(obj):
-#         if hasattr(obj, "isoformat"):
-#             return obj.isoformat()
-#         elif isinstance(obj, Promise):
-#             return force_str(obj)
-#
-#     if isinstance(object, QuerySet):
-#         return serialize("json", object)
-#
-#     return mark_safe(json.dumps(object, use_decimal=True, default=date_handler))
-#
-#
-# register.filter("jsonify", jsonify)
-
-
-@register.simple_tag
 def get_widget_from_url(url_name=None, url=None, **kwargs):
     _url = ""
     if not (url_name or url):
@@ -104,6 +82,4 @@ def get_slick_reporting_media():
 
 @register.simple_tag
 def get_slick_reporting_settings():
-    from slick_reporting.app_settings import SLICK_REPORTING_SETTINGS
-
     return dict(SLICK_REPORTING_SETTINGS)
