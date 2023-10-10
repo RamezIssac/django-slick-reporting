@@ -17,8 +17,8 @@
         return response['metadata']['time_series_column_names'];
     }
 
-    function createChartObject(response, chartId, extraOptions) {
-        let chartOptions = $.slick_reporting.getObjFromArray(response.chart_settings, 'id', chartId, true);
+    function createChartObject(response, chartOptions, extraOptions) {
+        // let chartOptions = $.slick_reporting.getObjFromArray(response.chart_settings, 'id', chartId, true);
         let extractedData = extractDataFromResponse(response, chartOptions);
 
         let chartObject = {
@@ -69,6 +69,27 @@
         return chartObject
     }
 
+    function getGroupByLabelAndSeries(response, chartOptions) {
+
+        let legendResults = [];
+        let datasetData = [];
+        let dataFieldName = chartOptions['data_source'];
+        let titleFieldName = chartOptions['title_source'];
+
+        for (let i = 0; i < response.data.length; i++) {
+            let row = response.data[i];
+            if (titleFieldName !== '') {
+                let txt = row[titleFieldName];
+                txt = $(txt).text() || txt; // the title is an <a tag , we want teh text only
+                legendResults.push(txt)
+            }
+            datasetData.push(row[dataFieldName])
+        }
+        return {
+            'labels': legendResults,
+            "series": datasetData,
+        }
+    }
 
     function extractDataFromResponse(response, chartOptions) {
         let dataFieldName = chartOptions['data_source'];
@@ -119,22 +140,14 @@
                 'datasets': datasets,
             }
         }
-        for (let i = 0; i < response.data.length; i++) {
-            let row = response.data[i];
-            if (titleFieldName !== '') {
-                let txt = row[titleFieldName];
-                txt = $(txt).text() || txt; // the title is an <a tag , we want teh text only
-                legendResults.push(txt)
-            }
-            datasetData.push(row[dataFieldName])
-        }
+        let results = getGroupByLabelAndSeries(response, chartOptions);
         datasets = [{
-            data: datasetData,
+            data: results.series,
             backgroundColor: getBackgroundColors(),
             label: chartOptions.title
         }];
         return {
-            'labels': legendResults,
+            'labels': results.labels,
             'datasets': datasets,
         }
     }
@@ -146,8 +159,8 @@
         return COLORS
     }
 
-    function displayChart(data, $elem, chart_id) {
-        chart_id = chart_id || $elem.attr('data-report-default-chart') || '';
+    function displayChart(data, $elem, chartOptions) {
+        // chart_id = chart_id || $elem.attr('data-report-default-chart') || '';
         if ($elem.find('canvas').length === 0) {
             $elem.append("<canvas width=\"400\" height=\"100\"></canvas>");
         }
@@ -162,7 +175,7 @@
             console.error(e)
         }
 
-        let chartObject = $.slick_reporting.chartsjs.createChartObject(data, chart_id);
+        let chartObject = $.slick_reporting.chartsjs.createChartObject(data, chartOptions);
         let $chart = $elem.find('canvas');
         try {
             _chart_cache[cache_key] = new Chart($chart, chartObject);
@@ -178,6 +191,7 @@
         $.slick_reporting = {}
     }
     $.slick_reporting.chartsjs = {
+        getGroupByLabelAndSeries: getGroupByLabelAndSeries,
         createChartObject: createChartObject,
         displayChart: displayChart,
         defaults: {

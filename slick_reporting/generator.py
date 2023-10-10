@@ -10,6 +10,7 @@ from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import ComputationField
 from .helpers import get_field_from_query_text
 from .registry import field_registry
+from . import app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class Chart:
     title_source: list
     plot_total: bool = False
     engine: str = ""
+    entryPoint: str = ""
     COLUMN = "column"
     LINE = "line"
     PIE = "pie"
@@ -36,6 +38,7 @@ class Chart:
             title_source=self.title_source,
             plot_total=self.plot_total,
             engine=self.engine,
+            entryPoint=self.entryPoint,
         )
 
 
@@ -507,13 +510,14 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
                     if source:
                         computation_class = self.report_fields_classes[source]
+                        # the computation field is being asked from another computation field that requires it.
                         value = computation_class.get_dependency_value(group_by_val, col_data["ref"].name)
                     else:
                         try:
                             computation_class = self.report_fields_classes[name]
                         except KeyError:
                             continue
-                        value = computation_class.resolve(group_by_val, data)
+                        value = computation_class.do_resolve(group_by_val, data)
                     if self.swap_sign:
                         value = -value
                     data[name] = value
@@ -928,7 +932,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
         }
         return data
 
-    def get_chart_settings(self, chart_settings=None, default_chart_title=None, chart_engine=None):
+    @staticmethod
+    def get_chart_settings(chart_settings=None, default_chart_title=None, chart_engine=None):
         """
         Ensure the sane settings are passed to the front end.
         """
@@ -939,7 +944,6 @@ class ReportGenerator(ReportGeneratorAPI, object):
         for i, chart in enumerate(chart_settings):
             if type(chart) is Chart:
                 chart = chart.to_dict()
-
             chart["id"] = chart.get("id", f"{i}")
             chart_type = chart.get("type", "line")
             if chart_type == "column" and SLICK_REPORTING_DEFAULT_CHARTS_ENGINE == "chartsjs":
@@ -948,6 +952,11 @@ class ReportGenerator(ReportGeneratorAPI, object):
             if not chart.get("title", False):
                 chart["title"] = report_title
             chart["engine_name"] = chart.get("engine_name", chart_engine)
+            chart["entryPoint"] = (
+                chart.get("entryPoint")
+                or app_settings.SLICK_REPORTING_SETTINGS["CHARTS"][chart["engine_name"]]["entryPoint"]
+            )
+
             output.append(chart)
         return output
 
@@ -1018,7 +1027,7 @@ class ListViewReportGenerator(ReportGenerator):
                             computation_class = self.report_fields_classes[name]
                         except KeyError:
                             continue
-                        value = computation_class.resolve(group_by_val, data)
+                        value = computation_class.do_resolve(group_by_val, data)
                     if self.swap_sign:
                         value = -value
                     data[name] = value

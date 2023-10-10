@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2023-10-10
+- Add ``get_slick_reporting_media`` and ``get_charts_media`` templatetags
+- Add `get_group_by_custom_querysets` hook to ReportView
+- Enhance and document adding export options and customizing the builtin export to csv button
+- Enhance and document adding custom buttons to the report page
+- Enhance and document adding a new chart engine
+- Fix in SlickReportingListView
+- Move all css and js resources to be handled by `Media` governed by `settings.SLICK_REPORTING_SETTINGS`
+
+ 
 ## [1.1.1] - 2023-09-25
 - Change settings to be a dict , adding support JQUERY_URL and FONT AWESOME customization #79 & #81
 - Fix issue with chartjs not being loaded  #80

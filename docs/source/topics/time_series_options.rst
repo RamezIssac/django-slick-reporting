@@ -18,6 +18,7 @@ Here is a quick look at the general use case
         from django.db.models import Sum
         from slick_reporting.views import ReportView
 
+
         class TimeSeriesReport(ReportView):
             report_model = SalesTransaction
             group_by = "client"
@@ -35,29 +36,30 @@ Here is a quick look at the general use case
             columns = [
                 "name",
                 "__time_series__",
-
                 # This is the same as the time_series_columns, but this one will be on the whole set
                 ComputationField.create(Sum, "value", verbose_name=_("Total Sales")),
-
             ]
 
             chart_settings = [
-                Chart("Client Sales",
-                      Chart.BAR,
-                      data_source=["sum__value"],
-                      title_source=["name"],
-                      ),
-                Chart("Total Sales Monthly",
-                      Chart.PIE,
-                      data_source=["sum__value"],
-                      title_source=["name"],
-                      plot_total=True,
-                      ),
-                Chart("Total Sales [Area chart]",
-                      Chart.AREA,
-                      data_source=["sum__value"],
-                      title_source=["name"],
-                      )
+                Chart(
+                    "Client Sales",
+                    Chart.BAR,
+                    data_source=["sum__value"],
+                    title_source=["name"],
+                ),
+                Chart(
+                    "Total Sales Monthly",
+                    Chart.PIE,
+                    data_source=["sum__value"],
+                    title_source=["name"],
+                    plot_total=True,
+                ),
+                Chart(
+                    "Total Sales [Area chart]",
+                    Chart.AREA,
+                    data_source=["sum__value"],
+                    title_source=["name"],
+                ),
             ]
 
 
@@ -106,9 +108,18 @@ Let's see how you can do that, inheriting from teh same Time series we did first
             report_title = _("Time Series Report With Custom Dates")
             time_series_pattern = "custom"
             time_series_custom_dates = (
-                (datetime.datetime(get_current_year(), 1, 1), datetime.datetime(get_current_year(), 1, 10)),
-                (datetime.datetime(get_current_year(), 2, 1), datetime.datetime(get_current_year(), 2, 10)),
-                (datetime.datetime(get_current_year(), 3, 1), datetime.datetime(get_current_year(), 3, 10)),
+                (
+                    datetime.datetime(get_current_year(), 1, 1),
+                    datetime.datetime(get_current_year(), 1, 10),
+                ),
+                (
+                    datetime.datetime(get_current_year(), 2, 1),
+                    datetime.datetime(get_current_year(), 2, 10),
+                ),
+                (
+                    datetime.datetime(get_current_year(), 3, 1),
+                    datetime.datetime(get_current_year(), 3, 10),
+                ),
             )
 
 
@@ -149,17 +160,21 @@ Example:
         ]
 
         chart_settings = [
-            Chart("Client Sales",
-                  Chart.BAR,
-                  data_source=["sum_of_value"],  # Note:  This is the name of our `TotalSalesField` `field
-                  title_source=["name"],
-                  ),
-            Chart("Total Sales [Pie]",
-                  Chart.PIE,
-                  data_source=["sum_of_value"],
-                  title_source=["name"],
-                  plot_total=True,
-                  ),
+            Chart(
+                "Client Sales",
+                Chart.BAR,
+                data_source=[
+                    "sum_of_value"
+                ],  # Note:  This is the name of our `TotalSalesField` `field
+                title_source=["name"],
+            ),
+            Chart(
+                "Total Sales [Pie]",
+                Chart.PIE,
+                data_source=["sum_of_value"],
+                title_source=["name"],
+                plot_total=True,
+            ),
         ]
 
 
@@ -187,16 +202,18 @@ Example:
         ]
 
         chart_settings = [
-            Chart("Total Sales [Bar]",
-                  Chart.BAR,
-                  data_source=["sum__value"],
-                  title_source=["name"],
-                  ),
-            Chart("Total Sales [Pie]",
-                  Chart.PIE,
-                  data_source=["sum__value"],
-                  title_source=["name"],
-                  ),
+            Chart(
+                "Total Sales [Bar]",
+                Chart.BAR,
+                data_source=["sum__value"],
+                title_source=["name"],
+            ),
+            Chart(
+                "Total Sales [Pie]",
+                Chart.PIE,
+                data_source=["sum__value"],
+                title_source=["name"],
+            ),
         ]
 
 

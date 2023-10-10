@@ -116,6 +116,8 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     template_name = "slick_reporting/report.html"
 
+    export_actions = None
+
     @staticmethod
     def form_filter_func(fkeys_dict):
         # todo revise
@@ -152,6 +154,33 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
         return [], []
 
+    def get_export_actions(self):
+        """
+        Hook to get the export options
+        :return: list of export options
+        """
+        actions = ["export_csv"] if self.csv_export_class else []
+
+        if self.export_actions:
+            actions = actions + self.export_actions
+
+        export_actions = []
+
+        for action in actions:
+            func = getattr(self, action, None)
+            parameter = action.replace("export_", "")
+
+            export_actions.append(
+                {
+                    "name": action,
+                    "title": getattr(func, "title", action.replace("_", " ").title()),
+                    "icon": getattr(func, "icon", ""),
+                    "css_class": getattr(func, "css_class", ""),
+                    "parameter": parameter,
+                }
+            )
+        return export_actions
+
     def get(self, request, *args, **kwargs):
         form_class = self.get_form_class()
         self.form = self.get_form(form_class)
@@ -180,6 +209,10 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     def export_csv(self, report_data):
         return self.csv_export_class(self.request, report_data, self.report_title).get_response()
+
+    export_csv.title = SLICK_REPORTING_SETTINGS["MESSAGES"]["export_to_csv"]
+    export_csv.css_class = "btn btn-primary"
+    export_csv.icon = ""
 
     @classmethod
     def get_report_model(cls):
@@ -242,12 +275,12 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
                 }
             )
         elif self.request.method in ("GET", "PUT"):
-            # elif self.request.GET:
-            kwargs.update(
-                {
-                    "data": self.request.GET,
-                }
-            )
+            if self.request.GET or self.request.headers.get("x-requested-with") == "XMLHttpRequest":
+                kwargs.update(
+                    {
+                        "data": self.request.GET,
+                    }
+                )
         return kwargs
 
     def get_crosstab_ids(self):
@@ -257,7 +290,11 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         return self.form.get_crosstab_ids()
 
-    def get_report_generator(self, queryset, for_print):
+    def get_group_by_custom_querysets(self):
+        return self.group_by_custom_querysets
+
+    def get_report_generator(self, queryset=None, for_print=False):
+        queryset = queryset or self.get_queryset()
         q_filters, kw_filters = self.form.get_filters()
         crosstab_compute_remainder = False
         if self.crosstab_field:
@@ -293,7 +330,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             swap_sign=self.swap_sign,
             columns=self.columns,
             group_by=self.group_by,
-            group_by_custom_querysets=self.group_by_custom_querysets,
+            group_by_custom_querysets=self.get_group_by_custom_querysets(),
             group_by_custom_querysets_column_verbose_name=self.group_by_custom_querysets_column_verbose_name,
             time_series_pattern=time_series_pattern,
             time_series_columns=self.time_series_columns,
@@ -354,11 +391,15 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         """
         return generator.get_metadata()
 
-    def get_chart_settings(self, generator):
+    def get_chart_settings(self, generator=None):
         """
         Ensure the sane settings are passed to the front end.
         """
-        return generator.get_chart_settings(self.chart_settings or [], self.report_title, self.chart_engine)
+        return self.report_generator_class.get_chart_settings(
+            chart_settings=self.chart_settings or [],
+            default_chart_title=self.report_title,
+            chart_engine=self.chart_engine,
+        )
 
     @classmethod
     def get_queryset(cls):
@@ -381,10 +422,14 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         return cls.report_slug or cls.__name__.lower()
 
     def get_initial(self):
-        return {
-            "start_date": SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"],
-            "end_date": SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],
-        }
+        initial = self.initial.copy()
+        initial.update(
+            {
+                "start_date": SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"],
+                "end_date": SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],
+            }
+        )
+        return initial
 
     def get_form_crispy_helper(self):
         """
@@ -400,10 +445,10 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
         context[self.report_title_context_key] = self.report_title
         context["crispy_helper"] = self.get_form_crispy_helper()
         context["auto_load"] = self.auto_load
+        context["report"] = self
 
         if not (self.request.POST or self.request.GET):
-            # initialize empty form with initials if the no data is in the get or the post
-            context["form"] = self.get_form_class()()
+            context["form"] = self.get_form_class()(**self.get_form_kwargs())
         return context
 
     def form_invalid(self, form):
@@ -433,7 +478,7 @@ class ReportView(ReportViewBase):
         super().__init_subclass__()
 
 
-class SlickReportingListViewMixin:
+class SlickReportingListViewMixin(ReportViewBase):
     report_generator_class = ListViewReportGenerator
     filters = None
 
@@ -472,13 +517,13 @@ class SlickReportingListViewMixin:
     def get_form_crispy_helper(self):
         return get_crispy_helper(self.filters)
 
-    def get_report_generator(self, queryset, for_print):
+    def get_report_generator(self, queryset=None, for_print=False):
         q_filters, kw_filters = self.get_form_filters(self.form)
 
         return self.report_generator_class(
             self.get_report_model(),
-            start_date=self.form.get_start_date(),
-            end_date=self.form.get_end_date(),
+            # start_date=self.form.get_start_date(),
+            # end_date=self.form.get_end_date(),
             q_filters=q_filters,
             kwargs_filters=kw_filters,
             date_field=self.date_field,
@@ -496,7 +541,7 @@ class SlickReportingListViewMixin:
 
         elif self.filters:
             return modelform_factory(
-                self.get_report_model(),
+                model=self.get_report_model(),
                 fields=self.filters,
                 formfield_callback=default_formfield_callback,
             )
@@ -532,7 +577,7 @@ class SlickReportingListView(SlickReportingListViewMixin, ReportViewBase):
         super().__init_subclass__()
 
 
-class ListReportView(SlickReportingListViewMixin, ReportViewBase):
+class ListReportView(SlickReportingListViewMixin):
     pass
 
 

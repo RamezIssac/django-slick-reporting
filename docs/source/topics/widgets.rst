@@ -1,8 +1,9 @@
 .. _widgets:
+.. _dashboard:
 
-Widgets
-=======
-You can use the report data on any other page, for example to create a dashboard.
+Dashboards
+==========
+You can use the report data and charts on any other page, for example to create a dashboard.
 A dashboard page is a collection of report results  / charts / tables.
 
 Adding a widget to a page is as easy as this code
@@ -11,19 +12,21 @@ Adding a widget to a page is as easy as this code
 
         {% load static slick_reporting_tags %}
 
-        {#  make sure to have the js_resources added to your page  #}
-        {% block extrajs %}
-            {% include "slick_reporting/js_resources.html" %}
+        {% block content %}
+            <div class="div-holder">
+                {% get_widget_from_url url_name="product-sales" %}
+            </div>
         {% endblock %}
 
-        {% block content %}
-            {% get_widget_from_url url_name="product-sales" %}
+        {% block extrajs %}
+            {% include "slick_reporting/js_resources.html" %}
+            {% get_charts_media "all" %}
         {% endblock %}
+
+The `get_widget_from_url` with create a card block, which will contain the report results and charts. You can customize the widget by passing arguments to the template tag.
 
 Arguments
 ---------
-You can pass arguments to the ``get_widget`` function to control aspects of its behavior
-
 
 * title: string, a title for the widget, default to the report title.
 * chart_id: the id of the chart that will be rendered as default.
@@ -42,20 +45,12 @@ This code above will be actually rendered as this in the html page:
 
 .. code-block:: html+django
 
-            <div class="card" id="">
+            <div class="card">
                     <div class="card-body">
-                        <div data-report-widget
-                             data-report-url="/reports/expense/expensestotalstatement/"
-                             data-extra-params=""
-                             data-success-callback=""
-                             data-fail-callback=""
-                            report-form-selector=""
-                            data-chart-id=""
-                            data-display-chart-selector=""
-                            >
+                        <div data-report-widget <!-- The arguments passed will appear here as data-* attributes  --> >
 
                             <!-- container for the chart -->
-                            <div id="container" data-report-chart>
+                            <div id="container" data-report-chart %>
                             </div>
 
                             <!-- container for the table -->
@@ -65,9 +60,10 @@ This code above will be actually rendered as this in the html page:
                     </div>
                 </div>
 
-The ``data-report-widget`` attribute is used by the javascript to find the
-widget and render the report.
-you can add [data-no-auto-load] to the widget to prevent report loader to get the widget data automatically.
+The ``data-report-widget`` attribute is used by the javascript to find the widget and render the report.
+The ``data-report-chart`` attribute is used by the javascript to find the chart container and render the chart and the chart selector.
+The ``data-report-table`` attribute is used by the javascript to find the table container and render the table.
+
 
 Customization Example
 ---------------------
@@ -90,3 +86,9 @@ The success call-back function will receive the report data as a parameter
                 console.log(data);
             }
         </script>
+
+
+Live example:
+-------------
+
+You can see a live example of the widgets in the `Demo project- Dashboard Page <https://django-slick-reporting.com/dashboard/>`_.

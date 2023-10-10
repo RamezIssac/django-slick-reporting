@@ -75,8 +75,12 @@ In Slick Reporting, you can do the same thing by creating a report view looking 
                 group_by = "product"
                 columns = [
                     "name",
-                    ComputationField.create(Sum, "quantity", verbose_name="Total quantity sold", is_summable=False),
-                    ComputationField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold $"),
+                    ComputationField.create(
+                        Sum, "quantity", verbose_name="Total quantity sold", is_summable=False
+                    ),
+                    ComputationField.create(
+                        Sum, "value", name="sum__value", verbose_name="Total Value sold $"
+                    ),
                 ]
 
                 chart_settings = [
@@ -132,7 +136,12 @@ You can also export the report to CSV.
                 group_by = "client__country"  # notice the double underscore
                 columns = [
                     "client__country",
-                    ComputationField.create(Sum, "value", name="sum__value", verbose_name="Total Value sold by country $"),
+                    ComputationField.create(
+                        Sum,
+                        "value",
+                        name="sum__value",
+                        verbose_name="Total Value sold by country $",
+                    ),
                 ]
 
                 chart_settings = [
@@ -162,7 +171,6 @@ A time series report is a report that computes the data for each period of time.
         computation_field = "value"
         verbose_name = _("Sales Value")
         name = "my_value_sum"
-
 
 
     class MonthlyProductSales(ReportView):
@@ -266,9 +274,10 @@ A list report is a report that shows a list of records. For example, if you want
         report_model = SalesTransaction
         report_title = "Last 10 sales"
         date_field = "date"
-        filters = ["client"]
+        filters = ["product", "client", "date"]
         columns = [
-            "product",
+            "product__name",
+            "client__name",
             "date",
             "quantity",
             "price",
@@ -276,6 +285,7 @@ A list report is a report that shows a list of records. For example, if you want
         ]
         default_order_by = "-date"
         limit_records = 10
+
 
 
 
@@ -312,7 +322,7 @@ The system expect that the form used with the ``ReportView`` to implement the ``
 The interface is simple, only 3 mandatory methods to implement, The rest are mandatory only if you are working with a crosstab report or a time series report.
 
 
-* ``get_filters``: Mandatory, return a tuple (Q_filers , kwargs filter) to be used in filtering.
+* ``get_filters``: Mandatory, return a tuple (Q_filters , kwargs filter) to be used in filtering.
   q_filter: can be none or a series of Django's Q queries
   kwargs_filter: None or a dictionary of filters
 
@@ -351,7 +361,10 @@ Example
             required=False, label="End Date", widget=forms.DateInput(attrs={"type": "date"})
         )
         product_size = forms.ChoiceField(
-            choices=PRODUCT_SIZE_CHOICES, required=False, label="Product Size", initial="all"
+            choices=PRODUCT_SIZE_CHOICES,
+            required=False,
+            label="Product Size",
+            initial="all",
         )
 
         def get_filters(self):
@@ -368,6 +381,13 @@ Example
             elif self.cleaned_data["product_size"] == "all-except-extra-big":
                 q_filters.append(~Q(product__size__in=["extra_big", "big"]))
             return q_filters, kw_filters
+
+        def get_start_date(self):
+            return self.cleaned_data["start_date"]
+
+        def get_end_date(self):
+            return self.cleaned_data["end_date"]
+
 
 
 Recap

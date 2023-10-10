@@ -1,33 +1,12 @@
 from django import template
 from django.template.loader import get_template
+from django.forms import Media
 from django.urls import reverse, resolve
 from django.utils.safestring import mark_safe
 
-from slick_reporting.app_settings import SLICK_REPORTING_JQUERY_URL
+from ..app_settings import SLICK_REPORTING_JQUERY_URL, SLICK_REPORTING_SETTINGS, get_media
 
 register = template.Library()
-
-
-@register.simple_tag
-def get_data(row, column):
-    return row[column["name"]]
-
-
-#
-# def jsonify(object):
-#     def date_handler(obj):
-#         if hasattr(obj, "isoformat"):
-#             return obj.isoformat()
-#         elif isinstance(obj, Promise):
-#             return force_str(obj)
-#
-#     if isinstance(object, QuerySet):
-#         return serialize("json", object)
-#
-#     return mark_safe(json.dumps(object, use_decimal=True, default=date_handler))
-#
-#
-# register.filter("jsonify", jsonify)
 
 
 @register.simple_tag
@@ -79,7 +58,28 @@ def add_jquery():
 
 
 @register.simple_tag
-def get_slick_reporting_settings():
-    from slick_reporting.app_settings import SLICK_REPORTING_SETTINGS
+def get_charts_media(chart_settings):
+    charts_dict = SLICK_REPORTING_SETTINGS["CHARTS"]
+    media = Media()
+    if chart_settings == "all":
+        available_types = charts_dict.keys()
+    else:
+        available_types = [chart["engine_name"] for chart in chart_settings]
+        available_types = set(available_types)
 
-    return SLICK_REPORTING_SETTINGS
+    for type in available_types:
+        media += Media(css=charts_dict.get(type, {}).get("css", {}), js=charts_dict.get(type, {}).get("js", []))
+    return media
+
+
+@register.simple_tag
+def get_slick_reporting_media():
+    from django.forms import Media
+
+    media = get_media()
+    return Media(css=media["css"], js=media["js"])
+
+
+@register.simple_tag
+def get_slick_reporting_settings():
+    return dict(SLICK_REPORTING_SETTINGS)

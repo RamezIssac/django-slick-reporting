@@ -275,14 +275,14 @@ def report_form_factory(
     fields["start_date"] = forms.DateTimeField(
         required=False,
         label=_("From date"),
-        initial=initial.get("start_date", app_settings.SLICK_REPORTING_DEFAULT_START_DATE),
+        initial=initial.get("start_date", "") or app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"],
         widget=forms.DateTimeInput(attrs={"autocomplete": "off"}),
     )
 
     fields["end_date"] = forms.DateTimeField(
         required=False,
         label=_("To  date"),
-        initial=initial.get("end_date", app_settings.SLICK_REPORTING_DEFAULT_END_DATE),
+        initial=initial.get("end_date", "") or app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],
         widget=forms.DateTimeInput(attrs={"autocomplete": "off"}),
     )
 
@@ -303,6 +303,7 @@ def report_form_factory(
         field_attrs = foreign_key_widget_func(f_field)
         if name in required:
             field_attrs["required"] = True
+        field_attrs["initial"] = initial.get(name, "")
         fields[name] = f_field.formfield(**field_attrs)
 
     if crosstab_model:

@@ -10,11 +10,11 @@
     try {
         func = context[func];
         if (typeof func == 'undefined') {
-            throw 'Function {0} is not found the context {1}'.format(functionName, context);
+            throw `Function ${functionName} is not found in the context ${context}`
         }
 
     } catch (err) {
-        console.error('Function {0} is not found the context {1}'.format(functionName, context), err)
+        console.error(`Function ${functionName} is not found in the context ${context}`, err)
     }
     return func.apply(context, args);
 }

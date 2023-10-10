@@ -54,10 +54,8 @@ Below is the list of general options that is used across all types of reports.
                         columns = [
                             # a computation field created on the fly
                             ComputationField.create(Sum, "value", verbose_name=_("Value"), name="value"),
-
                             # A computation Field class
                             MyTotalReportField,
-
                             # a computation field registered in the computation field registry
                             "__total__",
                         ]

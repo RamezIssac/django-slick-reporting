@@ -33,4 +33,6 @@ You saw how to use the ReportView class in the tutorial and you identified the t
    filter_form
    widgets
    integrating_slick_reporting
+   charts
    exporting
+   computation_field

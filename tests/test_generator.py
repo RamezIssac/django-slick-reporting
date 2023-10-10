@@ -1,15 +1,14 @@
 from datetime import datetime
 
-import pytz
 from django.db.models import Sum
 from django.test import TestCase
+from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import ComputationField
 from slick_reporting.generator import ReportGenerator, ListViewReportGenerator
 from slick_reporting.helpers import get_foreign_keys
 from .models import OrderLine, ComplexSales
-from django.utils.translation import gettext_lazy as _
-
+from .models import SimpleSales, Client
 from .report_generators import (
     GeneratorWithAttrAsColumn,
     CrosstabOnClient,
@@ -21,9 +20,7 @@ from .report_generators import (
     CrosstabCustomQueryset,
     TestCountField,
 )
-
 from .tests import BaseTestData, year
-from .models import SimpleSales, Client
 
 
 class CrosstabTests(BaseTestData, TestCase):
@@ -146,8 +143,8 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
             columns=["name", "__time_series__"],
             time_series_columns=["__total_quantity__"],
             time_series_pattern="monthly",
-            start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone("utc")),
-            end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone("utc")),
+            start_date=datetime(2020, 1, 1),
+            end_date=datetime(2020, 12, 31),
         )
         self.assertEqual(len(x.get_list_display_columns()), 13)
 
@@ -161,8 +158,8 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
             columns=["name", "__time_series__"],
             time_series_columns=["__total_quantity__"],
             time_series_pattern="monthly",
-            start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone("utc")),
-            end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone("utc")),
+            start_date=datetime(2020, 1, 1),
+            end_date=datetime(2020, 12, 31),
         )
 
         dates = report._get_time_series_dates()
@@ -215,8 +212,8 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
             columns=["name"],
             time_series_columns=["__total_quantity__"],
             time_series_pattern="monthly",
-            start_date=datetime(2020, 1, 1, tzinfo=pytz.timezone("utc")),
-            end_date=datetime(2020, 12, 31, tzinfo=pytz.timezone("utc")),
+            start_date=datetime(2020, 1, 1),
+            end_date=datetime(2020, 12, 31),
         )
         self.assertEqual(len(x.get_list_display_columns()), 13)
 

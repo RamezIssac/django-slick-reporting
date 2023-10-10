@@ -3,22 +3,7 @@
 {% block page_title %} Dashboard {% endblock %}
 {% block meta_page_title %} Dashboard {% endblock %}
 
-{% block extrajs %}
-    {% include "slick_reporting/js_resources.html" %}
-    {#  make sure to have the js_resources added to the dashboard page  #}
 
-    <script>
-        function custom_js_callback(data, $elem) {
-            // data is the json response from the server
-            // $elem is the jquery object of the element `[data-report-widget]` that the report is attached to.
-
-            console.info(data);
-            console.info($elem);
-            $('#responsePre').text(JSON.stringify(data, null, 4));
-        }
-
-    </script>
-{% endblock %}
 {% block content %}
     <div class="row row-deck row-cards">
         <div class="col-lg-6">
@@ -51,4 +36,26 @@
 
     </div>
 
+{% endblock %}
+
+{% block extrajs %}
+    {% include "slick_reporting/js_resources.html" %}
+    {#  make sure to have the js_resources added to the dashboard page  #}
+
+    {% get_charts_media "all" %}
+    {# make sure to add all charts needed media, here the "all" arguments add all charts media to the page,   #}
+    {#  You can skip it and add needed media by hand  #}
+
+
+    <script>
+        function custom_js_callback(data, $elem) {
+            // data is the json response from the server
+            // $elem is the jquery object of the element `[data-report-widget]` that the report is attached to.
+
+            console.info(data);
+            console.info($elem);
+            $('#responsePre').text(JSON.stringify(data, null, 4));
+        }
+
+    </script>
 {% endblock %}

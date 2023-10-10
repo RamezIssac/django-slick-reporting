@@ -39,7 +39,11 @@ CROSSTAB = [
     ("crosstab-report-with-time-series", reports.CrossTabWithTimeSeries),
 ]
 OTHER = [
+    ("highcharts-examples", reports.HighChartExample),
     ("chartjs-examples", reports.ChartJSExample),
+    ("apexcharts-examples", reports.ProductSalesApexChart),
+    ("custom-export", reports.CustomExportReport),
+    ("form-initial", reports.ReportWithFormInitial),
 ]
 
 
