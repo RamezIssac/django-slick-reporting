@@ -118,10 +118,10 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     export_actions = None
 
-    @staticmethod
-    def form_filter_func(fkeys_dict):
-        # todo revise
-        return fkeys_dict
+    # @staticmethod
+    # def form_filter_func(fkeys_dict):
+    #     # todo revise
+    #     return fkeys_dict
 
     @classmethod
     def get_report_title(cls):
@@ -250,7 +250,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             crosstab_model=self.crosstab_field,
             display_compute_remainder=self.crosstab_compute_remainder,
             excluded_fields=self.excluded_fields,
-            fkeys_filter_func=self.form_filter_func,
+            fkeys_filter_func=None,
             initial=self.get_initial(),
             show_time_series_selector=self.time_series_selector,
             time_series_selector_choices=self.time_series_selector_choices,

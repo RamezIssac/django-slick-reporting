@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 
 from django.db.models import Sum, Count
@@ -34,7 +36,7 @@ class GeneratorWithAttrAsColumn(GenericGenerator):
     columns = ["get_data", "slug", "name"]
 
     def get_data(self, obj):
-        return ""
+        return obj["name"]
 
     get_data.verbose_name = "My Verbose Name"
 
@@ -166,7 +168,12 @@ class ProductTotalSales(ReportGenerator):
         "average_value",
     ]
 
-    def get_object_sku(self, obj, data):
+    def get_object_sku(self, obj: dict, row: dict) -> any:
+        """
+        :param obj: obj is the current row of the grouped by model , or the current row of the queryset
+        :param row: the current report row values in a dictionary
+        :return:
+        """
         return obj["sku"].upper()
 
     get_object_sku.verbose_name = "SKU ALL CAPS"
