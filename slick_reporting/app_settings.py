@@ -94,6 +94,16 @@ def get_slick_reporting_settings():
     user_settings = getattr(settings, "SLICK_REPORTING_SETTINGS", {})
     user_chart_settings = user_settings.get("CHARTS", {})
 
+    user_media_settings = user_settings.get("MEDIA", {})
+    override_media = user_media_settings.get("override", False)
+    if override_media:
+        slick_settings["MEDIA"] = user_media_settings
+    else:
+        slick_settings["MEDIA"]["js"] = slick_settings["MEDIA"]["js"] + user_media_settings.get("js", ())
+        slick_settings["MEDIA"]["css"]["all"] = slick_settings["MEDIA"]["css"]["all"] + user_media_settings.get(
+            "css", {}
+        ).get("all", ())
+
     slick_chart_settings.update(user_chart_settings)
     slick_settings.update(user_settings)
     slick_settings["CHARTS"] = slick_chart_settings

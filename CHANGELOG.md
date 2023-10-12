@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## []
+- Implement Slick reporting media override feature + docs
+- Add `Integrating reports into your Admin site` section to the docs
+
 ## [1.2.0] - 2023-10-10
 - Add ``get_slick_reporting_media`` and ``get_charts_media`` templatetags
 - Add `get_group_by_custom_querysets` hook to ReportView

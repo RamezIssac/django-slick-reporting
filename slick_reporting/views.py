@@ -442,7 +442,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[self.report_title_context_key] = self.report_title
+        context[self.report_title_context_key] = self.get_report_title()
         context["crispy_helper"] = self.get_form_crispy_helper()
         context["auto_load"] = self.auto_load
         context["report"] = self
