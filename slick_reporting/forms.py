@@ -235,6 +235,8 @@ def report_form_factory(
     time_series_selector_default="",
     time_series_selector_label=None,
     time_series_selector_allow_empty=False,
+    add_start_date=True,
+    add_end_date=True,
 ):
     """
     Create a Report Form based on the report_model passed by
@@ -271,20 +273,20 @@ def report_form_factory(
 
     fkeys_list = []
     fields = OrderedDict()
-
-    fields["start_date"] = forms.DateTimeField(
-        required=False,
-        label=_("From date"),
-        initial=initial.get("start_date", "") or app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"],
-        widget=forms.DateTimeInput(attrs={"autocomplete": "off"}),
-    )
-
-    fields["end_date"] = forms.DateTimeField(
-        required=False,
-        label=_("To  date"),
-        initial=initial.get("end_date", "") or app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],
-        widget=forms.DateTimeInput(attrs={"autocomplete": "off"}),
-    )
+    if add_start_date:
+        fields["start_date"] = forms.DateTimeField(
+            required=False,
+            label=_("From date"),
+            initial=initial.get("start_date", "") or app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"],
+            widget=forms.DateTimeInput(attrs={"autocomplete": "off"}),
+        )
+    if add_end_date:
+        fields["end_date"] = forms.DateTimeField(
+            required=False,
+            label=_("To  date"),
+            initial=initial.get("end_date", "") or app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],
+            widget=forms.DateTimeInput(attrs={"autocomplete": "off"}),
+        )
 
     if show_time_series_selector:
         time_series_choices = list(TIME_SERIES_CHOICES)

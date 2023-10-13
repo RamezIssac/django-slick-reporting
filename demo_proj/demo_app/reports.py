@@ -198,7 +198,7 @@ class TotalProductSalesWithCustomForm(TotalProductSales):
 class GroupByReport(ReportView):
     report_model = SalesTransaction
     report_title = _("Group By Report")
-    date_field = "date"
+    # date_field = "date"
     group_by = "product"
 
     columns = [
@@ -487,7 +487,7 @@ class CrosstabReport(ReportView):
     report_title = _("Cross tab Report")
     report_model = SalesTransaction
     group_by = "client"
-    date_field = "date"
+    # date_field = "date"
 
     columns = [
         "name",

@@ -269,8 +269,9 @@ class ReportGenerator(ReportGeneratorAPI, object):
         self.time_series_custom_dates = self.time_series_custom_dates or time_series_custom_dates
         self.container_class = container_class
 
-        if not (self.date_field or (self.start_date_field_name and self.end_date_field_name)) and (
-            self.time_series_pattern or self.crosstab_field or self.group_by
+        if (
+            not (self.date_field or (self.start_date_field_name and self.end_date_field_name))
+            and self.time_series_pattern
         ):
             raise ImproperlyConfigured(
                 f"date_field or [start_date_field_name and end_date_field_name] must "
@@ -451,10 +452,12 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 )
 
                 q_filters = None
-                date_filter = {
-                    f"{self.start_date_field_name}__gte": col_data.get("start_date", self.start_date),
-                    f"{self.end_date_field_name}__lt": col_data.get("end_date", self.end_date),
-                }
+                date_filter = {}
+                if self.start_date_field_name:
+                    date_filter[f"{self.start_date_field_name}__gte"] = col_data.get("start_date", self.start_date)
+                if self.end_date_field_name:
+                    date_filter[f"{self.end_date_field_name}__lt"] = col_data.get("end_date", self.end_date)
+
                 date_filter.update(self.kwargs_filters)
                 if window == "crosstab" or col_data.get("computation_flag", "") == "crosstab":
                     q_filters, kw_filters = col_data["queryset_filters"]

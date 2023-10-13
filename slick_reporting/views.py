@@ -256,6 +256,8 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             time_series_selector_choices=self.time_series_selector_choices,
             time_series_selector_default=self.time_series_selector_default,
             time_series_selector_allow_empty=self.time_series_selector_allow_empty,
+            add_start_date=self.start_date_field_name or self.date_field,
+            add_end_date=self.end_date_field_name or self.date_field,
         )
 
     def get_form_kwargs(self):

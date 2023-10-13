@@ -80,6 +80,7 @@ All notable changes to this project will be documented in this file.
 - Breaking : [Only if you set the templates statics by hand] renamed slick_reporting to ra.hightchart.js and ra.chartjs.js to 
   erp_framework.highchart.js and erp_framework.chartjs.js respectively
 - Fix an issue with Crosstab when there crosstab_compute_remainder = False 
+- Group by and crosstab reports do not need date_field set anymore. Only time series do.
 
 ## [0.7.0]
 

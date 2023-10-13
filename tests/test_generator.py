@@ -240,7 +240,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
 
     def test_missing_date_field(self):
         def load():
-            ReportGenerator(report_model=OrderLine, group_by="product", date_field="")
+            ReportGenerator(report_model=OrderLine, group_by="product", date_field="", time_series_pattern="monthly")
 
         self.assertRaises(Exception, load)
 
