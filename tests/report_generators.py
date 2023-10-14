@@ -108,9 +108,14 @@ class CrosstabOnTraversingField(ReportGenerator):
 
 class ClientTotalBalance(ReportGenerator):
     report_model = SimpleSales
-    date_field = "doc_date"
+    # date_field = "doc_date"
     group_by = "client"
-    columns = ["slug", "name", "__balance__", "__total__"]
+    columns = [
+        "slug",
+        "name",
+        "__balance__",
+        ComputationField.create(Sum, "value", name="__total__", verbose_name=_("Sales")),
+    ]
 
 
 class TotalBalanceWithQueryset(ReportGenerator):

@@ -81,6 +81,7 @@ All notable changes to this project will be documented in this file.
   erp_framework.highchart.js and erp_framework.chartjs.js respectively
 - Fix an issue with Crosstab when there crosstab_compute_remainder = False 
 - Group by and crosstab reports do not need date_field set anymore. Only time series do.
+- Fix in FirstBalance Computation field if no date is supplied
 
 ## [0.7.0]
 
