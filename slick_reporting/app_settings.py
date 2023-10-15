@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.urls import get_callable
 from django.utils.functional import lazy
 from django.utils.translation import gettext_lazy as _
 
@@ -84,6 +85,7 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
         "total": _("Total"),
         "export_to_csv": _("Export to CSV"),
     },
+    "REPORT_VIEW_ACCESS_FUNCTION": "slick_reporting.helpers.user_test_function",
 }
 
 
@@ -125,3 +127,7 @@ SLICK_REPORTING_SETTINGS = lazy(get_slick_reporting_settings, dict)()
 
 def get_media():
     return SLICK_REPORTING_SETTINGS["MEDIA"]
+
+
+def get_access_function():
+    return get_callable(SLICK_REPORTING_SETTINGS["REPORT_VIEW_ACCESS_FUNCTION"])

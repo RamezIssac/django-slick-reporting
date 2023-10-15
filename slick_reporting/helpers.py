@@ -1,5 +1,6 @@
 from collections import OrderedDict
 
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 
 
@@ -53,3 +54,14 @@ def get_field_from_query_text(path, model):
             return field
         _rel = field.related_model
     return field
+
+
+def user_test_function(report_view):
+    """
+    A default test function return True on DEBUG, otherwise return the user.is_superuser
+    :param report_view:
+    :return:
+    """
+    if not settings.DEBUG:
+        return report_view.request.user.is_superuser
+    return True

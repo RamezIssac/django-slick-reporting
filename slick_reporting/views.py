@@ -5,6 +5,7 @@ import warnings
 import simplejson as json
 from django import forms
 from django.conf import settings
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import Q
 from django.forms import modelform_factory
 from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
@@ -12,7 +13,7 @@ from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
-from .app_settings import SLICK_REPORTING_SETTINGS
+from .app_settings import SLICK_REPORTING_SETTINGS, get_access_function
 from .forms import (
     report_form_factory,
     get_crispy_helper,
@@ -83,7 +84,7 @@ class ExportToStreamingCSV(ExportToCSV):
         )
 
 
-class ReportViewBase(ReportGeneratorAPI, FormView):
+class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
     report_slug = None
 
     report_title = ""
@@ -118,10 +119,9 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     export_actions = None
 
-    # @staticmethod
-    # def form_filter_func(fkeys_dict):
-    #     # todo revise
-    #     return fkeys_dict
+    def test_func(self):
+        access_function = get_access_function()
+        return access_function(self)
 
     @classmethod
     def get_report_title(cls):

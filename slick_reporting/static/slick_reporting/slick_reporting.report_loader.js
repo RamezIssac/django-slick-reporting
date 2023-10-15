@@ -132,31 +132,31 @@
         return $container
     }
 
-    $('body').on('click', 'a[data-chart-id]', function (e) {
-        e.preventDefault();
-        let $this = $(this);
-        let data = $.slick_reporting.cache[$this.attr('data-report-slug')]
-        let chart_id = $this.attr('data-chart-id')
-        $.slick_reporting.report_loader.displayChart(data, $this.parents('[data-report-widget]').find('[data-report-chart]'), chart_id)
-
-    });
-
-    $('[data-export-btn]').on('click', function (e) {
-        let $elem = $(this);
-        e.preventDefault()
-        let form = $($elem.attr('data-form-selector'));
-        window.location = '?' + form.serialize() + '&_export=' + $elem.attr('data-export-parameter');
-    });
-    $('[data-get-results-button]').not(".vanilla-btn-flag").on('click', function (event) {
-        event.preventDefault();
-        let $elem = $('[data-report-widget]')
-        $.slick_reporting.report_loader.refreshReportWidget($elem)
-    });
 
     jQuery(document).ready(function () {
         $.slick_reporting.report_loader.initialize();
-    });
+        $('body').on('click', 'a[data-chart-id]', function (e) {
+            e.preventDefault();
+            let $this = $(this);
+            let data = $.slick_reporting.cache[$this.attr('data-report-slug')]
+            let chart_id = $this.attr('data-chart-id')
+            $.slick_reporting.report_loader.displayChart(data, $this.parents('[data-report-widget]').find('[data-report-chart]'), chart_id)
 
+        });
+
+        $('[data-export-btn]').on('click', function (e) {
+            let $elem = $(this);
+            e.preventDefault()
+            let form = $($elem.attr('data-form-selector'));
+            window.location = '?' + form.serialize() + '&_export=' + $elem.attr('data-export-parameter');
+        });
+        $('[data-get-results-button]').not(".vanilla-btn-flag").on('click', function (event) {
+            event.preventDefault();
+            let $elem = $('[data-report-widget]')
+            $.slick_reporting.report_loader.refreshReportWidget($elem)
+        });
+
+    });
 
 
     $.slick_reporting.report_loader = {
