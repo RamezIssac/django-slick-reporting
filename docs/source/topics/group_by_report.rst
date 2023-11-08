@@ -69,6 +69,7 @@ Example:
         group_by = "product__product_category"  # Note the traversing
 
 
+.. _group_by_custom_querysets_topic:
 
 Group by custom querysets
 -------------------------
@@ -132,6 +133,8 @@ It just hold the index of the row in the group.
 its verbose name (ie the one on the table header) can be customized via ``group_by_custom_querysets_column_verbose_name``
 
 You can then customize the *value* of the __index__ column via ``format_row`` hook
+
+.. _no_group_by_topic:
 
 The No Group By
 ---------------

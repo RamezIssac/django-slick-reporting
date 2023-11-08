@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.urls import get_callable
 from django.utils.functional import lazy
 from django.utils.translation import gettext_lazy as _
 
@@ -67,7 +68,7 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
             "bar": "fas fa-chart-bar",
             "line": "fas fa-chart-line",
             "area": "fas fa-chart-area",
-            "column": "fas fa-chart-column",
+            "column": "fas fa-chart-bar",
         },
     },
     "CHARTS": {
@@ -84,6 +85,7 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
         "total": _("Total"),
         "export_to_csv": _("Export to CSV"),
     },
+    "REPORT_VIEW_ACCESS_FUNCTION": "slick_reporting.helpers.user_test_function",
 }
 
 
@@ -93,6 +95,16 @@ def get_slick_reporting_settings():
 
     user_settings = getattr(settings, "SLICK_REPORTING_SETTINGS", {})
     user_chart_settings = user_settings.get("CHARTS", {})
+
+    user_media_settings = user_settings.get("MEDIA", {})
+    override_media = user_media_settings.get("override", False)
+    if override_media:
+        slick_settings["MEDIA"] = user_media_settings
+    else:
+        slick_settings["MEDIA"]["js"] = slick_settings["MEDIA"]["js"] + user_media_settings.get("js", ())
+        slick_settings["MEDIA"]["css"]["all"] = slick_settings["MEDIA"]["css"]["all"] + user_media_settings.get(
+            "css", {}
+        ).get("all", ())
 
     slick_chart_settings.update(user_chart_settings)
     slick_settings.update(user_settings)
@@ -115,3 +127,7 @@ SLICK_REPORTING_SETTINGS = lazy(get_slick_reporting_settings, dict)()
 
 def get_media():
     return SLICK_REPORTING_SETTINGS["MEDIA"]
+
+
+def get_access_function():
+    return get_callable(SLICK_REPORTING_SETTINGS["REPORT_VIEW_ACCESS_FUNCTION"])

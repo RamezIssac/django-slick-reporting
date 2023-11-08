@@ -1,152 +1,221 @@
 .. _report_view_options:
 
-General Options
+================
+The Report View
 ================
 
 
-
-Below is the list of general options that is used across all types of reports.
-
-
-.. attribute:: ReportView.report_model
-
-    The model where the relevant data is stored, in more complex reports, it's usually a database view / materialized view.
-
-.. attribute:: ReportView.queryset
-
-        The queryset to be used in the report, if not specified, it will default to ``report_model._default_manager.all()``
+Below is the list of options that can be used in the ReportView class.
 
 
-.. attribute:: ReportView.columns
+Core Options
+=============
 
-    Columns can be a list of column names , or a tuple of (column name, options dictionary) pairs.
+report_model
+------------
 
-    Example:
+The model where the relevant data is stored, in more complex reports,
+it's usually a database view / materialized view.
+You can customize it at runtime via the ``get_report_model`` hook.
 
-    .. code-block:: python
+.. code-block:: python
 
-        class MyReport(ReportView):
-            columns = [
-                "id",
-                ("name", {"verbose_name": "My verbose name", "is_summable": False}),
-                "description",
-                # A callable on the view /or the generator, that takes the record as a parameter and returns a value.
-                ("get_full_name", {"verbose_name": "Full Name", "is_summable": False}),
-            ]
+    class MyReportView(ReportView):
 
-            def get_full_name(self, record):
-                return record["first_name"] + " " + record["last_name"]
+        def get_report_model(self):
+            from my_app.models import MyReportModel
+            return MyReportModel.objects.filter(some_field__isnull=False)
 
 
-    Here is a list of all available column options available. A column can be
+queryset
+--------
 
-    * A Computation Field. Added as a class or by its name if its registered see :ref:`computation_field`
+The queryset to be used in the report,
+if not specified, it will default to ``report_model._default_manager.all()``
 
-        Example:
+group_by
+--------
 
-            .. code-block:: python
+If the data in the report_model needs to be grouped by a field.
+It can be a foreign key, a text field / choice field on the report model or traversing.
 
-                    class MyTotalReportField(ComputationField):
-                        pass
+Example:
+Assuming we have the following SalesModel
 
+.. code-block:: python
 
-                    class MyReport(ReportView):
-                        columns = [
-                            # a computation field created on the fly
-                            ComputationField.create(Sum, "value", verbose_name=_("Value"), name="value"),
-                            # A computation Field class
-                            MyTotalReportField,
-                            # a computation field registered in the computation field registry
-                            "__total__",
-                        ]
+            class SalesModel(models.Model):
+                date = models.DateTimeField()
+                notes = models.TextField(blank=True, null=True)
+                client = models.ForeignKey(
+                    "client.Client", on_delete=models.PROTECT, verbose_name=_("Client")
+                )
+                product = models.ForeignKey(
+                    "product.Product", on_delete=models.PROTECT, verbose_name=_("Product")
+                )
+                value = models.DecimalField(max_digits=9, decimal_places=2)
+                quantity = models.DecimalField(max_digits=9, decimal_places=2)
+                price = models.DecimalField(max_digits=9, decimal_places=2)
 
+Our ReportView can have the following group_by options:
 
+.. code-block:: python
 
-
-    * If group_by is set and it's a foreign key, then any field on the grouped by model.
-
-        Example:
-
-        .. code-block:: python
-
-                class MyReport(ReportView):
-                    report_model = MySales
-                    group_by = "client"
-                    columns = [
-                        "name",  # field that exists on the Client Model
-                        "date_of_birth",  # field that exists on the Client Model
-                        "agent__name",  # field that exists on the Agent Model related to the Client Model
-                        # calculation fields
-                    ]
-
-
-
-
-    * If group_by is not set, then
-        1. Any field name on the report_model / queryset
-        2. A calculation field, in this case the calculation will be made on the whole set of records, not on each group.
-           Example:
-
-                .. code-block:: python
-
-                    class MyReport(ReportView):
-                        report_model = MySales
-                        group_by = None
-                        columns = [
-                            ComputationField.create(Sum, "value", verbose_name=_("Value"), name="value")
-                        ]
-
-            Above code will return the calculated sum of all values in the report_model / queryset
-
-    * A callable on the view /or the generator, that takes the record as a parameter and returns a value.
-
-    * A Special ``__time_series__``, and ``__crosstab__``
-
-       Those are used to control the position of the time series inside the columns, defaults it's appended at the end
-
-
-.. attribute:: ReportView.date_field
-
-    the date field to be used in filtering and computing
-
-.. attribute:: ReportView.start_date_field_name
-
-        the name of the start date field, if not specified, it will default to ``date_field``
-
-.. attribute:: ReportView.end_date_field_name
-
-        the name of the end date field, if not specified, it will default to ``date_field``
-
-
-.. attribute:: ReportView.group_by
-
-        the group by field, it can be a foreign key, a text field, on the report model or traversing a foreign key.
-
-        Example:
-
-        .. code-block:: python
+            from slick_reporting.views import ReportView
 
             class MyReport(ReportView):
-                report_model = MySalesModel
-                group_by = "client"
+                report_model = SalesModel
+                group_by = "product"  # a field on the model
                 # OR
-                # group_by = 'client__agent__name'
-                # OR
-                # group_by = 'client__agent'
+                # group_by = 'client__country' a traversing foreign key field
+                # group_by = 'client__gender' a traversing  choice field
 
 
-.. attribute:: ReportView.report_title
-
-        the title of the report to be displayed in the report page.
-
-.. attribute:: ReportView.report_title_context_key
-
-        the context key to be used to pass the report title to the template, default to ``title``.
 
 
-.. attribute:: ReportView.chart_settings
+columns
+-------
+Columns are a list of column names and to make it more flexible,
+you can pass a tuple of column name and options.
+The options are only `verbose_name` and `is_summable`.
 
-        A list of Chart objects representing the charts you want to attach to the report.
+like this:
+
+.. code-block:: python
+
+        class MyReport(ReportView):
+                    columns = [
+                        "id",
+                        ("name", {"verbose_name": "My verbose name", "is_summable": False}),
+                        ]
+
+
+
+A column name can be any of the following:
+
+1. A computation field
+2. A field on the grouped by model
+3. A callable on the view /or the generator
+4. A Special ``__time_series__``, ``__crosstab__``, ``__index__``
+
+Let's take them one by one:
+
+1. A Computation Field.
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Added as a class or by its name.
+Example:
+
+.. code-block:: python
+
+                from slick_reporting.fields import ComputationField, Sum
+                from slick_reporting.registry import field_registry
+                from slick_reporting.views import ReportView
+
+                @field_registry.register
+                class MyTotalReportField(ComputationField):
+                    name = "__some_special_name__"
+
+                class MyReport(ReportView):
+                    columns = [
+                        ComputationField.create(Sum, "value", verbose_name=_("Value"), name="value"),
+                        # a computation field created on the fly
+
+                        MyTotalReportField, # Added a a class
+
+                        "__some_special_name__", # added by name
+                    ]
+
+For more information: :ref:`computation_field`
+
+
+2. Fields on the group by model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Implying that the group_by is set to a field on the report_model.
+
+.. code-block:: python
+
+        class MyReport(ReportView):
+            report_model = SalesModel
+            group_by = "client"
+            columns = [
+                "name",  # field that exists on the Client Model
+                "date_of_birth",  # field that exists on the Client Model
+                "agent__name",  # a traversing field from client model
+                # ...
+            ]
+
+         # If the group_by is traversing then the available columns would be of the model at the end of the traversing
+        class MyOtherReport(ReportView):
+            report_model = MySales
+            group_by = "client__agent"
+            columns = [
+                "name",
+                "country",  # fields that exists on the Agent Model
+                "contact__email",  # A traversing field from the Agent model
+            ]
+
+
+.. note::
+
+    If group_by is not set, columns can be only a calculation field. refer to the topic `no_group_by_topic`
+
+
+3. A callable on the view
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The callable should accept the following arguments
+
+        :param obj: a dictionary of the current group_by row
+        :param row: a the current row of the report.
+        :return: the value to be displayed in the report
+
+
+.. code-block:: python
+
+    class Report(ReportView):
+        columns = [ "field_on_group_by_model", "group_by_model__traversing_field",
+                    "get_attribute", ComputationField.create(name="example")]
+
+        def get_attribute(self, obj: dict, row: dict):
+             # obj: a dictionary of the current group_by row
+             # row: a the current row of the report.
+
+            return f"{obj["field_on_group_by_model_2"]} - {row["group_by_model__traversing_field"]}"
+
+        get_attribute.verbose_name = "My awesome title"
+
+
+4. A Special ``__time_series__``, ``__crosstab__``, ``__index__``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``__time_series__``: is used to control the position of the time series columns inside the report.
+
+``__crosstab__``: is used to control the position of the crosstab columns inside the report.
+
+``__index__``: is used to display the index of the report, it's usually used with the ``group_by_custom_querysets`` option.
+
+
+
+date_field
+----------
+
+The date field to be used in filtering and computing
+
+start_date_field_name
+---------------------
+The name of the start date field, if not specified, it will default to what set in ``date_field``
+
+end_date_field_name
+-------------------
+The name of the end date field, if not specified, it will default to ``date_field``
+
+
+
+chart_settings
+--------------
+A list of Chart objects representing the charts you want to attach to the report.
 
         Example:
 
@@ -157,11 +226,11 @@ Below is the list of general options that is used across all types of reports.
                 # ..
                 chart_settings = [
                     Chart(
-                        "Browsers",
-                        Chart.PIE,
+                        title="Browsers",
+                        type=Chart.PIE, # or just string "bar"
                         title_source=["user_agent"],
                         data_source=["count__id"],
-                        plot_total=True,
+                        plot_total=False,
                     ),
                     Chart(
                         "Browsers Bar Chart",
@@ -173,32 +242,70 @@ Below is the list of general options that is used across all types of reports.
                 ]
 
 
-.. attribute:: ReportView.default_order_by
+form_class
+----------
+The form you need to display to control the results.
+Default to an automatically generated form containing the start date, end date and all foreign keys on the model.
+For more information: `filter_form`
 
-        Default order by for the results. Ordering can also be controlled on run time by passing order_by='field_name' as a parameter to the view.
-        As you would expect, for DESC order: default_order_by (or order_by as a parameter) ='-field_name'
-
-.. attribute:: ReportView.template_name
-
-        The template to be used to render the report, default to ``slick_reporting/simple_report.html``
-        You can override this to customize the report look and feel.
-
-.. attribute:: ReportView.limit_records
-
-        Limit the number of records to be displayed in the report, default to ``None`` (no limit)
-
-.. attribute:: ReportView.swap_sign
-
-            Swap the sign of the values in the report, default to ``False``
+excluded_fields
+-----------------
+Fields to be excluded from the automatically generated form
 
 
-.. attribute:: ReportView.csv_export_class
+auto_load
+--------------
+Control if the report should be loaded automatically on page load or not, default to ``True``
 
-        Set the csv export class to be used to export the report, default to ``ExportToStreamingCSV``
 
-.. attribute:: ReportView.report_generator_class
+``report_title``
+----------------
+The title of the report to be displayed in the report page.
 
-        Set the generator class to be used to generate the report, default to ``ReportGenerator``
+``report_title_context_key``
+----------------------------
+The context key to be used to pass the report title to the template, default to ``report_title``.
+
+
+
+``template_name``
+-----------------
+
+The template to be used to render the report, default to ``slick_reporting/report.html``
+You can override this to customize the report look and feel.
+
+
+``csv_export_class``
+--------------------
+Set the csv export class to be used to export the report, default to ``ExportToStreamingCSV``
+
+
+``report_generator_class``
+--------------------------
+Set the generator class to be used to generate the report, default to ``ReportGenerator``
+
+``default_order_by``
+--------------------
+A Default order by for the results.
+As you would expect, for DESC order: default_order_by (or order_by as a parameter) ='-field_name'
+
+.. note::
+
+    Ordering can also be controlled at run time by passing order_by='field_name' as a parameter to the view.
+
+
+``limit_records``
+-----------------
+
+Limit the number of records to be displayed in the report, default to ``None`` (no limit)
+
+``swap_sign``
+--------------
+Swap the sign of the values in the report, default to ``False``
+
+
+Double Sided Calculations Options
+==================================
 
 .. attribute:: ReportView.with_type
 

@@ -396,13 +396,18 @@ class FirstBalanceField(ComputationField):
         **kwargs,
     ):
         extra_filters = kwargs_filters or {}
-
-        from_date_value = extra_filters.get(f"{self.date_field}__gte")
-        extra_filters.pop(f"{self.date_field}__gte", None)
-        extra_filters[f"{self.date_field}__lt"] = from_date_value
+        if self.date_field:
+            from_date_value = extra_filters.get(f"{self.date_field}__gte")
+            extra_filters.pop(f"{self.date_field}__gte", None)
+            extra_filters[f"{self.date_field}__lt"] = from_date_value
         return super(FirstBalanceField, self).prepare(
             q_filters, kwargs_filters, main_queryset, group_by, prevent_group_by, **kwargs
         )
+
+    def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
+        if not self.date_field:
+            return 0
+        return super().resolve(prepared_results, required_computation_results, current_pk, current_row)
 
 
 field_registry.register(FirstBalanceField)

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2023-11-08
+- Implement Slick reporting media override feature + docs
+- Add `Integrating reports into your Admin site` section to the docs
+- Group by and crosstab reports do not need date_field set anymore. Only time series do.
+- Fix in FirstBalance Computation field if no date is supplied
+- Add `REPORT_VIEW_ACCESS_FUNCTION` to control access to the report view
+
+
 ## [1.2.0] - 2023-10-10
 - Add ``get_slick_reporting_media`` and ``get_charts_media`` templatetags
 - Add `get_group_by_custom_querysets` hook to ReportView
@@ -75,7 +83,7 @@ All notable changes to this project will be documented in this file.
 - Breaking: [Only if you use Crosstab reports] renamed crosstab_compute_reminder to crosstab_compute_remainder
 - Breaking : [Only if you set the templates statics by hand] renamed slick_reporting to ra.hightchart.js and ra.chartjs.js to 
   erp_framework.highchart.js and erp_framework.chartjs.js respectively
-- Fix an issue with Crosstab when there crosstab_compute_remainder = False 
+- Fix an issue with Crosstab when there crosstab_compute_remainder = False
 
 ## [0.7.0]
 

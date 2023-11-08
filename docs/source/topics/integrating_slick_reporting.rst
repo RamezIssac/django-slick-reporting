@@ -80,3 +80,61 @@ Here is how it looks like:
             </div>
         </div>
     {% endblock %}
+
+
+Integrating reports into your Admin site
+=========================================
+
+1. Most probably you would want to override the default admin to add the extra report urls
+https://docs.djangoproject.com/en/4.2/ref/contrib/admin/#overriding-the-default-admin-site
+
+2. Add the report url to your admin site main get_urls
+
+.. code-block:: python
+
+    class CustomAdminAdminSite(admin.AdminSite):
+        def get_urls(self):
+            from my_apps.reports import MyAwesomeReport
+
+            urls = super().get_urls()
+            urls = [
+                path(
+                    "reports/my-awesome-report/",
+                    MyAwesomeReport.as_view(),
+                    name="my-awesome-report",
+                ),
+            ] + urls
+            return urls
+
+Note that you need to add the reports urls to the top, or else the wildcard catch will raise a 404
+
+3. Override slick_reporting/base.html to extend the admin site
+
+.. code-block:: html+django
+
+    {% extends 'admin/base_site.html' %}
+    {% load i18n static slick_reporting_tags %}
+
+    {% block title %}{{ report_title }}{% endblock %}
+
+    {% block extrahead %}
+        {% include "slick_reporting/js_resources.html" %}
+        {% get_charts_media "all" %}
+    {% endblock %}
+
+    {% block breadcrumbs %}
+        <ul class="breadcrumb heading-text">
+            <a href="{% url 'admin:index' %}" class="breadcrumb-item">
+                <i class="icon-home2 mx-2"></i> {% trans 'Home' %} </a>
+            <a class="breadcrumb-item"> {% trans 'Reports' %}</a>
+            <a class="breadcrumb-item"> {{ report_title }}</a>
+        </ul>
+    {% endblock %}
+
+
+4. You might want to override the report.html as well to set your styles, You can also use a different template for the crispy form
+
+
+
+
+

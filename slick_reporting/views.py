@@ -5,6 +5,7 @@ import warnings
 import simplejson as json
 from django import forms
 from django.conf import settings
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import Q
 from django.forms import modelform_factory
 from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
@@ -12,7 +13,7 @@ from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
-from .app_settings import SLICK_REPORTING_SETTINGS
+from .app_settings import SLICK_REPORTING_SETTINGS, get_access_function
 from .forms import (
     report_form_factory,
     get_crispy_helper,
@@ -83,7 +84,7 @@ class ExportToStreamingCSV(ExportToCSV):
         )
 
 
-class ReportViewBase(ReportGeneratorAPI, FormView):
+class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
     report_slug = None
 
     report_title = ""
@@ -118,10 +119,9 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     export_actions = None
 
-    @staticmethod
-    def form_filter_func(fkeys_dict):
-        # todo revise
-        return fkeys_dict
+    def test_func(self):
+        access_function = get_access_function()
+        return access_function(self)
 
     @classmethod
     def get_report_title(cls):
@@ -250,12 +250,14 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
             crosstab_model=self.crosstab_field,
             display_compute_remainder=self.crosstab_compute_remainder,
             excluded_fields=self.excluded_fields,
-            fkeys_filter_func=self.form_filter_func,
+            fkeys_filter_func=None,
             initial=self.get_initial(),
             show_time_series_selector=self.time_series_selector,
             time_series_selector_choices=self.time_series_selector_choices,
             time_series_selector_default=self.time_series_selector_default,
             time_series_selector_allow_empty=self.time_series_selector_allow_empty,
+            add_start_date=self.start_date_field_name or self.date_field,
+            add_end_date=self.end_date_field_name or self.date_field,
         )
 
     def get_form_kwargs(self):
@@ -442,7 +444,7 @@ class ReportViewBase(ReportGeneratorAPI, FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[self.report_title_context_key] = self.report_title
+        context[self.report_title_context_key] = self.get_report_title()
         context["crispy_helper"] = self.get_form_crispy_helper()
         context["auto_load"] = self.auto_load
         context["report"] = self
