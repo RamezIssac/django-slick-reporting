@@ -68,7 +68,7 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
             "bar": "fas fa-chart-bar",
             "line": "fas fa-chart-line",
             "area": "fas fa-chart-area",
-            "column": "fas fa-chart-column",
+            "column": "fas fa-chart-bar",
         },
     },
     "CHARTS": {

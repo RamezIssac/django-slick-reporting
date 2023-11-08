@@ -210,6 +210,7 @@ class SlickReportForm(BaseReportForm):
             crosstab_model=getattr(self, "crosstab_model", None),
             crosstab_key_name=getattr(self, "crosstab_key_name", None),
             crosstab_display_compute_remainder=getattr(self, "crosstab_display_compute_remainder", False),
+            add_date_range=self.add_start_date or self.add_end_date,
             **kwargs,
         )
 
@@ -357,6 +358,8 @@ def report_form_factory(
             "crosstab_display_compute_remainder": display_compute_remainder,
             "crosstab_field_related_name": crosstab_field_related_name,
             "crosstab_field_klass": crosstab_field_klass,
+            "add_start_date": add_start_date,
+            "add_end_date": add_end_date,
         },
     )
     return new_form
