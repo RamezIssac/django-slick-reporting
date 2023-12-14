@@ -10,7 +10,7 @@
 
     function is_time_series(response, chartOptions) {
         if (chartOptions.time_series_support === false) return false;
-        return response['metadata']['time_series_pattern'] !== ""
+        return response['metadata']['time_series_pattern'] == ""
     }
 
     function getTimeSeriesColumnNames(response) {
