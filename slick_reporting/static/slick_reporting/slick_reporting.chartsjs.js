@@ -83,7 +83,7 @@
                 txt = $(txt).text() || txt; // the title is an <a tag , we want teh text only
                 legendResults.push(txt)
             }
-            datasetData.push($.parseFloat(row[dataFieldName]))
+            datasetData.push(parseFloat(row[dataFieldName]))
         }
         return {
             'labels': legendResults,
