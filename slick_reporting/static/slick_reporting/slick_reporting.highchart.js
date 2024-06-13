@@ -380,7 +380,8 @@
             }
 
             let chart = $elem.find("div[data-inner-chart-container]")
-            let cache_key = data.report_slug + ':' + chartOptions.id;
+
+            let cache_key = $.slick_reporting.get_xpath($elem) + ":" + data.report_slug + ':' + chartOptions.id;
             try {
                 let existing_chart = _chart_cache[cache_key];
                 if (typeof (existing_chart) !== 'undefined') {

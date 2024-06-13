@@ -1,23 +1,23 @@
 (function ($) {
 
     function executeFunctionByName(functionName, context /*, args */) {
-    let args = Array.prototype.slice.call(arguments, 2);
-    let namespaces = functionName.split(".");
-    let func = namespaces.pop();
-    for (let i = 0; i < namespaces.length; i++) {
-        context = context[namespaces[i]];
-    }
-    try {
-        func = context[func];
-        if (typeof func == 'undefined') {
-            throw `Function ${functionName} is not found in the context ${context}`
+        let args = Array.prototype.slice.call(arguments, 2);
+        let namespaces = functionName.split(".");
+        let func = namespaces.pop();
+        for (let i = 0; i < namespaces.length; i++) {
+            context = context[namespaces[i]];
         }
+        try {
+            func = context[func];
+            if (typeof func == 'undefined') {
+                throw `Function ${functionName} is not found in the context ${context}`
+            }
 
-    } catch (err) {
-        console.error(`Function ${functionName} is not found in the context ${context}`, err)
+        } catch (err) {
+            console.error(`Function ${functionName} is not found in the context ${context}`, err)
+        }
+        return func.apply(context, args);
     }
-    return func.apply(context, args);
-}
 
     function getObjFromArray(objList, obj_key, key_value, failToFirst) {
         failToFirst = typeof (failToFirst) !== 'undefined';
@@ -64,12 +64,42 @@
         return total_container;
     }
 
+    function get_xpath($element, forceTree) {
+        if ($element.length === 0) {
+            return null;
+        }
+
+        let element = $element[0];
+
+        if ($element.attr('id') && ((forceTree === undefined) || !forceTree)) {
+            return '//*[@id="' + $element.attr('id') + '"]';
+        } else {
+            let paths = [];
+            for (; element && element.nodeType === Node.ELEMENT_NODE; element = element.parentNode) {
+                let index = 0;
+                for (var sibling = element.previousSibling; sibling; sibling = sibling.previousSibling) {
+                    if (sibling.nodeType === Node.DOCUMENT_TYPE_NODE)
+                        continue;
+                    if (sibling.nodeName === element.nodeName)
+                        ++index;
+                }
+
+                var tagName = element.nodeName.toLowerCase();
+                var pathIndex = (index ? '[' + (index + 1) + ']' : '');
+                paths.splice(0, 0, tagName + pathIndex);
+            }
+
+            return paths.length ? '/' + paths.join('/') : null;
+        }
+    }
+
 
     $.slick_reporting = {
         'getObjFromArray': getObjFromArray,
         'calculateTotalOnObjectArray': calculateTotalOnObjectArray,
         "executeFunctionByName": executeFunctionByName,
-        defaults:{
+        "get_xpath": get_xpath,
+        defaults: {
             total_label: 'Total',
         }
 
