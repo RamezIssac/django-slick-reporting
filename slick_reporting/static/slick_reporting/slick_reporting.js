@@ -77,7 +77,7 @@
             let paths = [];
             for (; element && element.nodeType === Node.ELEMENT_NODE; element = element.parentNode) {
                 let index = 0;
-                for (var sibling = element.previousSibling; sibling; sibling = sibling.previousSibling) {
+                for (let sibling = element.previousSibling; sibling; sibling = sibling.previousSibling) {
                     if (sibling.nodeType === Node.DOCUMENT_TYPE_NODE)
                         continue;
                     if (sibling.nodeName === element.nodeName)

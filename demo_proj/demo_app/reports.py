@@ -614,6 +614,47 @@ class ChartJSExample(TimeSeriesReport):
 class HighChartExample(ChartJSExample):
     chart_engine = "highcharts"
 
+    chart_settings = [
+        Chart("Client Sales Column", Chart.COLUMN, data_source=["sum__value"], title_source=["name"]),
+        Chart(
+            "Total Client Sales Column",
+            Chart.COLUMN,
+            data_source=["sum__value"],
+            title_source=["name"],
+            plot_total=True,
+        ),
+        Chart(
+            "Client Sales [Bar]",
+            Chart.BAR,
+            data_source=["sum__value"],
+            title_source=["name"],
+        ),
+        Chart(
+            "Total Client Sales [Bar]", Chart.BAR, data_source=["sum__value"], title_source=["name"], plot_total=True
+        ),
+        Chart(
+            "Client Sales [Line]",
+            Chart.LINE,
+            data_source=["sum__value"],
+            title_source=["name"],
+            # plot_total=True,
+        ),
+        Chart(
+            "Total Client Sales [Line]",
+            Chart.LINE,
+            data_source=["sum__value"],
+            title_source=["name"],
+            plot_total=True,
+        ),
+        Chart(
+            "Total Sales [Pie]",
+            Chart.PIE,
+            data_source=["sum__value"],
+            title_source=["name"],
+            plot_total=True,
+        ),
+    ]
+
 
 class ProductSalesApexChart(ReportView):
     report_title = _("Product Sales Apex Charts")

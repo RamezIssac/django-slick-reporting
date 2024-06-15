@@ -183,6 +183,8 @@
                             valueDecimals: 2
                         }
                     }
+
+
                 } else if (chart_type === 'area') {
                     highchart_object.chart.type = 'area';
 
@@ -195,7 +197,8 @@
                         }
                     }
                 } else if (chart_type === 'line') {
-                    var marker_enabled = true;
+                    let marker_enabled = true;
+                    highchart_object.chart.type = 'line';
                     // disable marker when ticks are more then 12 , relying on the hover of the mouse ;
                     try {
                         if (highchart_object.series[0].data.length > 12) marker_enabled = false;
@@ -218,7 +221,11 @@
                 }
 
                 if (is_time_series) {
-                    highchart_object.xAxis.categories = chart_data.titles;
+                    if (chartOptions.plot_total && chartOptions.type !== 'line') {
+                        highchart_object.xAxis.categories = [chartOptions.title]
+                    } else {
+                        highchart_object.xAxis.categories = chart_data.titles;
+                    }
                     highchart_object.xAxis.tickmarkPlacement = 'on';
                     if (chart_type !== 'line')
                         highchart_object.tooltip.shared = false //Option here;
@@ -291,22 +298,32 @@
                 })
             } else {
                 let all_column_to_be_summed = []
+                let data = []
                 Object.keys(data_sources).forEach(function (series_cols, index) {
                     all_column_to_be_summed = all_column_to_be_summed.concat(data_sources[series_cols]);
                 })
                 let totalValues = $.slick_reporting.calculateTotalOnObjectArray(response.data, all_column_to_be_summed)
 
                 Object.keys(data_sources).forEach(function (series_cols, index) {
-                    let data = []
-                    data_sources[series_cols].forEach(function (col, index) {
 
-                        series.push({
-                            'name': response.metadata.time_series_column_verbose_names[index],
-                            data: [totalValues[col]]
-                        })
+                    data_sources[series_cols].forEach(function (col, index) {
+                        data.push(totalValues[col])
+                        if (chartOptions.type !== "line") {
+                            series.push({
+                                'name': response.metadata.time_series_column_verbose_names[index],
+                                data: [totalValues[col]]
+                            })
+                        }
                     })
 
                 })
+                if (chartOptions.type === "line") {
+                    series.push({
+                        'name': chartOptions.title,
+                        data: data
+                    })
+                }
+
             }
             return {
                 'categories': response.metadata.time_series_column_verbose_names,
