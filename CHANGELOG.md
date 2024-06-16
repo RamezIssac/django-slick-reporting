@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2024-06-16
+- Fix issue with Line Chart on highcharts engine
+- Reintroduce the stacking option on highcharts engine.
+- Fix issue with having different version of the same chart on the same page.
+- Enhanced the demo dashboard to show more capabilities regarding the charts.
+
 ## [1.3.0] - 2023-11-08
 - Implement Slick reporting media override feature + docs
 - Add `Integrating reports into your Admin site` section to the docs

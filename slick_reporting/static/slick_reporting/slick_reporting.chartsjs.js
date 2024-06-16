@@ -10,7 +10,7 @@
 
     function is_time_series(response, chartOptions) {
         if (chartOptions.time_series_support === false) return false;
-        return response['metadata']['time_series_pattern'] !== ""
+        return response['metadata']['time_series_pattern'] == ""
     }
 
     function getTimeSeriesColumnNames(response) {
@@ -83,7 +83,7 @@
                 txt = $(txt).text() || txt; // the title is an <a tag , we want teh text only
                 legendResults.push(txt)
             }
-            datasetData.push(row[dataFieldName])
+            datasetData.push(parseFloat(row[dataFieldName]))
         }
         return {
             'labels': legendResults,

@@ -22,6 +22,7 @@ class Chart:
     data_source: list
     title_source: list
     plot_total: bool = False
+    stacking: bool = False  # only for highcharts
     engine: str = ""
     entryPoint: str = ""
     COLUMN = "column"
@@ -39,6 +40,7 @@ class Chart:
             plot_total=self.plot_total,
             engine=self.engine,
             entryPoint=self.entryPoint,
+            stacking=self.stacking,
         )
 
 
@@ -938,7 +940,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
     @staticmethod
     def get_chart_settings(chart_settings=None, default_chart_title=None, chart_engine=None):
         """
-        Ensure the sane settings are passed to the front end.
+        Ensure the sane settings are passed to the front end. ?
         """
         chart_engine = chart_engine or SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
         output = []
@@ -959,6 +961,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                 chart.get("entryPoint")
                 or app_settings.SLICK_REPORTING_SETTINGS["CHARTS"][chart["engine_name"]]["entryPoint"]
             )
+            chart["stacking"] = chart.get("stacking", False)
 
             output.append(chart)
         return output
