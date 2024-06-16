@@ -601,27 +601,43 @@ class ChartJSExample(TimeSeriesReport):
             title_source=["name"],
             plot_total=True,
         ),
-        Chart(
-            "Total Sales [Line details]",
-            Chart.LINE,
-            data_source=["sum__value"],
-            title_source=["name"],
-            # plot_total=True,
-        ),
+        # Chart(
+        #     "Total Sales [Line details]",
+        #     Chart.LINE,
+        #     data_source=["sum__value"],
+        #     title_source=["name"],
+        #     # plot_total=True,
+        # ),
     ]
 
 
-class HighChartExample(ChartJSExample):
+class HighChartExample(TimeSeriesReport):
     chart_engine = "highcharts"
+    report_title = _("Highcharts Examples ")
 
     chart_settings = [
-        Chart("Client Sales Column", Chart.COLUMN, data_source=["sum__value"], title_source=["name"]),
+        Chart("Client Sales [Column]", Chart.COLUMN, data_source=["sum__value"], title_source=["name"]),
         Chart(
-            "Total Client Sales Column",
+            "Stacking Client Sales [Column]",
+            Chart.COLUMN,
+            data_source=["sum__value"],
+            title_source=["name"],
+            stacking=True,
+        ),
+        Chart(
+            "Total Client Sales[Column]",
             Chart.COLUMN,
             data_source=["sum__value"],
             title_source=["name"],
             plot_total=True,
+        ),
+        Chart(
+            "Stacking Total Client Sales [Column]",
+            Chart.COLUMN,
+            data_source=["sum__value"],
+            title_source=["name"],
+            plot_total=True,
+            stacking=True,
         ),
         Chart(
             "Client Sales [Bar]",
@@ -652,6 +668,12 @@ class HighChartExample(ChartJSExample):
             data_source=["sum__value"],
             title_source=["name"],
             plot_total=True,
+        ),
+        Chart(
+            "Client Sales [Area]",
+            Chart.AREA,
+            data_source=["sum__value"],
+            title_source=["name"],
         ),
     ]
 

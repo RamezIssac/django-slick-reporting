@@ -60,7 +60,6 @@
                 });
                 chartOptions.data = response.data;
 
-
                 let is_time_series = is_timeseries_support(response, chartOptions); // response.metadata.time_series_pattern || '';
                 let is_crosstab = is_crosstab_support(response, chartOptions);
 
