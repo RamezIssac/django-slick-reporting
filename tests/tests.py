@@ -1,5 +1,6 @@
 import datetime
 from unittest import skip
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count
@@ -417,13 +418,15 @@ class ReportTest(BaseTestData, TestCase):
             time_series_columns=["__total__", "__balance__"],
         )
         data = report_generator.get_report_data()
-        response = self.client.get(
-            reverse("report-to-field-set"),
-            data={
-                "client_id": [self.client2.name, self.client1.name],
-            },
-            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
-        )
+
+        with patch("slick_reporting.helpers.user_test_function", return_value=True):
+            response = self.client.get(
+                reverse("report-to-field-set"),
+                data={
+                    "client_id": [self.client2.name, self.client1.name],
+                },
+                HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+            )
         self.assertEqual(response.status_code, 200)
 
         response.json()
