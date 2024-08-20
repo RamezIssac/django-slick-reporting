@@ -304,7 +304,7 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         try:
             crosstab_compute_remainder = (
                 self.form.get_crosstab_compute_remainder()
-                if self.request.GET or self.request.POST
+                if self.crosstab_compute_remainder is None and (self.request.GET or self.request.POST)
                 else self.crosstab_compute_remainder
             )
         except NotImplementedError:
