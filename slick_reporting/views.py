@@ -250,7 +250,7 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
             crosstab_model=self.crosstab_field,
             display_compute_remainder=self.crosstab_compute_remainder,
             excluded_fields=self.excluded_fields,
-            fkeys_filter_func=None,
+            fkeys_filter_func=self.fkeys_filter_func_hook,
             initial=self.get_initial(),
             show_time_series_selector=self.time_series_selector,
             time_series_selector_choices=self.time_series_selector_choices,
@@ -259,6 +259,19 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
             add_start_date=self.start_date_field_name or self.date_field,
             add_end_date=self.end_date_field_name or self.date_field,
         )
+
+    @staticmethod
+    def fkeys_filter_func_hook(fkeys_dict):
+        """
+        A hook to customize which fileds to eliminate on the form
+        Example Useage:
+        ```
+            exclude_list = ["owner_id", "polymorphic_ctype_id", "lastmod_user_id"]
+            return {K:v for k,v in fkeys_dict.items() if k not in exclude_list}
+        ```
+        """
+        return fkeys_dict
+
 
     def get_form_kwargs(self):
         """

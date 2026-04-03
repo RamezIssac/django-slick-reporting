@@ -39,7 +39,15 @@
         let engine = "highcharts";
         let chartOptions = $.slick_reporting.getObjFromArray(data.chart_settings, 'id', chart_id, true);
         let entryPoint = chartOptions.entryPoint || $.slick_reporting.report_loader.chart_engines[engine];
-        $.slick_reporting.executeFunctionByName(entryPoint, window, data, $elem, chartOptions);
+        try {
+            $.slick_reporting.executeFunctionByName(entryPoint, window, data, $elem, chartOptions);
+        } catch (e) {
+            // Chart engine is not found or some error in the chart rendering,
+            // we catch it and display an error message instead of breaking the entire report
+            $("<p class='text-error'>Chart could not be loaded:  <code>" + e + "</code></p> ").insertAfter($elem);
+            $elem.remove();
+            console.error(e);
+        }
     }
 
 
