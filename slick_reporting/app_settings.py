@@ -75,7 +75,7 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
         "highcharts": {
             "entryPoint": "$.slick_reporting.highcharts.displayChart",
             "js": (
-                "https://code.highcharts.com/11/highcharts.js",
+                "https://cdn.jsdelivr.net/npm/highcharts@11/highcharts.js",
                 "slick_reporting/slick_reporting.highchart.js",
             ),
         },

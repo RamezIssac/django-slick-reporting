@@ -43,8 +43,9 @@
     {#  make sure to have the js_resources added to the dashboard page  #}
 
     {% get_charts_media "all" %}
-    {# make sure to add all charts needed media, here the "all" arguments add all charts media to the page,   #}
-    {#  You can skip it and add needed media by hand  #}
+    {# make sure to add all charts needed media to the dashboard page.  #}
+    {# "all" loads all registered chart engines. If a CDN is blocked, it may break the page. #}
+    {# You can also pass the specific chart_settings from a report view to load only what's needed. #}
 
 
     <script>
