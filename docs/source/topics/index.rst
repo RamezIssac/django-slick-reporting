@@ -36,3 +36,4 @@ You saw how to use the ReportView class in the tutorial and you identified the t
    charts
    exporting
    computation_field
+   dynamic_model

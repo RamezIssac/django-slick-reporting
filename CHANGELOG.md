@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-04-04
+- Add Dynamic Model support: generate reports from any database table without defining a Django model.
+  New ``get_dynamic_model(table_name, database, schema)`` utility introspects a table and returns a real Django model.
+- Add ``table_name`` attribute to ``ReportGenerator`` and ``ReportView`` as a convenience shortcut for dynamic models.
+- Add ``schema`` parameter to ``get_dynamic_model`` for PostgreSQL schema support.
+- Update Highcharts wrapper to use modern ``Highcharts.chart()`` API (compatible with v11+), replacing removed jQuery plugin syntax.
+- Switch default Highcharts CDN to jsDelivr (``cdn.jsdelivr.net/npm/highcharts@11``) for reliability.
+- Fix Chart.js wrapper: inverted ``is_time_series`` check, update to Chart.js v3/v4 API (``plugins.title``, ``plugins.tooltip``, ``scales.y``/``scales.x``).
+- Add crosstab support to Chart.js wrapper.
+- Fix Chart.js ``area`` chart type: now renders as ``line`` with ``fill: true``.
+- Fix Chart.js pie chart on time series: automatically defaults to ``plot_total``.
+- Fix Chart.js pie chart sizing with ``aspectRatio: 2``.
+- Fix Chart.js chart cache key to include element xpath, preventing chart destruction on dashboards with repeated reports.
+- Enhance demo dashboard with compact masonry layout toggle.
+
 ## [1.3.1] - 2024-06-16
 - Fix issue with Line Chart on highcharts engine
 - Reintroduce the stacking option on highcharts engine.

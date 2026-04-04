@@ -218,6 +218,10 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
     def get_report_model(cls):
         if cls.queryset is not None:
             return cls.queryset.model
+        if not cls.report_model and cls.table_name:
+            from .dynamic_model import get_dynamic_model
+
+            return get_dynamic_model(cls.table_name)
         return cls.report_model
 
     def ajax_render_to_response(self, report_data):

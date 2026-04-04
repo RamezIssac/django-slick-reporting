@@ -48,6 +48,9 @@ class ReportGeneratorAPI:
     report_model = None
     """The main model where data is """
 
+    table_name = ""
+    """If set, a dynamic model will be created from this database table name"""
+
     queryset = None
     """If set, the report will use this queryset instead of the report_model"""
 
@@ -184,6 +187,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         container_class=None,
         start_date_field_name=None,
         end_date_field_name=None,
+        table_name=None,
     ):
         """
 
@@ -216,6 +220,12 @@ class ReportGenerator(ReportGeneratorAPI, object):
         )
 
         super().__init__()
+
+        _table_name = table_name or self.table_name
+        if _table_name and not (report_model or self.report_model):
+            from .dynamic_model import get_dynamic_model
+
+            report_model = get_dynamic_model(_table_name)
 
         self.report_model = self.report_model or report_model
         if self.queryset is None:

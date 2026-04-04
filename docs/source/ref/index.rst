@@ -13,6 +13,7 @@ Below are links to the reference documentation for the various components of the
    view_options
    computation_field
    report_generator
+   dynamic_model
 
 
 
