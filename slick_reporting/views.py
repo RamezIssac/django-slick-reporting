@@ -23,6 +23,7 @@ from .forms import (
 from .generator import (
     ReportGenerator,
     ListViewReportGenerator,
+    PivotReportGenerator,
     ReportGeneratorAPI,
     Chart,  # noqa # needed for easier importing in other apps
 )
@@ -598,6 +599,12 @@ class SlickReportingListView(SlickReportingListViewMixin, ReportViewBase):
 
 class ListReportView(SlickReportingListViewMixin):
     pass
+
+
+class PivotReportView(ReportViewBase):
+    """A ReportView for pre-computed/aggregated data using PivotReportGenerator."""
+
+    report_generator_class = PivotReportGenerator
 
 
 class SlickReportViewBase(ReportViewBase):

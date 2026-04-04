@@ -1,0 +1,314 @@
+import datetime
+
+from django.db import connection
+from django.test import TestCase
+
+from slick_reporting.dynamic_model import get_dynamic_model, _model_cache
+from slick_reporting.generator import PivotReportGenerator
+
+
+TABLE_NAME = "test_pivot_monthly_sales"
+
+CREATE_TABLE_SQL = f"""
+    CREATE TABLE {TABLE_NAME} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        product_name VARCHAR(100) NOT NULL,
+        region VARCHAR(100) NOT NULL,
+        month DATE NOT NULL,
+        total_sales DECIMAL(10, 2) NOT NULL DEFAULT 0,
+        total_quantity INTEGER NOT NULL DEFAULT 0
+    )
+"""
+
+INSERT_SQL = f"""
+    INSERT INTO {TABLE_NAME} (product_id, product_name, region, month, total_sales, total_quantity)
+    VALUES (?, ?, ?, ?, ?, ?)
+"""
+
+
+class PivotTestBase(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        with connection.cursor() as cursor:
+            cursor.execute(CREATE_TABLE_SQL)
+            rows = [
+                (1, "Product A", "North", "2024-01-01", 500, 10),
+                (1, "Product A", "North", "2024-02-01", 600, 12),
+                (1, "Product A", "North", "2024-03-01", 550, 11),
+                (2, "Product B", "South", "2024-01-01", 300, 5),
+                (2, "Product B", "South", "2024-02-01", 400, 8),
+                # Product B has no March data — tests missing period
+            ]
+            cursor.executemany(INSERT_SQL, rows)
+
+    @classmethod
+    def tearDownClass(cls):
+        with connection.cursor() as cursor:
+            cursor.execute(f"DROP TABLE IF EXISTS {TABLE_NAME}")
+        keys_to_remove = [k for k in _model_cache if k.endswith(f":{TABLE_NAME}")]
+        for k in keys_to_remove:
+            del _model_cache[k]
+        from django.apps import apps
+
+        model_key = TABLE_NAME.replace("_", "").lower()
+        try:
+            del apps.all_models["slick_reporting"][model_key]
+        except KeyError:
+            pass
+        super().tearDownClass()
+
+
+class TestPivotBasic(PivotTestBase):
+    def test_date_pivot(self):
+        model = get_dynamic_model(TABLE_NAME)
+        report = PivotReportGenerator(
+            report_model=model,
+            group_by="product_id",
+            date_field="month",
+            pivot_field="month",
+            pivot_columns=["total_sales", "total_quantity"],
+            columns=["product_id", "__pivot__"],
+            start_date=datetime.datetime(2024, 1, 1),
+            end_date=datetime.datetime(2024, 12, 31),
+        )
+        data = report.get_report_data()
+        self.assertEqual(len(data), 2)
+
+        # Find Product A (id=1)
+        prod_a = next(row for row in data if row["product_id"] == 1)
+        # Should have sales for all 3 months
+        self.assertEqual(prod_a["total_salesCT2024_01_01"], 500)
+        self.assertEqual(prod_a["total_salesCT2024_02_01"], 600)
+        self.assertEqual(prod_a["total_salesCT2024_03_01"], 550)
+        self.assertEqual(prod_a["total_quantityCT2024_01_01"], 10)
+
+    def test_missing_period_defaults_to_zero(self):
+        model = get_dynamic_model(TABLE_NAME)
+        report = PivotReportGenerator(
+            report_model=model,
+            group_by="product_id",
+            date_field="month",
+            pivot_field="month",
+            pivot_columns=["total_sales"],
+            columns=["product_id", "__pivot__"],
+            start_date=datetime.datetime(2024, 1, 1),
+            end_date=datetime.datetime(2024, 12, 31),
+        )
+        data = report.get_report_data()
+        prod_b = next(row for row in data if row["product_id"] == 2)
+        # Product B has no March data
+        self.assertEqual(prod_b["total_salesCT2024_03_01"], 0)
+
+    def test_entity_pivot(self):
+        """Pivot on a non-date field (region).
+        Note: pivot reads pre-computed data, it does NOT aggregate.
+        When multiple rows exist for the same (group, pivot_value),
+        the last row encountered wins.
+        """
+        model = get_dynamic_model(TABLE_NAME)
+        report = PivotReportGenerator(
+            report_model=model,
+            group_by="product_id",
+            pivot_field="region",
+            pivot_columns=["total_sales"],
+            columns=["product_id", "__pivot__"],
+            start_date=datetime.datetime(2024, 1, 1),
+            end_date=datetime.datetime(2024, 12, 31),
+        )
+        data = report.get_report_data()
+        self.assertEqual(len(data), 2)
+
+        prod_a = next(row for row in data if row["product_id"] == 1)
+        # Product A has multiple rows in "North" — pivot takes the last one
+        self.assertIn("total_salesCTNorth", prod_a)
+        self.assertGreater(prod_a["total_salesCTNorth"], 0)
+
+    def test_multiple_pivot_columns(self):
+        model = get_dynamic_model(TABLE_NAME)
+        report = PivotReportGenerator(
+            report_model=model,
+            group_by="product_id",
+            date_field="month",
+            pivot_field="month",
+            pivot_columns=["total_sales", "total_quantity"],
+            columns=["product_id", "__pivot__"],
+            start_date=datetime.datetime(2024, 1, 1),
+            end_date=datetime.datetime(2024, 12, 31),
+        )
+        columns_data = report.get_columns_data()
+        col_names = [c["name"] for c in columns_data]
+        # Should have both total_sales and total_quantity for each month
+        self.assertIn("total_salesCT2024_01_01", col_names)
+        self.assertIn("total_quantityCT2024_01_01", col_names)
+        self.assertIn("total_salesCT2024_02_01", col_names)
+        self.assertIn("total_quantityCT2024_02_01", col_names)
+
+
+class TestPivotMetadata(PivotTestBase):
+    def test_crosstab_metadata_populated(self):
+        model = get_dynamic_model(TABLE_NAME)
+        report = PivotReportGenerator(
+            report_model=model,
+            group_by="product_id",
+            date_field="month",
+            pivot_field="month",
+            pivot_columns=["total_sales"],
+            columns=["product_id", "__pivot__"],
+            start_date=datetime.datetime(2024, 1, 1),
+            end_date=datetime.datetime(2024, 12, 31),
+        )
+        metadata = report.get_metadata()
+        self.assertEqual(metadata["crosstab_model"], "month")
+        self.assertTrue(len(metadata["crosstab_column_names"]) > 0)
+        self.assertTrue(len(metadata["crosstab_column_verbose_names"]) > 0)
+        # Time series should be empty
+        self.assertFalse(metadata["time_series_pattern"])
+        self.assertEqual(metadata["time_series_column_names"], [])
+
+    def test_column_computation_field_attribute(self):
+        """Chart JS uses computation_field to match data_source."""
+        model = get_dynamic_model(TABLE_NAME)
+        report = PivotReportGenerator(
+            report_model=model,
+            group_by="product_id",
+            date_field="month",
+            pivot_field="month",
+            pivot_columns=["total_sales"],
+            columns=["product_id", "__pivot__"],
+            start_date=datetime.datetime(2024, 1, 1),
+            end_date=datetime.datetime(2024, 12, 31),
+        )
+        columns_data = report.get_columns_data()
+        pivot_cols = [c for c in columns_data if "CT" in c["name"]]
+        for col in pivot_cols:
+            self.assertEqual(col["computation_field"], "total_sales")
+
+
+class TestPivotWithTableName(PivotTestBase):
+    def test_table_name_convenience(self):
+        report = PivotReportGenerator(
+            table_name=TABLE_NAME,
+            group_by="product_id",
+            date_field="month",
+            pivot_field="month",
+            pivot_columns=["total_sales"],
+            columns=["product_id", "__pivot__"],
+            start_date=datetime.datetime(2024, 1, 1),
+            end_date=datetime.datetime(2024, 12, 31),
+        )
+        data = report.get_report_data()
+        self.assertEqual(len(data), 2)
+
+
+class TestPivotDateFiltering(PivotTestBase):
+    def test_date_filter_limits_pivot_values(self):
+        model = get_dynamic_model(TABLE_NAME)
+        report = PivotReportGenerator(
+            report_model=model,
+            group_by="product_id",
+            date_field="month",
+            pivot_field="month",
+            pivot_columns=["total_sales"],
+            columns=["product_id", "__pivot__"],
+            start_date=datetime.datetime(2024, 1, 1),
+            end_date=datetime.datetime(2024, 2, 1),
+        )
+        data = report.get_report_data()
+        columns_data = report.get_columns_data()
+        pivot_col_names = [c["name"] for c in columns_data if "CT" in c["name"]]
+        # Should only have January (end_date filter is __lte so Feb 1 is included)
+        self.assertTrue(all("2024_03_01" not in n for n in pivot_col_names))
+
+
+SPACES_TABLE = "test_pivot_spaces"
+
+CREATE_SPACES_TABLE_SQL = f"""
+    CREATE TABLE {SPACES_TABLE} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        city VARCHAR(100) NOT NULL,
+        total_sales DECIMAL(10, 2) NOT NULL DEFAULT 0
+    )
+"""
+
+INSERT_SPACES_SQL = f"""
+    INSERT INTO {SPACES_TABLE} (product_id, city, total_sales) VALUES (?, ?, ?)
+"""
+
+
+class TestPivotWithSpaces(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        with connection.cursor() as cursor:
+            cursor.execute(CREATE_SPACES_TABLE_SQL)
+            rows = [
+                (1, "New York", 500),
+                (1, "Los Angeles", 300),
+                (2, "New York", 200),
+                (2, "Los Angeles", 400),
+                (1, "Q1/2024", 100),
+            ]
+            cursor.executemany(INSERT_SPACES_SQL, rows)
+
+    @classmethod
+    def tearDownClass(cls):
+        with connection.cursor() as cursor:
+            cursor.execute(f"DROP TABLE IF EXISTS {SPACES_TABLE}")
+        keys_to_remove = [k for k in _model_cache if k.endswith(f":{SPACES_TABLE}")]
+        for k in keys_to_remove:
+            del _model_cache[k]
+        from django.apps import apps
+
+        model_key = SPACES_TABLE.replace("_", "").lower()
+        try:
+            del apps.all_models["slick_reporting"][model_key]
+        except KeyError:
+            pass
+        super().tearDownClass()
+
+    def test_pivot_values_with_spaces(self):
+        model = get_dynamic_model(SPACES_TABLE)
+        report = PivotReportGenerator(
+            report_model=model,
+            group_by="product_id",
+            pivot_field="city",
+            pivot_columns=["total_sales"],
+            columns=["product_id", "__pivot__"],
+        )
+        data = report.get_report_data()
+        prod_1 = next(row for row in data if row["product_id"] == 1)
+
+        # Spaces sanitized to underscores in column names
+        self.assertEqual(prod_1["total_salesCTNew_York"], 500)
+        self.assertEqual(prod_1["total_salesCTLos_Angeles"], 300)
+
+    def test_pivot_values_with_special_chars(self):
+        model = get_dynamic_model(SPACES_TABLE)
+        report = PivotReportGenerator(
+            report_model=model,
+            group_by="product_id",
+            pivot_field="city",
+            pivot_columns=["total_sales"],
+            columns=["product_id", "__pivot__"],
+        )
+        data = report.get_report_data()
+        prod_1 = next(row for row in data if row["product_id"] == 1)
+
+        # Slash sanitized to underscore
+        self.assertEqual(prod_1["total_salesCTQ1_2024"], 100)
+
+    def test_verbose_name_preserves_original(self):
+        model = get_dynamic_model(SPACES_TABLE)
+        report = PivotReportGenerator(
+            report_model=model,
+            group_by="product_id",
+            pivot_field="city",
+            pivot_columns=["total_sales"],
+            columns=["product_id", "__pivot__"],
+        )
+        columns_data = report.get_columns_data()
+        ny_col = next(c for c in columns_data if "New_York" in c["name"])
+        self.assertIn("New York", ny_col["verbose_name"])

@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
   New ``get_dynamic_model(table_name, database, schema)`` utility introspects a table and returns a real Django model.
 - Add ``table_name`` attribute to ``ReportGenerator`` and ``ReportView`` as a convenience shortcut for dynamic models.
 - Add ``schema`` parameter to ``get_dynamic_model`` for PostgreSQL schema support.
+- Add ``PivotReportGenerator`` for pre-computed/aggregated data. Reads existing row values and pivots a field's
+  distinct values into columns — no aggregation needed. Works with both Django models and dynamic models.
+  New attributes: ``pivot_field``, ``pivot_columns``, and ``__pivot__`` column placeholder.
 - Update Highcharts wrapper to use modern ``Highcharts.chart()`` API (compatible with v11+), replacing removed jQuery plugin syntax.
 - Switch default Highcharts CDN to jsDelivr (``cdn.jsdelivr.net/npm/highcharts@11``) for reliability.
 - Fix Chart.js wrapper: inverted ``is_time_series`` check, update to Chart.js v3/v4 API (``plugins.title``, ``plugins.tooltip``, ``scales.y``/``scales.x``).
