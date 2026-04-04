@@ -10,7 +10,11 @@
 
     function is_time_series(response, chartOptions) {
         if (chartOptions.time_series_support === false) return false;
-        return response['metadata']['time_series_pattern'] == ""
+        return response['metadata']['time_series_pattern'] !== "";
+    }
+
+    function is_crosstab(response, chartOptions) {
+        return response['metadata']['crosstab_model'] || '';
     }
 
     function getTimeSeriesColumnNames(response) {
@@ -18,7 +22,6 @@
     }
 
     function createChartObject(response, chartOptions, extraOptions) {
-        // let chartOptions = $.slick_reporting.getObjFromArray(response.chart_settings, 'id', chartId, true);
         let extractedData = extractDataFromResponse(response, chartOptions);
 
         let chartObject = {
@@ -26,31 +29,17 @@
             'data': {
                 labels: extractedData.labels,
                 datasets: extractedData.datasets,
-
-                // datasets: [{
-                //     'label': chartOptions.title,
-                //     // 'label': extractedData.labels,
-                //     'data': extractedData.data,
-                //     'borderWidth': 1,
-                //
-                //     backgroundColor: [
-                //         window.chartColors.red,
-                //         window.chartColors.orange,
-                //         window.chartColors.yellow,
-                //         window.chartColors.green,
-                //         window.chartColors.blue,
-                //     ],
-                // }]
             },
             'options': {
                 'responsive': true,
-                title: {
-                    display: true,
-                    text: chartOptions.title,
-                },
-                tooltips: {
-                    mode: 'index',
-                    // intersect: false
+                plugins: {
+                    title: {
+                        display: true,
+                        text: chartOptions.title,
+                    },
+                    tooltip: {
+                        mode: 'index',
+                    },
                 },
             }
         };
@@ -58,12 +47,18 @@
         if (chartOptions.type === 'pie') {
             chartObject['options'] = {
                 responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: chartOptions.title,
+                    },
+                },
             }
         }
-        if (chartOptions.stacked === true) {
+        if (chartOptions.stacking === true) {
             chartObject['options']['scales'] = {
-                yAxes: [{stacked: true,}],
-                XAxes: [{stacked: true,}],
+                y: {stacked: true},
+                x: {stacked: true},
             }
         }
         return chartObject
@@ -80,7 +75,7 @@
             let row = response.data[i];
             if (titleFieldName !== '') {
                 let txt = row[titleFieldName];
-                txt = $(txt).text() || txt; // the title is an <a tag , we want teh text only
+                txt = $(txt).text() || txt; // the title is an <a tag , we want the text only
                 legendResults.push(txt)
             }
             datasetData.push(parseFloat(row[dataFieldName]))
@@ -91,10 +86,25 @@
         }
     }
 
+    function getCrosstabColumnNames(response, chartOptions) {
+        let colNames = [];
+        let dataFieldName = chartOptions['data_source'];
+        if (typeof dataFieldName === 'string') dataFieldName = [dataFieldName];
+        dataFieldName.forEach(function (source) {
+            response.columns.forEach(function (col) {
+                if (col.computation_field === source) {
+                    colNames.push(col.name);
+                }
+            });
+        });
+        return colNames;
+    }
+
     function extractDataFromResponse(response, chartOptions) {
         let dataFieldName = chartOptions['data_source'];
         let titleFieldName = chartOptions['title_source'];
         let isTimeSeries = is_time_series(response, chartOptions);
+        let isCrosstab = is_crosstab(response, chartOptions);
         let datasets = [];
         let legendResults = [];
         let datasetData = [];
@@ -113,7 +123,7 @@
                     data: datasetData,
                     backgroundColor: getBackgroundColors(1),
                     borderColor: getBackgroundColors(1),
-                    fill: chartOptions.stacked === true,
+                    fill: chartOptions.stacking === true,
                 })
 
 
@@ -125,12 +135,18 @@
                     for (let field = 0; field < seriesColNames.length; field++) {
                         rowData.push(response.data[i][seriesColNames[field]])
                     }
+                    let txt = row[titleFieldName];
+                    try {
+                        txt = $($.parseHTML(txt)).text() || txt;
+                    } catch (e) {
+                        // title is not HTML, use as-is
+                    }
                     datasets.push({
-                        label: $($.parseHTML(row[titleFieldName])).text(),
+                        label: txt,
                         data: rowData,
                         backgroundColor: getBackgroundColors(i),
                         borderColor: getBackgroundColors(i),
-                        fill: chartOptions.stacked === true,
+                        fill: chartOptions.stacking === true,
                     })
                 }
             }
@@ -140,6 +156,47 @@
                 'datasets': datasets,
             }
         }
+
+        if (isCrosstab) {
+            legendResults = response.metadata['crosstab_column_verbose_names'];
+            let crosstabColNames = getCrosstabColumnNames(response, chartOptions);
+
+            if (chartOptions.plot_total) {
+                let results = $.slick_reporting.calculateTotalOnObjectArray(response.data, crosstabColNames);
+                for (let fieldIdx = 0; fieldIdx < crosstabColNames.length; fieldIdx++) {
+                    datasetData.push(results[crosstabColNames[fieldIdx]])
+                }
+                datasets.push({
+                    label: chartOptions.title,
+                    data: datasetData,
+                    backgroundColor: getBackgroundColors(),
+                    borderColor: getBackgroundColors(),
+                })
+            } else {
+                for (let i = 0; i < response.data.length; i++) {
+                    let row = response.data[i];
+                    let rowData = [];
+                    for (let field = 0; field < crosstabColNames.length; field++) {
+                        rowData.push(row[crosstabColNames[field]])
+                    }
+                    let txt = row[titleFieldName];
+                    try {
+                        txt = $($.parseHTML(txt)).text() || txt;
+                    } catch (e) {}
+                    datasets.push({
+                        label: txt,
+                        data: rowData,
+                        backgroundColor: getBackgroundColors(i),
+                        borderColor: getBackgroundColors(i),
+                    })
+                }
+            }
+            return {
+                'labels': legendResults,
+                'datasets': datasets,
+            }
+        }
+
         let results = getGroupByLabelAndSeries(response, chartOptions);
         datasets = [{
             data: results.series,
@@ -176,10 +233,11 @@
         }
 
         let chartObject = $.slick_reporting.chartsjs.createChartObject(data, chartOptions);
-        let $chart = $elem.find('canvas');
+        let canvas = $elem.find('canvas')[0];
         try {
-            _chart_cache[cache_key] = new Chart($chart, chartObject);
+            _chart_cache[cache_key] = new Chart(canvas, chartObject);
         } catch (e) {
+            console.error(e);
             $elem.find('canvas').remove();
         }
 
