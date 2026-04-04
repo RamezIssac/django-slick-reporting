@@ -24,8 +24,16 @@
     function createChartObject(response, chartOptions, extraOptions) {
         let extractedData = extractDataFromResponse(response, chartOptions);
 
+        // Chart.js has no 'area' type; use 'line' with fill
+        let chartType = chartOptions.type;
+        let fillArea = false;
+        if (chartType === 'area') {
+            chartType = 'line';
+            fillArea = true;
+        }
+
         let chartObject = {
-            type: chartOptions.type,
+            type: chartType,
             'data': {
                 labels: extractedData.labels,
                 datasets: extractedData.datasets,
@@ -47,6 +55,8 @@
         if (chartOptions.type === 'pie') {
             chartObject['options'] = {
                 responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
                 plugins: {
                     title: {
                         display: true,
@@ -60,6 +70,11 @@
                 y: {stacked: true},
                 x: {stacked: true},
             }
+        }
+        if (fillArea) {
+            chartObject.data.datasets.forEach(function (ds) {
+                ds.fill = true;
+            });
         }
         return chartObject
     }
@@ -113,6 +128,11 @@
             legendResults = response.metadata['time_series_column_verbose_names'];
             let seriesColNames = getTimeSeriesColumnNames(response);
 
+            // Pie charts on time series should always show totals
+            if (chartOptions.type === 'pie') {
+                chartOptions.plot_total = true;
+            }
+
             if (chartOptions.plot_total) {
                 let results = $.slick_reporting.calculateTotalOnObjectArray(response.data, seriesColNames);
                 for (let fieldIdx = 0; fieldIdx < seriesColNames.length; fieldIdx++) {
@@ -121,8 +141,8 @@
                 datasets.push({
                     label: chartOptions.title,
                     data: datasetData,
-                    backgroundColor: getBackgroundColors(1),
-                    borderColor: getBackgroundColors(1),
+                    backgroundColor: getBackgroundColors(),
+                    borderColor: getBackgroundColors(),
                     fill: chartOptions.stacking === true,
                 })
 
@@ -222,7 +242,7 @@
             $elem.append("<canvas width=\"400\" height=\"100\"></canvas>");
         }
 
-        let cache_key = data.report_slug
+        let cache_key = $.slick_reporting.get_xpath($elem) + ":" + data.report_slug + ':' + chartOptions.id;
         try {
             let existing_chart = _chart_cache[cache_key];
             if (typeof (existing_chart) !== 'undefined') {
