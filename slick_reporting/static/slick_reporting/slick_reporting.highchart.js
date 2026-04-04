@@ -1,5 +1,6 @@
 /**
  * Created by Ramez on 11/20/14.
+ * Updated to support modern Highcharts API (v11+).
  */
 (function ($) {
 
@@ -52,7 +53,7 @@
 
         function createChartObject(response, chartOptions, extraOptions) {
             // Create the chart Object
-            // First specifying the global defaults then apply teh specification from the response
+            // First specifying the global defaults then apply the specification from the response
 
             try {
                 $.extend(chartOptions, {
@@ -87,7 +88,7 @@
                     },
                     subtitle: {
                         text: chartOptions.sub_title,
-                        useHTML: Highcharts.hasBidiBug
+                        useHTML: true
                     },
                     yAxis: {
                         opposite: rtl,
@@ -97,7 +98,7 @@
                         reversed: rtl,
                     },
                     tooltip: {
-                        useHTML: Highcharts.hasBidiBug
+                        useHTML: true
                     },
                     plotOptions: {},
                     exporting: {
@@ -131,10 +132,7 @@
                                 enabled: true,
                                 format: '{point.percentage:.1f}% <b>{point.name}</b>',
                             },
-                            showInLegend: false, // ($(window).width() >= 1024) ,
-                            style: {
-                                color: (Highcharts.theme && Highcharts.theme.contrastTextColor) || 'black'
-                            }
+                            showInLegend: false,
                         }
                     };
 
@@ -395,20 +393,20 @@
                 $elem.append('<div data-inner-chart-container style="width:100%; height:400px;"></div>')
             }
 
-            let chart = $elem.find("div[data-inner-chart-container]")
+            let chartContainer = $elem.find("div[data-inner-chart-container]")[0];
 
             let cache_key = $.slick_reporting.get_xpath($elem) + ":" + data.report_slug + ':' + chartOptions.id;
             try {
                 let existing_chart = _chart_cache[cache_key];
                 if (typeof (existing_chart) !== 'undefined') {
-                    existing_chart.highcharts().destroy()
+                    existing_chart.destroy()
                 }
             } catch (e) {
                 console.error(e)
             }
 
             let chartObject = $.slick_reporting.highcharts.createChartObject(data, chartOptions);
-            _chart_cache[cache_key] = chart.highcharts(chartObject);
+            _chart_cache[cache_key] = Highcharts.chart(chartContainer, chartObject);
 
         }
 

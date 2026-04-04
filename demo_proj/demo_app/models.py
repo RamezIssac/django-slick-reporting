@@ -62,7 +62,7 @@ class SalesTransaction(models.Model):
         return f"{self.number} - {self.date}"
 
     def save(
-            self, force_insert=False, force_update=False, using=None, update_fields=None
+            self, *args, **kwargs,
     ):
         self.value = self.price * self.quantity
-        super().save(force_insert, force_update, using, update_fields)
+        super().save(*args, **kwargs)
