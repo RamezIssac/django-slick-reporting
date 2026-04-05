@@ -7,7 +7,7 @@ register = template.Library()
 
 
 def get_section(section):
-    from ..helpers import TUTORIAL, GROUP_BY, TIME_SERIES, CROSSTAB
+    from ..helpers import TUTORIAL, GROUP_BY, TIME_SERIES, CROSSTAB, PIVOT
     to_use = []
 
     if section == "tutorial":
@@ -18,6 +18,8 @@ def get_section(section):
         to_use = TIME_SERIES
     elif section == "crosstab":
         to_use = CROSSTAB
+    elif section == "pivot":
+        to_use = PIVOT
     return to_use
 
 

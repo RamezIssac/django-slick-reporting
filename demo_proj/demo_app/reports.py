@@ -5,10 +5,10 @@ from django.http import HttpResponse
 from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import ComputationField
-from slick_reporting.views import ListReportView
+from slick_reporting.views import ListReportView, PivotReportView
 from slick_reporting.views import ReportView, Chart
 from .forms import TotalSalesFilterForm
-from .models import SalesTransaction, Product
+from .models import SalesTransaction, Product, MonthlySalesSummary
 
 
 class ProductSales(ReportView):
@@ -761,3 +761,52 @@ class ReportWithFormInitial(ReportView):
         initial = super().get_initial()
         initial["client_id"] = [Client.objects.first().pk, Client.objects.last().pk]
         return initial
+
+
+class PivotMonthlySales(PivotReportView):
+    report_title = _("Pivot: Monthly Sales (Django Model)")
+    report_model = MonthlySalesSummary
+    date_field = "month"
+    group_by = "product"
+    pivot_field = "month"
+    pivot_columns = ["total_sales", "total_quantity"]
+    columns = ["name", "__pivot__"]
+
+    chart_settings = [
+        Chart(
+            _("Monthly Sales by Product"),
+            Chart.BAR,
+            data_source=["total_sales"],
+            title_source=["name"],
+        ),
+        Chart(
+            _("Monthly Quantity by Product"),
+            Chart.LINE,
+            data_source=["total_quantity"],
+            title_source=["name"],
+        ),
+    ]
+
+
+class DynamicModelPivotSalesByCountry(PivotReportView):
+    report_title = _("Pivot: Sales by Country (Dynamic Model)")
+    table_name = "regional_sales_summary"
+    group_by = "product_name"
+    pivot_field = "country"
+    pivot_columns = ["total_sales", "total_quantity"]
+    columns = ["product_name", "__pivot__"]
+
+    chart_settings = [
+        Chart(
+            _("Sales by Country"),
+            Chart.BAR,
+            data_source=["total_sales"],
+            title_source=["product_name"],
+        ),
+        Chart(
+            _("Sales by Country [Pie]"),
+            Chart.PIE,
+            data_source=["total_sales"],
+            title_source=["product_name"],
+        ),
+    ]

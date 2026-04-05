@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
 # from expense.models import Expense, ExpenseTransaction
-from ...models import Client, Product, SalesTransaction, ProductCategory
+from ...models import Client, Product, SalesTransaction, ProductCategory, MonthlySalesSummary
 
 User = get_user_model()
 
@@ -82,5 +82,49 @@ class Command(BaseCommand):
                 #     date=date,
                 #     number=f"Expense {date.strftime('%Y-%m-%d')} #{i}",
                 # )
+
+        # Populate MonthlySalesSummary from the generated SalesTransaction data
+        MonthlySalesSummary.objects.all().delete()
+        from django.db.models.functions import TruncMonth
+        from django.db.models import Sum
+
+        monthly_data = (
+            SalesTransaction.objects.annotate(month=TruncMonth("date"))
+            .values("product_id", "month")
+            .annotate(total_sales=Sum("value"), total_quantity=Sum("quantity"))
+        )
+        for row in monthly_data:
+            MonthlySalesSummary.objects.create(
+                product_id=row["product_id"],
+                month=row["month"],
+                total_sales=row["total_sales"],
+                total_quantity=row["total_quantity"],
+            )
+
+        # Create a raw SQL table for the dynamic model demo
+        from django.db import connection
+
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS regional_sales_summary")
+            cursor.execute("""
+                CREATE TABLE regional_sales_summary (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    product_name VARCHAR(100) NOT NULL,
+                    country VARCHAR(100) NOT NULL,
+                    total_sales DECIMAL(12, 2) NOT NULL DEFAULT 0,
+                    total_quantity DECIMAL(12, 2) NOT NULL DEFAULT 0
+                )
+            """)
+            country_data = (
+                SalesTransaction.objects
+                .values("product__name", "client__country")
+                .annotate(total_sales=Sum("value"), total_quantity=Sum("quantity"))
+            )
+            for row in country_data:
+                cursor.execute(
+                    "INSERT INTO regional_sales_summary (product_name, country, total_sales, total_quantity) "
+                    "VALUES (%s, %s, %s, %s)",
+                    [row["product__name"], row["client__country"], row["total_sales"], row["total_quantity"]],
+                )
 
         self.stdout.write(self.style.SUCCESS("Entries Created Successfully"))

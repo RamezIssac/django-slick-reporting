@@ -66,3 +66,20 @@ class SalesTransaction(models.Model):
     ):
         self.value = self.price * self.quantity
         super().save(*args, **kwargs)
+
+
+class MonthlySalesSummary(models.Model):
+    """Pre-aggregated monthly sales data for demonstrating PivotReportGenerator."""
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name=_("Product"))
+    month = models.DateField(verbose_name=_("Month"))
+    total_sales = models.DecimalField(max_digits=12, decimal_places=2, verbose_name=_("Total Sales"))
+    total_quantity = models.DecimalField(max_digits=12, decimal_places=2, verbose_name=_("Total Quantity"))
+
+    class Meta:
+        verbose_name = _("Monthly Sales Summary")
+        verbose_name_plural = _("Monthly Sales Summaries")
+        unique_together = ("product", "month")
+
+    def __str__(self):
+        return f"{self.product} - {self.month}"

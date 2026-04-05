@@ -38,6 +38,11 @@ CROSSTAB = [
     ("crosstab-report-custom-verbose-name-2", reports.CrossTabReportWithCustomVerboseNameCustomFilter),
     ("crosstab-report-with-time-series", reports.CrossTabWithTimeSeries),
 ]
+PIVOT = [
+    ("pivot-monthly-sales", reports.PivotMonthlySales),
+    ("pivot-dynamic-model-sales-by-country", reports.DynamicModelPivotSalesByCountry),
+]
+
 OTHER = [
     ("highcharts-examples", reports.HighChartExample),
     ("chartjs-examples", reports.ChartJSExample),
@@ -49,6 +54,6 @@ OTHER = [
 
 def get_urls_patterns():
     urls = []
-    for name, report in TUTORIAL + GROUP_BY + TIME_SERIES + CROSSTAB + OTHER:
+    for name, report in TUTORIAL + GROUP_BY + TIME_SERIES + CROSSTAB + PIVOT + OTHER:
         urls.append(path(f"{name}/", report.as_view(), name=name))
     return urls
