@@ -1,0 +1,25 @@
+{% load i18n crispy_forms_tags %}
+<form id="reportForm" class="card">
+    <div class="card-header">
+        <h3 class="card-title">{% translate "Filters" %}</h3>
+    </div>
+    <div class="card-body">
+        {% if crispy_helper %}
+            {% crispy form crispy_helper %}
+        {% else %}
+            {% crispy form %}
+        {% endif %}
+    </div>
+    <div class="card-footer text-end">
+        <input type="submit" value="{% translate "Filter" %}"
+               class="btn btn-primary  refreshReport" data-get-results-button>
+
+
+        {% for export_action in report.get_export_actions %}
+            <button class="btn {{ export_action.css_class }}" data-export-btn
+                    data-export-parameter="{{ export_action.parameter }}" data-form-selector="#reportForm">
+                {% if export_action.icon %}<i class="{{ export_action.icon }}"></i> {% endif %}
+                {{ export_action.title }} </button>
+        {% endfor %}
+    </div>
+</form>
