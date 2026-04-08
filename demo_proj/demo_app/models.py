@@ -69,7 +69,7 @@ class SalesTransaction(models.Model):
 
 
 class MonthlySalesSummary(models.Model):
-    """Pre-aggregated monthly sales data for demonstrating PivotReportGenerator."""
+    """Pre-aggregated monthly sales data for demonstrating crosstab_precomputed."""
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name=_("Product"))
     month = models.DateField(verbose_name=_("Month"))

@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import ComputationField
-from slick_reporting.views import ListReportView, PivotReportView
+from slick_reporting.views import ListReportView
 from slick_reporting.views import ReportView, Chart
 from .forms import TotalSalesFilterForm
 from .models import SalesTransaction, Product, MonthlySalesSummary
@@ -763,14 +763,15 @@ class ReportWithFormInitial(ReportView):
         return initial
 
 
-class PivotMonthlySales(PivotReportView):
-    report_title = _("Pivot: Monthly Sales (Django Model)")
+class PivotMonthlySales(ReportView):
+    report_title = _("Crosstab Precomputed: Monthly Sales (Django Model)")
     report_model = MonthlySalesSummary
     date_field = "month"
     group_by = "product"
-    pivot_field = "month"
-    pivot_columns = ["total_sales", "total_quantity"]
-    columns = ["name", "__pivot__"]
+    crosstab_field = "month"
+    crosstab_columns = ["total_sales", "total_quantity"]
+    crosstab_precomputed = True
+    columns = ["name", "__crosstab__"]
 
     chart_settings = [
         Chart(
@@ -788,13 +789,14 @@ class PivotMonthlySales(PivotReportView):
     ]
 
 
-class DynamicModelPivotSalesByCountry(PivotReportView):
-    report_title = _("Pivot: Sales by Country (Dynamic Model)")
+class DynamicModelPivotSalesByCountry(ReportView):
+    report_title = _("Crosstab Precomputed: Sales by Country (Dynamic Model)")
     table_name = "regional_sales_summary"
     group_by = "product_name"
-    pivot_field = "country"
-    pivot_columns = ["total_sales", "total_quantity"]
-    columns = ["product_name", "__pivot__"]
+    crosstab_field = "country"
+    crosstab_columns = ["total_sales", "total_quantity"]
+    crosstab_precomputed = True
+    columns = ["product_name", "__crosstab__"]
 
     chart_settings = [
         Chart(

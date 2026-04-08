@@ -146,11 +146,9 @@ class ReportGeneratorAPI:
     """
     swap_sign = False
 
-    pivot_field = None
-    """Column whose distinct values become the dynamic columns in a pivot report."""
-
-    pivot_columns = None
-    """List of DB column names to read values from for each pivot value."""
+    crosstab_precomputed = False
+    """If True, crosstab reads pre-computed values from the database instead of aggregating raw data.
+    In this mode, crosstab_columns should be a list of DB column name strings (not ComputationField classes)."""
 
 
 class ReportGenerator(ReportGeneratorAPI, object):
@@ -183,6 +181,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
         crosstab_ids=None,
         crosstab_ids_custom_filters=None,
         crosstab_compute_remainder=None,
+        crosstab_precomputed=None,
         swap_sign=False,
         show_empty_records=None,
         print_flag=False,
@@ -267,6 +266,14 @@ class ReportGenerator(ReportGeneratorAPI, object):
         self.crosstab_compute_remainder = (
             self.crosstab_compute_remainder if crosstab_compute_remainder is None else crosstab_compute_remainder
         )
+        self.crosstab_precomputed = self.crosstab_precomputed if crosstab_precomputed is None else crosstab_precomputed
+        self._precomputed_crosstab_data = {}
+
+        if self.crosstab_precomputed:
+            if not self.crosstab_field:
+                raise ImproperlyConfigured("crosstab_precomputed requires crosstab_field to be set")
+            if not self.crosstab_columns:
+                raise ImproperlyConfigured("crosstab_precomputed requires crosstab_columns to be set")
 
         self.format_row = format_row_func or self._default_format_row
 
@@ -344,6 +351,15 @@ class ReportGenerator(ReportGeneratorAPI, object):
         self._prepare_report_dependencies()
 
     def prepare_queryset(self, queryset):
+        if self.crosstab_precomputed:
+            self._build_precomputed_crosstab_data(queryset)
+            self._crosstab_parsed_columns = self.get_crosstab_parsed_columns()
+
+            if not self.group_by:
+                return [{}]
+            filtered_qs = self._apply_queryset_options(queryset)
+            return filtered_qs.values(self.group_by_field_attname).distinct()
+
         if self.group_by_custom_querysets:
             return [{"__index__": i} for i, v in enumerate(self.group_by_custom_querysets)]
         elif self.group_by:
@@ -395,6 +411,39 @@ class ReportGenerator(ReportGeneratorAPI, object):
         if fields:
             return query.values(*fields)
         return query.values()
+
+    def _apply_precomputed_queryset_options(self, query):
+        """Apply filters for precomputed crosstab data fetch, using __gte/__lte boundaries."""
+        filters = {}
+        if self.date_field:
+            filters = {
+                f"{self.start_date_field_name}__gte": self.start_date,
+                f"{self.end_date_field_name}__lte": self.end_date,
+            }
+        filters.update(self.kwargs_filters)
+        if filters:
+            query = query.filter(**filters)
+        if self.q_filters:
+            query = query.filter(*self.q_filters)
+        return query.values()
+
+    def _build_precomputed_crosstab_data(self, queryset):
+        """Pre-fetch all rows and build the precomputed crosstab lookup dict."""
+        filtered_qs = self._apply_precomputed_queryset_options(queryset)
+        rows = filtered_qs.values(self.group_by_field_attname, self.crosstab_field, *self.crosstab_columns)
+
+        crosstab_values_set = set()
+        for row in rows:
+            group_key = str(row[self.group_by_field_attname])
+            crosstab_val = str(row[self.crosstab_field])
+            crosstab_values_set.add(row[self.crosstab_field])
+
+            if group_key not in self._precomputed_crosstab_data:
+                self._precomputed_crosstab_data[group_key] = {}
+            self._precomputed_crosstab_data[group_key][crosstab_val] = {col: row[col] for col in self.crosstab_columns}
+
+        if not self.crosstab_ids:
+            self.crosstab_ids = sorted(crosstab_values_set)
 
     def _construct_crosstab_filter(self, col_data, queryset_filters=None):
         """
@@ -519,7 +568,13 @@ class ReportGenerator(ReportGeneratorAPI, object):
             for col_data in window_cols:
                 name = col_data["name"]
 
-                if col_data.get("source", "") == "attribute_field":
+                if col_data.get("source", "") == "precomputed_crosstab":
+                    crosstab_val = col_data["crosstab_value"]
+                    crosstab_col = col_data["crosstab_column"]
+                    group_data = self._precomputed_crosstab_data.get(group_by_val, {})
+                    data[name] = group_data.get(crosstab_val, {}).get(crosstab_col, 0)
+
+                elif col_data.get("source", "") == "attribute_field":
                     data[name] = col_data["ref"](obj, data)
                 elif col_data.get("source", "") == "container_class_attribute_field":
                     data[name] = col_data["ref"](obj, data)
@@ -612,7 +667,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             if type(col) is tuple:
                 col, options = col
 
-            if col in ["__time_series__", "__crosstab__", "__pivot__"]:
+            if col in ["__time_series__", "__crosstab__"]:
                 #     These are placeholder not real computation field
                 continue
 
@@ -738,14 +793,6 @@ class ReportGenerator(ReportGeneratorAPI, object):
             except ValueError:
                 columns += crosstab_columns
 
-        if self.pivot_field:
-            pivot_columns = self.get_pivot_parsed_columns()
-            try:
-                index = self.columns.index("__pivot__")
-                columns[index:index] = pivot_columns
-            except ValueError:
-                columns += pivot_columns
-
         return columns
 
     def get_time_series_parsed_columns(self):
@@ -855,6 +902,9 @@ class ReportGenerator(ReportGeneratorAPI, object):
         Return a list of the columns analyzed , with reference to computation field and everything
         :return:
         """
+        if self.crosstab_precomputed:
+            return self._get_precomputed_crosstab_parsed_columns()
+
         report_columns = self.crosstab_columns or []
 
         ids = list(self.crosstab_ids) or list(self.crosstab_ids_custom_filters)
@@ -897,6 +947,28 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
         return output_cols
 
+    def _get_precomputed_crosstab_parsed_columns(self):
+        """Build column metadata for precomputed crosstab from discovered values."""
+        columns = []
+        for crosstab_val in self.crosstab_ids:
+            sanitized = _sanitize_crosstab_key(crosstab_val)
+            for col_name in self.crosstab_columns:
+                columns.append(
+                    {
+                        "name": f"{col_name}CT{sanitized}",
+                        "original_name": col_name,
+                        "verbose_name": f"{col_name} {crosstab_val}",
+                        "source": "precomputed_crosstab",
+                        "is_summable": True,
+                        "ref": "",
+                        "crosstab_value": str(crosstab_val),
+                        "crosstab_column": col_name,
+                        "type": "number",
+                        "visible": True,
+                    }
+                )
+        return columns
+
     def get_crosstab_field_verbose_name(self, computation_class, model, id):
         """
         Hook to change the crosstab field verbose name, default it delegate this function to the ReportField
@@ -907,10 +979,6 @@ class ReportGenerator(ReportGeneratorAPI, object):
         """
         return computation_class.get_crosstab_field_verbose_name(model, id)
 
-    def get_pivot_parsed_columns(self):
-        """Return pivot columns. Overridden by PivotReportGenerator."""
-        return []
-
     def get_metadata(self):
         """
         A hook to send data about the report for front end which can later be used in charting
@@ -918,16 +986,13 @@ class ReportGenerator(ReportGeneratorAPI, object):
         """
         time_series_columns = self.get_time_series_parsed_columns()
         crosstab_columns = self.get_crosstab_parsed_columns()
-        pivot_columns = self.get_pivot_parsed_columns()
-        # Pivot columns use crosstab metadata path for frontend rendering
-        all_crosstab_columns = crosstab_columns + pivot_columns
         metadata = {
             "time_series_pattern": self.time_series_pattern,
             "time_series_column_names": [x["name"] for x in time_series_columns],
             "time_series_column_verbose_names": [x["verbose_name"] for x in time_series_columns],
-            "crosstab_model": self.crosstab_field or self.pivot_field or "",
-            "crosstab_column_names": [x["name"] for x in all_crosstab_columns],
-            "crosstab_column_verbose_names": [x["verbose_name"] for x in all_crosstab_columns],
+            "crosstab_model": self.crosstab_field or "",
+            "crosstab_column_names": [x["name"] for x in crosstab_columns],
+            "crosstab_column_verbose_names": [x["verbose_name"] for x in crosstab_columns],
         }
         return metadata
 
@@ -1077,188 +1142,8 @@ class ListViewReportGenerator(ReportGenerator):
         return main_queryset
 
 
-def _sanitize_pivot_key(value):
-    """Sanitize a pivot value for use in column names. Replace non-alphanumeric chars with underscores."""
+def _sanitize_crosstab_key(value):
+    """Sanitize a crosstab value for use in column names. Replace non-alphanumeric chars with underscores."""
     import re
 
     return re.sub(r"[^a-zA-Z0-9_]", "_", str(value))
-
-
-class PivotReportGenerator(ReportGenerator):
-    """
-    A report generator for pre-computed/aggregated data stored as rows.
-
-    Instead of aggregating raw transactions like ReportGenerator, this reads
-    pre-existing values and pivots a field's distinct values into columns.
-
-    Example: A table with (product_id, month, total_sales) is pivoted into
-    one row per product with a column for each month's total_sales.
-    """
-
-    _pivot_parsed_columns = None
-
-    def __init__(self, *args, pivot_field=None, pivot_columns=None, **kwargs):
-        self.pivot_field = pivot_field or self.pivot_field
-        self.pivot_columns = pivot_columns or self.pivot_columns
-
-        if not self.pivot_field:
-            raise ImproperlyConfigured("PivotReportGenerator requires pivot_field to be set")
-        if not self.pivot_columns:
-            raise ImproperlyConfigured("PivotReportGenerator requires pivot_columns to be set")
-
-        self._pivot_data = {}
-        self._pivot_values = []
-        self._pivot_parsed_columns = []
-
-        super().__init__(*args, **kwargs)
-
-    def prepare_queryset(self, queryset):
-        # First, fetch all source rows and build the pivot lookup
-        self._build_pivot_data(queryset)
-        # Now that pivot values are known, build the parsed columns
-        self._pivot_parsed_columns = self.get_pivot_parsed_columns()
-
-        # Then return distinct group_by values for iteration
-        if not self.group_by:
-            return [{}]
-
-        filtered_qs = self._apply_queryset_options(queryset)
-        return filtered_qs.values(self.group_by_field_attname).distinct()
-
-    def _apply_queryset_options(self, query, fields=None):
-        filters = {}
-        if self.date_field:
-            filters = {
-                f"{self.start_date_field_name}__gte": self.start_date,
-                f"{self.end_date_field_name}__lte": self.end_date,
-            }
-        filters.update(self.kwargs_filters)
-        if filters:
-            query = query.filter(**filters)
-        if self.q_filters:
-            query = query.filter(*self.q_filters)
-        if fields:
-            return query.values(*fields)
-        return query.values()
-
-    def _build_pivot_data(self, queryset):
-        """Pre-fetch all rows and build the pivot lookup dict."""
-        filtered_qs = self._apply_queryset_options(queryset)
-        rows = filtered_qs.values(self.group_by_field_attname, self.pivot_field, *self.pivot_columns)
-
-        pivot_values_set = set()
-        for row in rows:
-            group_key = str(row[self.group_by_field_attname])
-            pivot_val = str(row[self.pivot_field])
-            pivot_values_set.add(row[self.pivot_field])
-
-            if group_key not in self._pivot_data:
-                self._pivot_data[group_key] = {}
-            self._pivot_data[group_key][pivot_val] = {col: row[col] for col in self.pivot_columns}
-
-        self._pivot_values = sorted(pivot_values_set)
-
-    def get_pivot_parsed_columns(self):
-        """Build column metadata from discovered pivot values and pivot_columns."""
-        if self._pivot_parsed_columns:
-            return self._pivot_parsed_columns
-
-        columns = []
-        for pivot_val in self._pivot_values:
-            sanitized = _sanitize_pivot_key(pivot_val)
-            for col_name in self.pivot_columns:
-                columns.append(
-                    {
-                        "name": f"{col_name}CT{sanitized}",
-                        "original_name": col_name,
-                        "verbose_name": f"{col_name} {pivot_val}",
-                        "source": "pivot_field",
-                        "is_summable": True,
-                        "ref": "",
-                        "pivot_value": str(pivot_val),
-                        "pivot_column": col_name,
-                        "type": "number",
-                        "visible": True,
-                    }
-                )
-        return columns
-
-    def get_time_series_parsed_columns(self):
-        return []
-
-    def get_crosstab_parsed_columns(self):
-        return []
-
-    def _prepare_report_dependencies(self):
-        """Only prepare normal columns — pivot columns read from pre-fetched data."""
-        from .fields import ComputationField
-
-        for col_data in self._parsed_columns:
-            klass = col_data["ref"]
-            name = col_data["name"]
-            if not (isclass(klass) and issubclass(klass, ComputationField)):
-                continue
-
-            report_class = klass(
-                self.doc_type_plus_list,
-                self.doc_type_minus_list,
-                group_by=self.group_by,
-                report_model=self.report_model,
-                date_field=self.date_field,
-                queryset=self.queryset,
-                group_by_custom_querysets=self.group_by_custom_querysets,
-            )
-            date_filter = {}
-            if self.start_date_field_name:
-                date_filter[f"{self.start_date_field_name}__gte"] = self.start_date
-            if self.end_date_field_name:
-                date_filter[f"{self.end_date_field_name}__lt"] = self.end_date
-            date_filter.update(self.kwargs_filters)
-            report_class.init_preparation(None, date_filter)
-            self.report_fields_classes[name] = report_class
-
-    def _get_record_data(self, obj, columns):
-        data = {}
-        group_by_val = None
-
-        if self.group_by:
-            group_by_val = str(obj.get(self.group_by_field_attname, obj.get("id", "")))
-
-        for window, window_cols in columns:
-            for col_data in window_cols:
-                name = col_data["name"]
-
-                if col_data.get("source", "") == "pivot_field":
-                    pivot_val = col_data["pivot_value"]
-                    pivot_col = col_data["pivot_column"]
-                    group_data = self._pivot_data.get(group_by_val, {})
-                    period_data = group_data.get(pivot_val, {})
-                    data[name] = period_data.get(pivot_col, 0)
-
-                elif col_data.get("source", "") == "magic_field" and self.group_by:
-                    try:
-                        computation_class = self.report_fields_classes[name]
-                        data[name] = computation_class.do_resolve(group_by_val, data)
-                    except KeyError:
-                        continue
-
-                elif col_data.get("source", "") in ("attribute_field", "container_class_attribute_field"):
-                    data[name] = col_data["ref"](obj, data)
-
-                else:
-                    data[name] = obj.get(name, "")
-
-        return data
-
-    def get_report_data(self):
-        main_queryset = self.main_queryset[: self.limit_records] if self.limit_records else self.main_queryset
-
-        all_columns = (
-            ("normal", self._parsed_columns),
-            ("pivot", self._pivot_parsed_columns),
-        )
-
-        get_record_data = self._get_record_data
-        format_row = self.format_row
-        data = [format_row(get_record_data(obj, all_columns)) for obj in main_queryset]
-        return data

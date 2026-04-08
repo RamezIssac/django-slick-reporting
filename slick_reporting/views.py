@@ -23,7 +23,6 @@ from .forms import (
 from .generator import (
     ReportGenerator,
     ListViewReportGenerator,
-    PivotReportGenerator,
     ReportGeneratorAPI,
     Chart,  # noqa # needed for easier importing in other apps
 )
@@ -276,7 +275,6 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         ```
         """
         return fkeys_dict
-
 
     def get_form_kwargs(self):
         """
@@ -599,12 +597,6 @@ class SlickReportingListView(SlickReportingListViewMixin, ReportViewBase):
 
 class ListReportView(SlickReportingListViewMixin):
     pass
-
-
-class PivotReportView(ReportViewBase):
-    """A ReportView for pre-computed/aggregated data using PivotReportGenerator."""
-
-    report_generator_class = PivotReportGenerator
 
 
 class SlickReportViewBase(ReportViewBase):

@@ -4,8 +4,7 @@ from django.db import connection
 from django.test import TestCase
 
 from slick_reporting.dynamic_model import get_dynamic_model, _model_cache
-from slick_reporting.generator import PivotReportGenerator
-
+from slick_reporting.generator import ReportGenerator
 
 TABLE_NAME = "test_pivot_monthly_sales"
 
@@ -27,7 +26,7 @@ INSERT_SQL = f"""
 """
 
 
-class PivotTestBase(TestCase):
+class PrecomputedCrosstabTestBase(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -60,16 +59,17 @@ class PivotTestBase(TestCase):
         super().tearDownClass()
 
 
-class TestPivotBasic(PivotTestBase):
-    def test_date_pivot(self):
+class TestPrecomputedCrosstabBasic(PrecomputedCrosstabTestBase):
+    def test_date_crosstab(self):
         model = get_dynamic_model(TABLE_NAME)
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             report_model=model,
             group_by="product_id",
             date_field="month",
-            pivot_field="month",
-            pivot_columns=["total_sales", "total_quantity"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="month",
+            crosstab_columns=["total_sales", "total_quantity"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
             start_date=datetime.datetime(2024, 1, 1),
             end_date=datetime.datetime(2024, 12, 31),
         )
@@ -86,13 +86,14 @@ class TestPivotBasic(PivotTestBase):
 
     def test_missing_period_defaults_to_zero(self):
         model = get_dynamic_model(TABLE_NAME)
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             report_model=model,
             group_by="product_id",
             date_field="month",
-            pivot_field="month",
-            pivot_columns=["total_sales"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="month",
+            crosstab_columns=["total_sales"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
             start_date=datetime.datetime(2024, 1, 1),
             end_date=datetime.datetime(2024, 12, 31),
         )
@@ -101,19 +102,20 @@ class TestPivotBasic(PivotTestBase):
         # Product B has no March data
         self.assertEqual(prod_b["total_salesCT2024_03_01"], 0)
 
-    def test_entity_pivot(self):
-        """Pivot on a non-date field (region).
-        Note: pivot reads pre-computed data, it does NOT aggregate.
-        When multiple rows exist for the same (group, pivot_value),
+    def test_entity_crosstab(self):
+        """Crosstab on a non-date field (region).
+        Note: precomputed crosstab reads pre-computed data, it does NOT aggregate.
+        When multiple rows exist for the same (group, crosstab_value),
         the last row encountered wins.
         """
         model = get_dynamic_model(TABLE_NAME)
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             report_model=model,
             group_by="product_id",
-            pivot_field="region",
-            pivot_columns=["total_sales"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="region",
+            crosstab_columns=["total_sales"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
             start_date=datetime.datetime(2024, 1, 1),
             end_date=datetime.datetime(2024, 12, 31),
         )
@@ -121,19 +123,20 @@ class TestPivotBasic(PivotTestBase):
         self.assertEqual(len(data), 2)
 
         prod_a = next(row for row in data if row["product_id"] == 1)
-        # Product A has multiple rows in "North" — pivot takes the last one
+        # Product A has multiple rows in "North" — last one wins
         self.assertIn("total_salesCTNorth", prod_a)
         self.assertGreater(prod_a["total_salesCTNorth"], 0)
 
-    def test_multiple_pivot_columns(self):
+    def test_multiple_crosstab_columns(self):
         model = get_dynamic_model(TABLE_NAME)
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             report_model=model,
             group_by="product_id",
             date_field="month",
-            pivot_field="month",
-            pivot_columns=["total_sales", "total_quantity"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="month",
+            crosstab_columns=["total_sales", "total_quantity"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
             start_date=datetime.datetime(2024, 1, 1),
             end_date=datetime.datetime(2024, 12, 31),
         )
@@ -146,16 +149,17 @@ class TestPivotBasic(PivotTestBase):
         self.assertIn("total_quantityCT2024_02_01", col_names)
 
 
-class TestPivotMetadata(PivotTestBase):
+class TestPrecomputedCrosstabMetadata(PrecomputedCrosstabTestBase):
     def test_crosstab_metadata_populated(self):
         model = get_dynamic_model(TABLE_NAME)
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             report_model=model,
             group_by="product_id",
             date_field="month",
-            pivot_field="month",
-            pivot_columns=["total_sales"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="month",
+            crosstab_columns=["total_sales"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
             start_date=datetime.datetime(2024, 1, 1),
             end_date=datetime.datetime(2024, 12, 31),
         )
@@ -170,31 +174,33 @@ class TestPivotMetadata(PivotTestBase):
     def test_column_computation_field_attribute(self):
         """Chart JS uses computation_field to match data_source."""
         model = get_dynamic_model(TABLE_NAME)
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             report_model=model,
             group_by="product_id",
             date_field="month",
-            pivot_field="month",
-            pivot_columns=["total_sales"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="month",
+            crosstab_columns=["total_sales"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
             start_date=datetime.datetime(2024, 1, 1),
             end_date=datetime.datetime(2024, 12, 31),
         )
         columns_data = report.get_columns_data()
-        pivot_cols = [c for c in columns_data if "CT" in c["name"]]
-        for col in pivot_cols:
+        ct_cols = [c for c in columns_data if "CT" in c["name"]]
+        for col in ct_cols:
             self.assertEqual(col["computation_field"], "total_sales")
 
 
-class TestPivotWithTableName(PivotTestBase):
+class TestPrecomputedCrosstabWithTableName(PrecomputedCrosstabTestBase):
     def test_table_name_convenience(self):
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             table_name=TABLE_NAME,
             group_by="product_id",
             date_field="month",
-            pivot_field="month",
-            pivot_columns=["total_sales"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="month",
+            crosstab_columns=["total_sales"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
             start_date=datetime.datetime(2024, 1, 1),
             end_date=datetime.datetime(2024, 12, 31),
         )
@@ -202,24 +208,25 @@ class TestPivotWithTableName(PivotTestBase):
         self.assertEqual(len(data), 2)
 
 
-class TestPivotDateFiltering(PivotTestBase):
-    def test_date_filter_limits_pivot_values(self):
+class TestPrecomputedCrosstabDateFiltering(PrecomputedCrosstabTestBase):
+    def test_date_filter_limits_crosstab_values(self):
         model = get_dynamic_model(TABLE_NAME)
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             report_model=model,
             group_by="product_id",
             date_field="month",
-            pivot_field="month",
-            pivot_columns=["total_sales"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="month",
+            crosstab_columns=["total_sales"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
             start_date=datetime.datetime(2024, 1, 1),
             end_date=datetime.datetime(2024, 2, 1),
         )
-        data = report.get_report_data()
+        report.get_report_data()
         columns_data = report.get_columns_data()
-        pivot_col_names = [c["name"] for c in columns_data if "CT" in c["name"]]
+        ct_col_names = [c["name"] for c in columns_data if "CT" in c["name"]]
         # Should only have January (end_date filter is __lte so Feb 1 is included)
-        self.assertTrue(all("2024_03_01" not in n for n in pivot_col_names))
+        self.assertTrue(all("2024_03_01" not in n for n in ct_col_names))
 
 
 SPACES_TABLE = "test_pivot_spaces"
@@ -238,7 +245,7 @@ INSERT_SPACES_SQL = f"""
 """
 
 
-class TestPivotWithSpaces(TestCase):
+class TestPrecomputedCrosstabWithSpaces(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -269,14 +276,15 @@ class TestPivotWithSpaces(TestCase):
             pass
         super().tearDownClass()
 
-    def test_pivot_values_with_spaces(self):
+    def test_crosstab_values_with_spaces(self):
         model = get_dynamic_model(SPACES_TABLE)
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             report_model=model,
             group_by="product_id",
-            pivot_field="city",
-            pivot_columns=["total_sales"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="city",
+            crosstab_columns=["total_sales"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
         )
         data = report.get_report_data()
         prod_1 = next(row for row in data if row["product_id"] == 1)
@@ -285,14 +293,15 @@ class TestPivotWithSpaces(TestCase):
         self.assertEqual(prod_1["total_salesCTNew_York"], 500)
         self.assertEqual(prod_1["total_salesCTLos_Angeles"], 300)
 
-    def test_pivot_values_with_special_chars(self):
+    def test_crosstab_values_with_special_chars(self):
         model = get_dynamic_model(SPACES_TABLE)
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             report_model=model,
             group_by="product_id",
-            pivot_field="city",
-            pivot_columns=["total_sales"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="city",
+            crosstab_columns=["total_sales"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
         )
         data = report.get_report_data()
         prod_1 = next(row for row in data if row["product_id"] == 1)
@@ -302,12 +311,13 @@ class TestPivotWithSpaces(TestCase):
 
     def test_verbose_name_preserves_original(self):
         model = get_dynamic_model(SPACES_TABLE)
-        report = PivotReportGenerator(
+        report = ReportGenerator(
             report_model=model,
             group_by="product_id",
-            pivot_field="city",
-            pivot_columns=["total_sales"],
-            columns=["product_id", "__pivot__"],
+            crosstab_field="city",
+            crosstab_columns=["total_sales"],
+            crosstab_precomputed=True,
+            columns=["product_id", "__crosstab__"],
         )
         columns_data = report.get_columns_data()
         ny_col = next(c for c in columns_data if "New_York" in c["name"])

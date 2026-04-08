@@ -130,6 +130,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 
+SLICK_REPORTING_DEFAULT_CHARTS_ENGINE = "chartsjs"
 SLICK_REPORTING_SETTINGS = {
     "CHARTS": {
         "apexcharts": {

@@ -1,15 +1,15 @@
 .. _pivot_report_topic:
 
-=============
-Pivot Reports
-=============
+============================
+Precomputed Crosstab Reports
+============================
 
 General use case
 ----------------
 
-Pivot reports are designed for **pre-computed or pre-aggregated data** stored as rows in the database.
-Instead of aggregating raw transactions at report time (like group by or crosstab reports do),
-the ``PivotReportGenerator`` reads existing values and spreads a field's distinct values into columns.
+Precomputed crosstab reports are designed for **pre-computed or pre-aggregated data** stored as rows in the database.
+Instead of aggregating raw transactions at report time (like regular crosstab reports do),
+setting ``crosstab_precomputed = True`` reads existing values and spreads a field's distinct values into columns.
 
 This is common with:
 
@@ -33,7 +33,7 @@ Example source data:
 | 2          | 2024-02-01 | 400         | 8              |
 +------------+------------+-------------+----------------+
 
-The pivot report transforms this into:
+The precomputed crosstab report transforms this into:
 
 +------------+-------------------+-------------------+
 | product_id | total_sales Jan   | total_sales Feb   |
@@ -44,17 +44,17 @@ The pivot report transforms this into:
 +------------+-------------------+-------------------+
 
 
-How it relates to crosstab and time series
-------------------------------------------
+How it relates to regular crosstab
+----------------------------------
 
-The pivot concept is closely related to crosstab reports — both spread a field's distinct values as columns.
+Precomputed crosstab is a mode of the standard crosstab feature. Both spread a field's distinct values as columns.
 The difference:
 
-* **Crosstab** aggregates raw data per pivot value using ``ComputationField``
-* **Pivot** reads pre-existing values from the database — no aggregation
+* **Regular crosstab** (``crosstab_precomputed = False``) aggregates raw data per crosstab value using ``ComputationField``
+* **Precomputed crosstab** (``crosstab_precomputed = True``) reads pre-existing values from the database — no aggregation
 
-Pivot reports use the same crosstab metadata path for the frontend, so all existing chart types
-(bar, line, pie, area) work with pivot data.
+Both modes use the same metadata and frontend integration, so all existing chart types
+(bar, line, pie, area) work with precomputed crosstab data.
 
 
 Basic example
@@ -63,16 +63,15 @@ Basic example
 .. code-block:: python
 
     from slick_reporting.views import ReportView, Chart
-    from slick_reporting.generator import PivotReportGenerator
 
     class MonthlyProductSales(ReportView):
         report_model = MonthlySummary
-        report_generator_class = PivotReportGenerator
         date_field = "month"
         group_by = "product_id"
-        pivot_field = "month"
-        pivot_columns = ["total_sales", "total_quantity"]
-        columns = ["product_id", "__pivot__"]
+        crosstab_field = "month"
+        crosstab_columns = ["total_sales", "total_quantity"]
+        crosstab_precomputed = True
+        columns = ["product_id", "__crosstab__"]
 
         chart_settings = [
             Chart(
@@ -85,51 +84,51 @@ Basic example
 
 Key attributes:
 
-* ``report_generator_class = PivotReportGenerator`` — use the pivot generator
-* ``pivot_field`` — the column whose distinct values become the dynamic columns
-* ``pivot_columns`` — list of database column names to read values from
-* ``columns`` — use ``"__pivot__"`` as a placeholder for where pivot columns appear
+* ``crosstab_precomputed = True`` — read pre-computed values instead of aggregating
+* ``crosstab_field`` — the column whose distinct values become the dynamic columns
+* ``crosstab_columns`` — list of database column name strings to read values from
+* ``columns`` — use ``"__crosstab__"`` as a placeholder for where crosstab columns appear
 
 
-Pivoting by a non-date field
+Crosstab by a non-date field
 -----------------------------
 
-The pivot field doesn't have to be a date — it can be any column:
+The crosstab field doesn't have to be a date — it can be any column:
 
 .. code-block:: python
 
     class SalesByRegion(ReportView):
         report_model = RegionalSummary
-        report_generator_class = PivotReportGenerator
         group_by = "product_id"
-        pivot_field = "region"
-        pivot_columns = ["total_sales"]
-        columns = ["product_id", "__pivot__"]
+        crosstab_field = "region"
+        crosstab_columns = ["total_sales"]
+        crosstab_precomputed = True
+        columns = ["product_id", "__crosstab__"]
 
 This produces one row per product with a column for each region.
 
 .. note::
 
-    When multiple source rows exist for the same ``(group_by, pivot_field)`` combination,
-    the last row encountered is used. The pivot generator does **not** aggregate — if you
-    need aggregation, use a standard crosstab or time series report instead.
+    When multiple source rows exist for the same ``(group_by, crosstab_field)`` combination,
+    the last row encountered is used. Precomputed crosstab does **not** aggregate — if you
+    need aggregation, use a standard crosstab (without ``crosstab_precomputed``) or time series report instead.
 
 
 Using with dynamic models
 --------------------------
 
-Pivot reports pair naturally with ``table_name`` for tables without a Django model:
+Precomputed crosstab reports pair naturally with ``table_name`` for tables without a Django model:
 
 .. code-block:: python
 
     class WarehouseReport(ReportView):
         table_name = "warehouse_monthly_sales"
-        report_generator_class = PivotReportGenerator
         date_field = "period_date"
         group_by = "sku"
-        pivot_field = "period_date"
-        pivot_columns = ["revenue", "units_sold"]
-        columns = ["sku", "__pivot__"]
+        crosstab_field = "period_date"
+        crosstab_columns = ["revenue", "units_sold"]
+        crosstab_precomputed = True
+        columns = ["sku", "__crosstab__"]
 
 See :ref:`dynamic_model_topic` for more on reporting from arbitrary database tables.
 
@@ -139,15 +138,16 @@ Using with ReportGenerator directly
 
 .. code-block:: python
 
-    from slick_reporting.generator import PivotReportGenerator
+    from slick_reporting.generator import ReportGenerator
 
-    report = PivotReportGenerator(
+    report = ReportGenerator(
         report_model=MonthlySummary,
         group_by="product_id",
         date_field="month",
-        pivot_field="month",
-        pivot_columns=["total_sales"],
-        columns=["product_id", "__pivot__"],
+        crosstab_field="month",
+        crosstab_columns=["total_sales"],
+        crosstab_precomputed=True,
+        columns=["product_id", "__crosstab__"],
         start_date=datetime.datetime(2024, 1, 1),
         end_date=datetime.datetime(2024, 6, 30),
     )
@@ -157,19 +157,19 @@ Using with ReportGenerator directly
 Date filtering
 --------------
 
-When ``date_field`` is set, the pivot generator respects ``start_date`` and ``end_date`` filters.
-Only rows within the date range are included, and only pivot values found in those rows
+When ``date_field`` is set, the precomputed crosstab respects ``start_date`` and ``end_date`` filters.
+Only rows within the date range are included, and only crosstab values found in those rows
 appear as columns.
 
 
-Pivot values with spaces or special characters
------------------------------------------------
+Crosstab values with spaces or special characters
+--------------------------------------------------
 
-Pivot values like ``"New York"`` or ``"Q1/2024"`` are sanitized for use in column names
+Crosstab values like ``"New York"`` or ``"Q1/2024"`` are sanitized for use in column names
 (non-alphanumeric characters replaced with underscores). The ``verbose_name`` preserves the
 original value for display in tables and charts.
 
-For example, a pivot value of ``"New York"`` produces:
+For example, a crosstab value of ``"New York"`` produces:
 
 * Column name: ``total_salesCTNew_York`` (sanitized, used internally)
 * Verbose name: ``total_sales New York`` (original, displayed to users)
@@ -178,10 +178,10 @@ For example, a pivot value of ``"New York"`` produces:
 Limitations
 -----------
 
-* **No aggregation.** Pivot reads pre-existing values. If you need computation (Sum, Count, etc.),
-  use a standard ``ReportGenerator`` with crosstab or time series.
+* **No aggregation.** Precomputed crosstab reads pre-existing values. If you need computation (Sum, Count, etc.),
+  use a standard crosstab without ``crosstab_precomputed``.
 
-* **Last value wins.** If multiple rows share the same ``(group_by, pivot_field)`` value,
+* **Last value wins.** If multiple rows share the same ``(group_by, crosstab_field)`` value,
   the last row's values are used.
 
 * **No FK traversal.** When using dynamic models, foreign key columns are plain integers.
