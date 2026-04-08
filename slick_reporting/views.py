@@ -507,7 +507,7 @@ class SlickReportingListViewMixin(ReportViewBase):
         return qs
 
     def get_form_filters(self, form):
-        if self.form_class:
+        if form:
             return form.get_filters()
 
         kw_filters = {}
@@ -563,7 +563,21 @@ class SlickReportingListViewMixin(ReportViewBase):
                 fields=self.filters,
                 formfield_callback=default_formfield_callback,
             )
-        return forms.Form
+
+        return report_form_factory(
+                self.get_report_model(),
+                crosstab_model=self.crosstab_field,
+                display_compute_remainder=self.crosstab_compute_remainder,
+                excluded_fields=self.excluded_fields,
+                fkeys_filter_func=self.fkeys_filter_func_hook,
+                initial=self.get_initial(),
+                show_time_series_selector=self.time_series_selector,
+                time_series_selector_choices=self.time_series_selector_choices,
+                time_series_selector_default=self.time_series_selector_default,
+                time_series_selector_allow_empty=self.time_series_selector_allow_empty,
+                add_start_date=self.start_date_field_name or self.date_field,
+                add_end_date=self.end_date_field_name or self.date_field,
+            )
 
     def get_report_results(self, for_print=False):
         """
