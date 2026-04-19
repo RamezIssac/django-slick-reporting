@@ -26,7 +26,6 @@ Below are the default settings for django-slick-reporting. You can override them
             # False will append the media files to the existing ones.
             "js": (
                 "https://cdn.jsdelivr.net/momentjs/latest/moment.min.js",
-                "https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js",
                 "https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js",
                 "https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js",
                 "slick_reporting/slick_reporting.js",
@@ -35,7 +34,6 @@ Below are the default settings for django-slick-reporting. You can override them
             ),
             "css": {
                 "all": (
-                    "https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css",
                     "https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css",
                 )
             },

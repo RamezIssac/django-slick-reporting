@@ -96,11 +96,6 @@
             chartSettings[key] = settings.CHARTS[key].entryPoint;
         })
         $.slick_reporting.report_loader.chart_engines = chartSettings;
-        try {
-            $("select").select2();
-        } catch (e) {
-            console.error(e);
-        }
         $.slick_reporting.defaults.total_label = settings["MESSAGES"]["TOTAL_LABEL"];
     }
 

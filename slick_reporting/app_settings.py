@@ -47,7 +47,7 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
         "override": False,
         "js": (
             "https://cdn.jsdelivr.net/momentjs/latest/moment.min.js",
-            "https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js",
+
             "https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js",
             "https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js",
             "slick_reporting/slick_reporting.js",
@@ -56,7 +56,6 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
         ),
         "css": {
             "all": (
-                "https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css",
                 "https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css",
             )
         },
