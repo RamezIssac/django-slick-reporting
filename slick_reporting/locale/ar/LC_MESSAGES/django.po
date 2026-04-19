@@ -1,0 +1,118 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-04-19 11:13+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 "
+"&& n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
+#: app_settings.py:88
+msgid "Total"
+msgstr "الإجمالي"
+
+#: app_settings.py:89
+msgid "Export to CSV"
+msgstr "تصدير إلى CSV"
+
+#: fields.py:355
+msgid "The remainder"
+msgstr "المتبقي"
+
+#: fields.py:387
+msgid "opening balance"
+msgstr "الرصيد الافتتاحي"
+
+#: fields.py:418
+msgid "Sum of value"
+msgstr "مجموع القيمة"
+
+#: fields.py:427
+msgid "Closing Total"
+msgstr "الإجمالي الختامي"
+
+#: fields.py:443
+msgid "%"
+msgstr "%"
+
+#: fields.py:454
+msgid "Credit"
+msgstr "دائن"
+
+#: fields.py:467
+msgid "Debit"
+msgstr "مدين"
+
+#: fields.py:477
+msgid "Credit QTY"
+msgstr "الكمية الدائنة"
+
+#: fields.py:490
+msgid "Debit QTY"
+msgstr "الكمية المدينة"
+
+#: fields.py:500
+msgid "Total QTY"
+msgstr "إجمالي الكمية"
+
+#: fields.py:510
+msgid "Opening QTY"
+msgstr "الكمية الافتتاحية"
+
+#: fields.py:520
+msgid "Closing QTY"
+msgstr "الكمية الختامية"
+
+#: forms.py:12
+msgid "Monthly"
+msgstr "شهري"
+
+#: forms.py:13
+msgid "Weekly"
+msgstr "أسبوعي"
+
+#: forms.py:14
+msgid "Yearly"
+msgstr "سنوي"
+
+#: forms.py:15
+msgid "Daily"
+msgstr "يومي"
+
+#: forms.py:280
+msgid "From date"
+msgstr "من تاريخ"
+
+#: forms.py:287
+msgid "To  date"
+msgstr "إلى تاريخ"
+
+#: forms.py:300
+msgid "Period Pattern"
+msgstr "نمط الفترة"
+
+#: forms.py:321
+msgid "Display the crosstab remainder"
+msgstr "عرض متبقي الجدول المتقاطع"
+
+#: templates/slick_reporting/report.html:9
+msgid "Filters"
+msgstr "المرشحات"
+
+#: templates/slick_reporting/report.html:15
+msgid "Filter"
+msgstr "تصفية"
+
+#: templates/slick_reporting/report.html:31
+msgid "Results"
+msgstr "النتائج"
