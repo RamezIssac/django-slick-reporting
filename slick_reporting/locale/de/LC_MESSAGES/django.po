@@ -1,0 +1,118 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-04-19 11:28+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+#: app_settings.py:88
+msgid "Total"
+msgstr "Gesamt"
+
+#: app_settings.py:89
+msgid "Export to CSV"
+msgstr "Als CSV exportieren"
+
+#: fields.py:355
+msgid "The remainder"
+msgstr "Der Rest"
+
+#: fields.py:387
+msgid "opening balance"
+msgstr "Eröffnungssaldo"
+
+#: fields.py:418
+msgid "Sum of value"
+msgstr "Wertsumme"
+
+#: fields.py:427
+msgid "Closing Total"
+msgstr "Abschlusssumme"
+
+#: fields.py:443
+msgid "%"
+msgstr "%"
+
+#: fields.py:454
+msgid "Credit"
+msgstr "Haben"
+
+#: fields.py:467
+msgid "Debit"
+msgstr "Soll"
+
+#: fields.py:477
+msgid "Credit QTY"
+msgstr "Haben-Menge"
+
+#: fields.py:490
+msgid "Debit QTY"
+msgstr "Soll-Menge"
+
+#: fields.py:500
+msgid "Total QTY"
+msgstr "Gesamtmenge"
+
+#: fields.py:510
+msgid "Opening QTY"
+msgstr "Eröffnungsmenge"
+
+#: fields.py:520
+msgid "Closing QTY"
+msgstr "Abschlussmenge"
+
+#: forms.py:12
+msgid "Monthly"
+msgstr "Monatlich"
+
+#: forms.py:13
+msgid "Weekly"
+msgstr "Wöchentlich"
+
+#: forms.py:14
+msgid "Yearly"
+msgstr "Jährlich"
+
+#: forms.py:15
+msgid "Daily"
+msgstr "Täglich"
+
+#: forms.py:280
+msgid "From date"
+msgstr "Von Datum"
+
+#: forms.py:287
+msgid "To  date"
+msgstr "Bis Datum"
+
+#: forms.py:300
+msgid "Period Pattern"
+msgstr "Periodenmuster"
+
+#: forms.py:321
+msgid "Display the crosstab remainder"
+msgstr "Kreuztabellen-Rest anzeigen"
+
+#: templates/slick_reporting/report.html:9
+msgid "Filters"
+msgstr "Filter"
+
+#: templates/slick_reporting/report.html:15
+msgid "Filter"
+msgstr "Filtern"
+
+#: templates/slick_reporting/report.html:31
+msgid "Results"
+msgstr "Ergebnisse"
