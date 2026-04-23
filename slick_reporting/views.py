@@ -84,6 +84,23 @@ class ExportToStreamingCSV(ExportToCSV):
         )
 
 
+class PrintHTMLExport:
+    template_name = "slick_reporting/print_report.html"
+
+    def __init__(self, request, report_data, report_title, **kwargs):
+        self.request = request
+        self.report_data = report_data
+        self.report_title = report_title
+
+    def get_response(self):
+        from django.shortcuts import render
+
+        columns = self.report_data.get("columns", [])
+        headers = [col["verbose_name"] for col in columns]
+        rows = [[row.get(col["name"], "") for col in columns] for row in self.report_data.get("data", [])]
+        return render(self.request, self.template_name, {"report_title": self.report_title, "headers": headers, "rows": rows})
+
+
 class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
     report_slug = None
 
@@ -105,6 +122,7 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
     time_series_selector_allow_empty = False
 
     csv_export_class = ExportToStreamingCSV
+    print_export_class = PrintHTMLExport
 
     with_type = False
     doc_type_field_name = "doc_type"
@@ -159,7 +177,11 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         Hook to get the export options
         :return: list of export options
         """
-        actions = ["export_csv"] if self.csv_export_class else []
+        actions = []
+        if self.csv_export_class:
+            actions.append("export_csv")
+        if self.print_export_class:
+            actions.append("export_print")
 
         if self.export_actions:
             actions = actions + self.export_actions
@@ -177,6 +199,7 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
                     "icon": getattr(func, "icon", ""),
                     "css_class": getattr(func, "css_class", ""),
                     "parameter": parameter,
+                    "new_window": getattr(func, "new_window", False),
                 }
             )
         return export_actions
@@ -213,6 +236,14 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
     export_csv.title = SLICK_REPORTING_SETTINGS["MESSAGES"]["export_to_csv"]
     export_csv.css_class = "btn btn-primary"
     export_csv.icon = ""
+
+    def export_print(self, report_data):
+        return self.print_export_class(self.request, report_data, self.get_report_title()).get_response()
+
+    export_print.title = SLICK_REPORTING_SETTINGS["MESSAGES"]["print_report"]
+    export_print.css_class = "btn btn-secondary"
+    export_print.icon = ""
+    export_print.new_window = True
 
     @classmethod
     def get_report_model(cls):

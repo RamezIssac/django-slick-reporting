@@ -1,0 +1,40 @@
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+{% get_current_language_bidi as LANGUAGE_BIDI %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}" {% if LANGUAGE_BIDI %}dir="rtl"{% endif %}>
+<head>
+    <meta charset="utf-8">
+    <title>{{ report_title }}</title>
+    <style>
+        body { font-family: sans-serif; font-size: 13px; margin: 1em 2em; }
+        h2 { text-align: center; margin-bottom: 0.25em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+        th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: start; }
+        th { background: #f0f0f0; font-weight: 600; }
+        .no-print { margin-bottom: 1em; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">{% translate "Print" %}</button>
+    </div>
+    <h2>{{ report_title }}</h2>
+    <table>
+        <thead>
+            <tr>
+                {% for header in headers %}<th>{{ header }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                {% for cell in row %}<td>{{ cell }}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <script>window.print();</script>
+</body>
+</html>

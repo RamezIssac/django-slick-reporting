@@ -86,6 +86,7 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
     "MESSAGES": {
         "total": _("Total"),
         "export_to_csv": _("Export to CSV"),
+        "print_report": _("Print"),
     },
     "REPORT_VIEW_ACCESS_FUNCTION": "slick_reporting.helpers.user_test_function",
 }

@@ -149,9 +149,14 @@
 
         $('[data-export-btn]').on('click', function (e) {
             let $elem = $(this);
-            e.preventDefault()
+            e.preventDefault();
             let form = $($elem.attr('data-form-selector'));
-            window.location = '?' + form.serialize() + '&_export=' + $elem.attr('data-export-parameter');
+            let url = '?' + form.serialize() + '&_export=' + $elem.attr('data-export-parameter');
+            if ($elem.attr('data-export-new-window')) {
+                window.open(url, '_blank');
+            } else {
+                window.location = url;
+            }
         });
         $('[data-get-results-button]').not(".vanilla-btn-flag").on('click', function (event) {
             event.preventDefault();

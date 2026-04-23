@@ -4,7 +4,7 @@
         <h3 class="card-title">{% translate "Filters" %}</h3>
     </div>
     <div class="card-body">
-        {% if crispy_helper %}
+        {% if form and crispy_helper %}
             {% crispy form crispy_helper %}
         {% else %}
             {% crispy form %}
@@ -17,7 +17,8 @@
 
         {% for export_action in report.get_export_actions %}
             <button class="btn {{ export_action.css_class }}" data-export-btn
-                    data-export-parameter="{{ export_action.parameter }}" data-form-selector="#reportForm">
+                    data-export-parameter="{{ export_action.parameter }}" data-form-selector="#reportForm"
+                    {% if export_action.new_window %}data-export-new-window="true"{% endif %}>
                 {% if export_action.icon %}<i class="{{ export_action.icon }}"></i> {% endif %}
                 {{ export_action.title }} </button>
         {% endfor %}
