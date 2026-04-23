@@ -17,10 +17,13 @@
     </style>
 </head>
 <body>
-    <div class="no-print">
-        <button onclick="window.print()">{% translate "Print" %}</button>
-    </div>
+
+    {% include "slick_reporting/print_report_controls.html" %}
+
+    {% include "slick_reporting/print_report_header.html" %}
+
     <h2>{{ report_title }}</h2>
+
     <table>
         <thead>
             <tr>
@@ -35,6 +38,9 @@
             {% endfor %}
         </tbody>
     </table>
+
+    {% include "slick_reporting/print_report_footer.html" %}
+
     <script>window.print();</script>
 </body>
 </html>
