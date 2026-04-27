@@ -508,13 +508,11 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
 
 class ReportView(ReportViewBase):
     def __init_subclass__(cls) -> None:
-        # date_field = getattr(cls, 'date_field', '')
-        # if not date_field:
-        #     raise TypeError(f'`date_field` is not set on {cls}')
-        # cls.report_generator_class.check_columns([cls.date_field], False, cls.get_report_model())
-
-        # sanity check, raises error if the columns or date fields is not set
-        if cls.columns:
+        # Skip early validation for table_name-based (dynamic) views: the model
+        # requires live DB introspection which must not happen at import time
+        # (e.g. during `manage.py migrate`). Validation runs at request time via
+        # ReportGenerator._parse().
+        if cls.columns and not cls.table_name:
             cls.report_generator_class.check_columns(
                 cls,
                 cls.columns,

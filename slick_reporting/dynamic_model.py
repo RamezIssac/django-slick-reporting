@@ -1,4 +1,4 @@
-from django.db import models, connections
+from django.db import models, connections, OperationalError, ProgrammingError
 
 _model_cache = {}
 
@@ -94,21 +94,28 @@ def get_dynamic_model(table_name, database="default", schema=None):
         return _model_cache[cache_key]
 
     connection = connections[database]
-    with connection.cursor() as cursor:
-        tables = connection.introspection.table_names(cursor)
-        if table_name not in tables:
-            raise ValueError(
-                f"Table '{table_name}' does not exist in the '{database}' database. "
-                f"Available tables: {', '.join(sorted(tables))}"
-            )
+    try:
+        with connection.cursor() as cursor:
+            tables = connection.introspection.table_names(cursor)
+            if table_name not in tables:
+                raise ValueError(
+                    f"Table '{table_name}' does not exist in the '{database}' database. "
+                    f"Available tables: {', '.join(sorted(tables))}"
+                )
 
-        table_description = connection.introspection.get_table_description(cursor, table_name)
-        try:
-            pk_columns = connection.introspection.get_primary_key_columns(cursor, table_name)
-        except AttributeError:
-            # Fallback for older Django versions
-            pk_column = connection.introspection.get_primary_key_column(cursor, table_name)
-            pk_columns = [pk_column] if pk_column else []
+            table_description = connection.introspection.get_table_description(cursor, table_name)
+            try:
+                pk_columns = connection.introspection.get_primary_key_columns(cursor, table_name)
+            except AttributeError:
+                # Fallback for older Django versions
+                pk_column = connection.introspection.get_primary_key_column(cursor, table_name)
+                pk_columns = [pk_column] if pk_column else []
+    except (OperationalError, ProgrammingError) as exc:
+        raise RuntimeError(
+            f"slick_reporting: Could not introspect table '{table_name}' — "
+            f"the database is not ready (migrations may not have run yet). "
+            f"Original error: {exc}"
+        ) from exc
 
     fields = {}
     has_pk = False

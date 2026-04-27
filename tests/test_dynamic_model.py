@@ -202,3 +202,27 @@ class TestReportGeneratorWithDynamicModel(DynamicModelTestBase):
         )
         data = report.get_report_data()
         self.assertEqual(data[0]["total_val"], 200.00)
+
+
+class TestReportViewTableNameImportSafety(TestCase):
+    """Defining a ReportView with table_name must not touch the DB at class-definition time."""
+
+    def test_class_definition_does_not_hit_db(self):
+        from slick_reporting.views import ReportView
+
+        try:
+
+            class _GhostTableReport(ReportView):
+                table_name = "nonexistent_table_xyz"
+                date_field = "doc_date"
+                group_by = "product_name"
+                columns = [
+                    "product_name",
+                    ComputationField.create(Sum, "value", name="v__sum", verbose_name="V"),
+                ]
+
+        except Exception as exc:
+            self.fail(
+                f"Defining a ReportView with table_name must not hit the DB at "
+                f"class-definition time, but got: {type(exc).__name__}: {exc}"
+            )
