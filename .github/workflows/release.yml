@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write   # GitHub Release + push back to develop
+      id-token: write   # PyPI OIDC trusted publishing
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history needed for the merge-back step
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/requirements.txt
+
+      - name: Run tests
+        run: python runtests.py
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Extract release notes from CHANGELOG
+        id: changelog
+        run: |
+          TAG=${GITHUB_REF#refs/tags/v}
+          python scripts/extract_changelog.py "$TAG" > release_notes.md
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.md
+          files: dist/*
+
+      - name: Notify demo server
+        env:
+          DEMO_WEBHOOK_URL: ${{ secrets.DEMO_WEBHOOK_URL }}
+          DEMO_WEBHOOK_SECRET: ${{ secrets.DEMO_WEBHOOK_SECRET }}
+        run: |
+          curl -fsS -X POST "$DEMO_WEBHOOK_URL" \
+               -H "Authorization: Bearer $DEMO_WEBHOOK_SECRET" \
+               -H "Content-Type: application/json" \
+               -d '{"version": "${{ steps.changelog.outputs.tag }}"}'
+
+      - name: Merge master back into develop
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout develop
+          git merge master --no-edit
+          git push origin develop
