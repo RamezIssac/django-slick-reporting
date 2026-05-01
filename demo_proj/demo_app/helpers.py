@@ -39,8 +39,8 @@ CROSSTAB = [
     ("crosstab-report-with-time-series", reports.CrossTabWithTimeSeries),
 ]
 PIVOT = [
-    ("pivot-monthly-sales", reports.PivotMonthlySales),
-    ("pivot-dynamic-model-sales-by-country", reports.DynamicModelPivotSalesByCountry),
+    ("precomputed-monthly-sales", reports.PreComputedMonthlySales),
+    ("dynamic-model-sales-by-country", reports.DynamicModelSalesByCountry),
 ]
 
 OTHER = [

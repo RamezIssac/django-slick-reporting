@@ -106,6 +106,8 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
 
     report_title = ""
 
+    report_description = ""
+
     report_title_context_key = "report_title"
 
     report_generator_class = ReportGenerator

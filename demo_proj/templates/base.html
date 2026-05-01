@@ -14,6 +14,8 @@
           href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler-payments.min.css">
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler-vendors.min.css">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
 
 
     <style>
@@ -71,6 +73,7 @@
                             {% block page_title %}
                             {% endblock %}
                         </h2>
+                        {% block page_subtitle %}{% endblock %}
                     </div>
                 </div>
             </div>
@@ -91,6 +94,8 @@
 {#    <script src="./dist/js/demo.min.js?1684106062" defer></script>#}
 <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
 {% block extrajs %}
 {% endblock %}
 </body>

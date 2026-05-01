@@ -2,6 +2,7 @@
 
 {% block meta_page_title %} {{ report_title }}{% endblock %}
 {% block page_title %} {{ report_title }} {% endblock %}
+{% block page_subtitle %}{% if report.report_description %}<p class="text-muted mt-1">{{ report.report_description }}</p>{% endif %}{% endblock %}
 
 {% block extrajs %}
     {{ block.super }}
