@@ -1,12 +1,20 @@
 from django import template
 from django.template.loader import get_template
 from django.forms import Media
+from django.templatetags.static import static
 from django.urls import reverse, resolve
 from django.utils.safestring import mark_safe
 
 from ..app_settings import SLICK_REPORTING_JQUERY_URL, SLICK_REPORTING_SETTINGS, get_media
 
 register = template.Library()
+
+
+def _resolve_static(path):
+    """Return an absolute URL for a static asset path, mirroring Media.absolute_path()."""
+    if path.startswith(("http://", "https://", "/")):
+        return path
+    return static(path)
 
 
 @register.simple_tag
@@ -53,7 +61,8 @@ def get_widget(report, template_name="", url_name="", report_url=None, **kwargs)
 @register.simple_tag
 def add_jquery():
     if SLICK_REPORTING_JQUERY_URL:
-        return mark_safe(f'<script src="{SLICK_REPORTING_JQUERY_URL}"></script>')
+        url = _resolve_static(SLICK_REPORTING_JQUERY_URL)
+        return mark_safe(f'<script src="{url}"></script>')
     return ""
 
 
@@ -82,4 +91,22 @@ def get_slick_reporting_media():
 
 @register.simple_tag
 def get_slick_reporting_settings():
-    return dict(SLICK_REPORTING_SETTINGS)
+    settings = dict(SLICK_REPORTING_SETTINGS)
+
+    media = dict(settings.get("MEDIA", {}))
+    media["js"] = [_resolve_static(p) for p in media.get("js", [])]
+    settings["MEDIA"] = media
+
+    charts = {}
+    for engine, config in settings.get("CHARTS", {}).items():
+        config = dict(config)
+        config["js"] = [_resolve_static(p) for p in config.get("js", [])]
+        charts[engine] = config
+    settings["CHARTS"] = charts
+
+    font_awesome = dict(settings.get("FONT_AWESOME", {}))
+    if "CSS_URL" in font_awesome:
+        font_awesome["CSS_URL"] = _resolve_static(font_awesome["CSS_URL"])
+    settings["FONT_AWESOME"] = font_awesome
+
+    return settings
