@@ -83,3 +83,30 @@ class DemoSanityTests(TestCase):
                 )
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("data", response.json())
+
+    def test_precomputed_crosstab_fk_group_by_returns_data(self):
+        """Regression: precomputed crosstab with FK group_by was returning empty rows.
+
+        The generator was building main_queryset as .values("product_id") so each obj
+        only had {"product_id": N}. _get_record_data then looked up obj["id"] which was
+        None, causing every group key to resolve to "None" and miss the precomputed dict.
+        Fix: fetch the related model objects (same as non-precomputed FK path).
+        """
+        response = self.client.get(
+            "/precomputed-monthly-sales/",
+            data={"start_date": "2024-01-01", "end_date": "2024-12-31"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()["data"]
+
+        self.assertEqual(len(data), 3, "Expected one row per product")
+        product_names = {row["name"] for row in data}
+        self.assertEqual(product_names, {"Widget A", "Widget B", "Widget C"})
+
+        for row in data:
+            crosstab_values = [v for k, v in row.items() if k not in ("name",) and v != ""]
+            self.assertTrue(
+                any(v not in (0, "0", None) for v in crosstab_values),
+                f"All crosstab values are zero/empty for {row['name']} — group key lookup is broken",
+            )

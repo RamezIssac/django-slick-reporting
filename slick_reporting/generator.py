@@ -350,6 +350,17 @@ class ReportGenerator(ReportGeneratorAPI, object):
         self.main_queryset = self.prepare_queryset(main_queryset)
         self._prepare_report_dependencies()
 
+    def _get_fk_group_by_queryset(self, filtered_qs):
+        """Return the related-model queryset for a ForeignKey group_by field."""
+        ids = filtered_qs.values_list(self.group_by_field_attname).distinct()
+        # uses the same logic that is in Django's query.py when fields is empty in values() call
+        concrete_fields = [f.name for f in self.group_by_field.related_model._meta.concrete_fields]
+        # add database columns that are not already in concrete_fields
+        final_fields = concrete_fields + list(set(self.get_database_columns()) - set(concrete_fields))
+        return self.group_by_field.related_model.objects.filter(
+            **{f"{self.group_by_field.target_field.name}__in": ids}
+        ).values(*final_fields)
+
     def prepare_queryset(self, queryset):
         if self.crosstab_precomputed:
             self._build_precomputed_crosstab_data(queryset)
@@ -358,22 +369,16 @@ class ReportGenerator(ReportGeneratorAPI, object):
             if not self.group_by:
                 return [{}]
             filtered_qs = self._apply_queryset_options(queryset)
+            if type(self.group_by_field) is ForeignKey:
+                return self._get_fk_group_by_queryset(filtered_qs)
             return filtered_qs.values(self.group_by_field_attname).distinct()
 
         if self.group_by_custom_querysets:
             return [{"__index__": i} for i, v in enumerate(self.group_by_custom_querysets)]
         elif self.group_by:
             main_queryset = self._apply_queryset_options(queryset)
-
             if type(self.group_by_field) is ForeignKey:
-                ids = main_queryset.values_list(self.group_by_field_attname).distinct()
-                # uses the same logic that is in Django's query.py when fields is empty in values() call
-                concrete_fields = [f.name for f in self.group_by_field.related_model._meta.concrete_fields]
-                # add database columns that are not already in concrete_fields
-                final_fields = concrete_fields + list(set(self.get_database_columns()) - set(concrete_fields))
-                return self.group_by_field.related_model.objects.filter(
-                    **{f"{self.group_by_field.target_field.name}__in": ids}
-                ).values(*final_fields)
+                return self._get_fk_group_by_queryset(main_queryset)
             else:
                 return main_queryset.distinct().values(self.group_by_field_attname)
 

@@ -5,6 +5,7 @@ from django.test import TestCase
 
 from slick_reporting.dynamic_model import get_dynamic_model, _model_cache
 from slick_reporting.generator import ReportGenerator
+from tests.models import Agent, Client, Contact, Product, SimpleSales
 
 TABLE_NAME = "test_pivot_monthly_sales"
 
@@ -322,3 +323,62 @@ class TestPrecomputedCrosstabWithSpaces(TestCase):
         columns_data = report.get_columns_data()
         ny_col = next(c for c in columns_data if "New_York" in c["name"])
         self.assertIn("New York", ny_col["verbose_name"])
+
+
+class TestPrecomputedCrosstabWithFKGroupBy(TestCase):
+    """Regression: precomputed crosstab with a ForeignKey group_by returned empty rows.
+
+    prepare_queryset returned .values("product_id") so each obj was {"product_id": N}.
+    _get_record_data then looked up obj["id"] (the related model PK) which was missing,
+    causing group_by_val="None" and every precomputed lookup to return 0.
+
+    Fix: mirror the non-precomputed FK path and fetch related-model objects so obj["id"]
+    and obj["name"] are available.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        agent = Agent.objects.create(name="Agent FK")
+        contact = Contact.objects.create(address="Addr", agent=agent)
+        cls.product1 = Product.objects.create(name="Prod FK 1", category="small", sku="fk1", notes="", slug="fk1")
+        cls.product2 = Product.objects.create(name="Prod FK 2", category="medium", sku="fk2", notes="", slug="fk2")
+        cls.client1 = Client.objects.create(name="Cli FK 1", notes="", slug="cfk1")
+        cls.client1.contact = contact
+        cls.client1.save()
+        cls.client2 = Client.objects.create(name="Cli FK 2", notes="", slug="cfk2")
+        cls.client2.contact = contact
+        cls.client2.save()
+        SimpleSales.objects.create(
+            slug="s1", doc_date=datetime.datetime(2024, 1, 15), client=cls.client1,
+            product=cls.product1, quantity=5, price=100, created_at=datetime.datetime(2024, 1, 15),
+        )
+        SimpleSales.objects.create(
+            slug="s2", doc_date=datetime.datetime(2024, 2, 15), client=cls.client2,
+            product=cls.product2, quantity=3, price=200, created_at=datetime.datetime(2024, 2, 15),
+        )
+
+    def test_rows_populated_with_fk_group_by(self):
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            group_by="product",
+            date_field="doc_date",
+            crosstab_field="client",
+            crosstab_columns=["value"],
+            crosstab_precomputed=True,
+            columns=["name", "__crosstab__"],
+            start_date=datetime.datetime(2024, 1, 1),
+            end_date=datetime.datetime(2024, 12, 31),
+        )
+        data = report.get_report_data()
+
+        self.assertEqual(len(data), 2, "Expected one row per product")
+
+        names = {row["name"] for row in data}
+        self.assertEqual(names, {"Prod FK 1", "Prod FK 2"}, "Product names must be populated (not empty strings)")
+
+        prod1_row = next(row for row in data if row["name"] == "Prod FK 1")
+        client1_col = f"valueCT{self.client1.pk}"
+        self.assertEqual(
+            prod1_row[client1_col], 500,
+            "Prod FK 1 / Client 1 value should be 500 (5 * 100); was 0 before the fix",
+        )

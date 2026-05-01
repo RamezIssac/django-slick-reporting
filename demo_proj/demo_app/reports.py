@@ -594,14 +594,12 @@ class CrossTabReportWithCustomVerboseName(CrosstabReport):
 class CustomCrossTabTotalPerSize(CustomCrossTabTotalField):
     @classmethod
     def get_crosstab_field_verbose_name(cls, model, id):
-        print(model, id)
         if id == 0:
             return f"{cls.verbose_name} Big and Extra Big"
         return f"{cls.verbose_name} all other sizes"
 
     @classmethod
     def get_time_series_field_verbose_name(cls, date_period, index, dates, pattern):
-        print("time series verbose name")
         return super().get_time_series_field_verbose_name(date_period, index, dates, pattern)
 
 
@@ -770,7 +768,8 @@ class ProductSalesApexChart(ReportView):
 
 class CustomExportReport(GroupByReport):
     report_title = _("Custom Export Report")
-    report_description = _("Demonstrates adding custom action (here export_pdf) action alongside the built-ins")
+    report_description = _("Demonstrates adding custom action (here export_pdf) action alongside the built-ins"
+                           "Also shows how to customize buttons label and css class")
     export_actions = ["export_pdf"]
 
     def export_pdf(self, report_data):
@@ -821,7 +820,7 @@ class PreComputedMonthlySales(ReportView):
     group_by = "product"
     crosstab_field = "month"
     crosstab_precomputed = True # signals that data is already aggregated
-    crosstab_columns = ["total_sales", "total_quantity"] # total_quantity is already computed/aggregated in database
+    crosstab_columns = ["total_sales", "total_quantity"] # These fields are already computed/aggregated in database
     columns = ["name", "__crosstab__"]
 
     chart_settings = [
