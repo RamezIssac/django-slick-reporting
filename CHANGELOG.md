@@ -40,6 +40,16 @@ All notable changes to this project will be documented in this file.
 - **Select2 removed from core assets** — Select2 was a demo-only dependency that made it into the default
   ``SLICK_REPORTING_SETTINGS["MEDIA"]`` JS/CSS lists and was auto-initialised in ``report_loader.js``.
   It is now removed from the library defaults; demo project configures it separately.
+- **``fkeys_filter_func_hook``** — new static method on ``ReportViewBase`` that receives the dict of
+  detected foreign-key fields before the filter form is built. Override it to exclude or rename fields
+  (e.g. remove internal FK columns such as ``polymorphic_ctype_id``).
+- **Chart error recovery** — chart rendering errors are now caught in ``report_loader.js`` and displayed
+  as an inline message instead of silently breaking the rest of the page.
+
+### Bug Fixes
+
+- Fix ``crosstab_compute_remainder`` class-level attribute being ignored; the value was always read from
+  the request instead of falling back to the class default.
 
 ### Chart Engine Fixes
 
