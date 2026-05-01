@@ -93,10 +93,10 @@ class SimpleSales(models.Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
+            self, *args, **kwargs
     ):
         self.value = self.quantity * self.price
-        super().save(force_insert, force_update, using, update_fields)
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("Sale")
@@ -124,10 +124,10 @@ class SimpleSales2(models.Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
+            self, *args, **kwargs
     ):
         self.value = self.quantity * self.price
-        super().save(force_insert, force_update, using, update_fields)
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("Sale")
@@ -155,10 +155,10 @@ class SalesProductWithCustomID(models.Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
+            self, *args, **kwargs
     ):
         self.value = self.quantity * self.price
-        super().save(force_insert, force_update, using, update_fields)
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("Sale")
@@ -180,10 +180,10 @@ class SalesWithFlag(models.Model):
     flag = models.CharField(max_length=50, default="sales")
 
     def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
+            self, *args, **kwargs
     ):
         self.value = self.quantity * self.price
-        super().save(force_insert, force_update, using, update_fields)
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("Sale")
@@ -222,10 +222,10 @@ class ComplexSales(models.Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
+            self, *args, **kwargs
     ):
         self.value = self.quantity * self.price
-        super().save(force_insert, force_update, using, update_fields)
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("VAT Sale")
