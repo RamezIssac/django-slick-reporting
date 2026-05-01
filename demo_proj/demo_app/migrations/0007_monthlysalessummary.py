@@ -27,11 +27,13 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.RunSQL("""
-        CREATE TABLE regional_sales_summary (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    product_name VARCHAR(100) NOT NULL,
-                    country VARCHAR(100) NOT NULL,
-                    total_sales DECIMAL(12, 2) NOT NULL DEFAULT 0,
-                    total_quantity DECIMAL(12, 2) NOT NULL DEFAULT 0
+        CREATE TABLE regional_sales_summary
+        (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_name   VARCHAR(100)   NOT NULL,
+            country        VARCHAR(100)   NOT NULL,
+            total_sales    DECIMAL(12, 2) NOT NULL DEFAULT 0,
+            total_quantity DECIMAL(12, 2) NOT NULL DEFAULT 0
+        )
         """)
     ]
