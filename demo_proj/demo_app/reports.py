@@ -571,6 +571,7 @@ class CrossTabReportWithCustomVerboseNameCustomFilter(CrosstabWithIdsCustomFilte
 
 class CrossTabWithTimeSeries(CrossTabReportWithCustomVerboseNameCustomFilter):
     report_title = _("Crosstab with time series")
+    date_field = "date"
     time_series_pattern = "monthly"
 
     columns = ["name", "__time_series__"]

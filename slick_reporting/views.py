@@ -389,6 +389,7 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
             crosstab_columns=self.crosstab_columns,
             crosstab_compute_remainder=crosstab_compute_remainder,
             crosstab_ids_custom_filters=self.crosstab_ids_custom_filters,
+            crosstab_precomputed=self.crosstab_precomputed,
             format_row_func=self.format_row,
             container_class=self,
             doc_type_plus_list=doc_type_plus_list,
@@ -536,7 +537,7 @@ class SlickReportingListViewMixin(ReportViewBase):
         return qs
 
     def get_form_filters(self, form):
-        if form:
+        if hasattr(form, "get_filters"):
             return form.get_filters()
 
         kw_filters = {}
