@@ -2,23 +2,57 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.4.0] - 2026-04-04
-- Add Dynamic Model support: generate reports from any database table without defining a Django model.
-  New ``get_dynamic_model(table_name, database, schema)`` utility introspects a table and returns a real Django model.
-- Add ``table_name`` attribute to ``ReportGenerator`` and ``ReportView`` as a convenience shortcut for dynamic models.
-- Add ``schema`` parameter to ``get_dynamic_model`` for PostgreSQL schema support.
-- Add ``PivotReportGenerator`` for pre-computed/aggregated data. Reads existing row values and pivots a field's
-  distinct values into columns — no aggregation needed. Works with both Django models and dynamic models.
-  New attributes: ``pivot_field``, ``pivot_columns``, and ``__pivot__`` column placeholder.
-- Update Highcharts wrapper to use modern ``Highcharts.chart()`` API (compatible with v11+), replacing removed jQuery plugin syntax.
-- Switch default Highcharts CDN to jsDelivr (``cdn.jsdelivr.net/npm/highcharts@11``) for reliability.
-- Fix Chart.js wrapper: inverted ``is_time_series`` check, update to Chart.js v3/v4 API (``plugins.title``, ``plugins.tooltip``, ``scales.y``/``scales.x``).
-- Add crosstab support to Chart.js wrapper.
-- Fix Chart.js ``area`` chart type: now renders as ``line`` with ``fill: true``.
-- Fix Chart.js pie chart on time series: automatically defaults to ``plot_total``.
+## [1.4.0] - 2026-05-01
+
+### New Features
+
+- **Dynamic Model support** — generate reports from any database table without defining a Django model.
+  New ``get_dynamic_model(table_name, database, schema)`` utility introspects a live table and returns a
+  fully usable (unmanaged) Django model. Supports 20+ field types and PostgreSQL schemas
+  (``schema`` parameter generates ``"schema"."table_name"`` as the db table).
+  Models are cached after first introspection.
+- **``table_name`` attribute on ``ReportGenerator`` and ``ReportView``** — shorthand for using a dynamic model.
+  Setting ``table_name = "my_table"`` is equivalent to setting ``report_model = get_dynamic_model("my_table")``.
+  Column validation is deferred to request time for ``table_name``-based views so imports do not trigger
+  database access.
+- **Pre-computed crosstab reports** — new ``crosstab_precomputed = True`` flag on ``ReportGenerator``
+  switches from live aggregation to reading existing column values and pivoting them.
+  Use ``crosstab_columns`` to name the value columns and ``crosstab_field`` to identify the pivot field.
+  Distinct values for ``crosstab_field`` are auto-discovered from the database if ``crosstab_ids`` is not set.
+  Intended for materialized views, data-warehouse fact tables, and pre-aggregated ETL outputs.
+- **Print / HTML export** — new ``PrintHTMLExport`` class renders a clean, RTL-aware, print-ready HTML
+  page and triggers ``window.print()`` automatically. Enabled by default on all ``ReportView`` subclasses
+  via the new ``print_export_class`` attribute. The print export button opens in a new browser tab.
+  Templates are split into ``print_report.html``, ``print_report_header.html``, ``print_report_footer.html``,
+  and ``print_report_controls.html`` for easy overriding.
+- **Arabic (ar) and German (de) translations** added.
+
+### Improvements
+
+- **Static asset path resolution** — template tags now consistently apply Django's ``static()`` to any
+  relative URL in settings (jQuery URL, chart engine JS files, Font Awesome CSS URL). The
+  ``slick_reporting_settings`` JSON block written to the page also contains fully resolved static URLs,
+  ensuring correct paths with ``ManifestStaticFilesStorage`` or CDN-backed storages.
+- **Export action metadata** — ``get_export_actions()`` now includes a ``new_window`` flag per action;
+  the JS export handler opens a new tab when the flag is set, used by the print export.
+- **Report form extracted** — the filter form markup is now in its own ``report_form.html`` template
+  (included by ``report.html``) making it easier to override just the form section.
+- **Select2 removed from core assets** — Select2 was a demo-only dependency that made it into the default
+  ``SLICK_REPORTING_SETTINGS["MEDIA"]`` JS/CSS lists and was auto-initialised in ``report_loader.js``.
+  It is now removed from the library defaults; demo project configures it separately.
+
+### Chart Engine Fixes
+
+- Update Highcharts wrapper to use the modern ``Highcharts.chart()`` API (v11+), replacing the removed
+  jQuery plugin syntax. Switch default Highcharts CDN to jsDelivr (``cdn.jsdelivr.net/npm/highcharts@11``).
+- Fix Chart.js wrapper: corrected inverted ``is_time_series`` check; update to Chart.js v3/v4 API
+  (``plugins.title``, ``plugins.tooltip``, ``scales.y`` / ``scales.x``).
+- Add crosstab support to the Chart.js wrapper.
+- Fix Chart.js ``area`` chart type to render as ``line`` with ``fill: true``.
+- Fix Chart.js pie chart on time-series reports: automatically enables ``plot_total``.
 - Fix Chart.js pie chart sizing with ``aspectRatio: 2``.
-- Fix Chart.js chart cache key to include element xpath, preventing chart destruction on dashboards with repeated reports.
-- Enhance demo dashboard with compact masonry layout toggle.
+- Fix Chart.js chart cache key to include the element xpath, preventing chart destruction when
+  the same report appears multiple times on a dashboard.
 
 ## [1.3.1] - 2024-06-16
 - Fix issue with Line Chart on highcharts engine
