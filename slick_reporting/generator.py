@@ -1051,13 +1051,12 @@ class ReportGenerator(ReportGeneratorAPI, object):
             if type(chart) is Chart:
                 chart = chart.to_dict()
             chart["id"] = chart.get("id", f"{i}")
+            chart["engine_name"] = chart.get("engine_name", chart_engine)
             chart_type = chart.get("type", "line")
-            if chart_type == "column" and SLICK_REPORTING_DEFAULT_CHARTS_ENGINE == "chartsjs":
+            if chart_type == "column" and chart["engine_name"] == "chartsjs":
                 chart["type"] = "bar"
-
             if not chart.get("title", False):
                 chart["title"] = report_title
-            chart["engine_name"] = chart.get("engine_name", chart_engine)
             chart["entryPoint"] = (
                 chart.get("entryPoint")
                 or app_settings.SLICK_REPORTING_SETTINGS["CHARTS"][chart["engine_name"]]["entryPoint"]

@@ -659,23 +659,23 @@ class HighChartExample(TimeSeriesReport):
                            ": column, bar, line, area, pie — including stacked and plot-total variants.")
 
     chart_settings = [
-        Chart("Client Sales [Column]", Chart.COLUMN, data_source=["sum__value"], title_source=["name"]),
+        Chart("Columns", Chart.COLUMN, data_source=["sum__value"], title_source=["name"]),
         Chart(
-            "Stacking Client Sales [Column]",
+            "Stacking Columns",
             Chart.COLUMN,
             data_source=["sum__value"],
             title_source=["name"],
             stacking=True,
         ),
         Chart(
-            "Total Client Sales[Column]",
+            "Totals Column",
             Chart.COLUMN,
             data_source=["sum__value"],
             title_source=["name"],
             plot_total=True,
         ),
         Chart(
-            "Stacking Total Client Sales [Column]",
+            "Total Stacking Column",
             Chart.COLUMN,
             data_source=["sum__value"],
             title_source=["name"],
@@ -683,37 +683,37 @@ class HighChartExample(TimeSeriesReport):
             stacking=True,
         ),
         Chart(
-            "Client Sales [Bar]",
+            "Bar",
             Chart.BAR,
             data_source=["sum__value"],
             title_source=["name"],
         ),
         Chart(
-            "Total Client Sales [Bar]", Chart.BAR, data_source=["sum__value"], title_source=["name"], plot_total=True
+            "Totals Bar", Chart.BAR, data_source=["sum__value"], title_source=["name"], plot_total=True
         ),
         Chart(
-            "Client Sales [Line]",
+            "Line Chart",
             Chart.LINE,
             data_source=["sum__value"],
             title_source=["name"],
             # plot_total=True,
         ),
         Chart(
-            "Total Client Sales [Line]",
+            "Total Line chart",
             Chart.LINE,
             data_source=["sum__value"],
             title_source=["name"],
             plot_total=True,
         ),
         Chart(
-            "Total Sales [Pie]",
+            "Pie: Total Sales",
             Chart.PIE,
             data_source=["sum__value"],
             title_source=["name"],
             plot_total=True,
         ),
         Chart(
-            "Client Sales [Area]",
+            "Area: Client Sales",
             Chart.AREA,
             data_source=["sum__value"],
             title_source=["name"],

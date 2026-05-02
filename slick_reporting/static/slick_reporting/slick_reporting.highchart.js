@@ -171,7 +171,8 @@
                         highchart_object.chart.margin = 70;
                     }
                     if (chartOptions['stacking']) {
-                        highchart_object.plotOptions.series = {stacking: chartOptions['stacking']};
+                        let stackingValue = chartOptions['stacking'] === true ? 'normal' : chartOptions['stacking'];
+                        highchart_object.plotOptions.series = {stacking: stackingValue};
                     }
                     if (chartOptions['tooltip_formatter']) {
                         highchart_object.tooltip = {
@@ -185,9 +186,10 @@
                 } else if (chart_type === 'area') {
                     highchart_object.chart.type = 'area';
 
+                    let areaStacking = chartOptions['stacking'] === true ? 'normal' : (chartOptions['stacking'] || undefined);
                     highchart_object.plotOptions = {
                         area: {
-                            stacking: chartOptions['stacking'] || 'normal',
+                            stacking: areaStacking,
                             marker: {
                                 enabled: false
                             }
@@ -395,7 +397,7 @@
 
             let chartContainer = $elem.find("div[data-inner-chart-container]")[0];
 
-            let cache_key = $.slick_reporting.get_xpath($elem) + ":" + data.report_slug + ':' + chartOptions.id;
+            let cache_key = $.slick_reporting.get_xpath($elem) + ":" + data.report_slug;
             try {
                 let existing_chart = _chart_cache[cache_key];
                 if (typeof (existing_chart) !== 'undefined') {
