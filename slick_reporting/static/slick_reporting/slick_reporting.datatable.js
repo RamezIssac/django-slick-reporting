@@ -25,6 +25,13 @@
             add_footer = false;
         }
 
+        let colFormatMap = {};
+        for (let i = 0; i < cols.length; i++) {
+            if (cols[i].number_format) {
+                colFormatMap[cols[i].name] = cols[i].number_format;
+            }
+        }
+
         for (let i = 0; i < cols.length; i++) {
             let col_name = cols[i].name;
             header_th += `<th data-id="${col_name}">${cols_names[i]}</th>`;
@@ -34,11 +41,16 @@
             if (!stop_colspan_detection) {
                 footer_colspan += 1;
             } else {
-                let column_total = totals_container[col_name]
+                let column_total = totals_container[col_name];
                 if (!(column_total || column_total === 0)) {
-                    column_total = ''
+                    column_total = '';
+                } else {
+                    let fmt = colFormatMap[col_name] || $.slick_reporting.defaults.number_format;
+                    if (fmt) {
+                        column_total = $.slick_reporting.formatNumber(column_total, fmt);
+                    }
                 }
-                footer_th += `<th data-id=${col_name}">${column_total}</th>`;
+                footer_th += `<th data-id="${col_name}">${column_total}</th>`;
             }
         }
         let footer = '';
@@ -93,6 +105,19 @@
                 'visible': server_data['visible'],
                 'title': server_data['verbose_name']
             };
+
+            if (server_data['type'] === 'number') {
+                let fmt = server_data['number_format'] || $.slick_reporting.defaults.number_format;
+                if (fmt) {
+                    col_data['render'] = function (cellData, type) {
+                        if (type === 'display' && cellData !== null && cellData !== undefined && cellData !== '') {
+                            return $.slick_reporting.formatNumber(cellData, fmt);
+                        }
+                        return cellData;
+                    };
+                }
+            }
+
             columns.push(col_data);
 
         }

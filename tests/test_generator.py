@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from django.db.models import Sum
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import ComputationField
@@ -452,3 +452,172 @@ class TestListViewGenerator(BaseTestData, TestCase):
         self.assertEqual(len(data), SimpleSales.objects.count())
         self.assertEqual(data[0]["product__name"], "Product 1")
         self.assertEqual(data[0]["client__name"], "Client 1")
+
+
+class NumberFormatTests(BaseTestData, TestCase):
+    """
+    Tests for the number_format feature.
+
+    The feature adds display-only number formatting to datatable columns.
+    Raw numeric values are kept in the JSON response so DataTables sorting
+    and footer summation continue to work; formatting is applied by a JS
+    render callback driven by a ``number_format`` dict that ``get_columns_data()``
+    attaches to every ``type="number"`` column.
+
+    Global default lives in ``SLICK_REPORTING_SETTINGS["NUMBER_FORMAT"]``.
+    Per-field overrides are set via ``ComputationField.create(..., number_format={})``;
+    they are merged with (not replace) the global, so only the specified keys change.
+    """
+
+    # Both fields are created at class level so each test re-uses the same objects.
+    # ``field_plain`` has no override → resolved format equals the global default.
+    # ``field_overridden`` sets decimal_places=0 → that key overrides the global,
+    #   all other keys (use_locale, thousands_separator) are still inherited.
+    field_plain = ComputationField.create(Sum, "value", name="nf_plain")
+    field_overridden = ComputationField.create(Sum, "value", name="nf_overridden", number_format={"decimal_places": 0})
+
+    def _make_report(self, columns, **kwargs):
+        return ReportGenerator(
+            report_model=SimpleSales,
+            date_field="doc_date",
+            group_by="client",
+            columns=columns,
+            **kwargs,
+        )
+
+    def _assert_fully_resolved_format(self, cols_data):
+        """
+        Assert that every type='number' column in cols_data carries a fully-resolved
+        number_format dict — i.e. all three keys are present after global/field merge.
+
+        Expected shape: {"decimal_places": int, "use_locale": bool, "thousands_separator": str}
+        """
+        numeric = [c for c in cols_data if c.get("type") == "number"]
+        self.assertTrue(numeric, "No numeric columns found in columns_data")
+        for col in numeric:
+            with self.subTest(col=col["name"]):
+                fmt = col.get("number_format", {})
+                self.assertIn("decimal_places", fmt)
+                self.assertIn("use_locale", fmt)
+                self.assertIn("thousands_separator", fmt)
+
+    # --- ComputationField ---
+
+    def test_create_number_format(self):
+        """
+        ComputationField.create() stores number_format on the generated class.
+
+        - When number_format is passed, it is stored verbatim on the class attribute.
+        - When omitted, the attribute is None (signals "use global default").
+        - The default type is "number", which is what the JS render gate checks.
+        """
+        with self.subTest("stored when given"):
+            # field_overridden was created with number_format={"decimal_places": 0}
+            self.assertEqual(self.field_overridden.number_format, {"decimal_places": 0})
+        with self.subTest("None when omitted"):
+            # field_plain was created without number_format → None means "use global"
+            self.assertIsNone(self.field_plain.number_format)
+        with self.subTest("default type is number"):
+            # JS render callback fires only when column type == "number"
+            self.assertEqual(ComputationField.type, "number")
+
+    # --- regular group-by ---
+
+    def test_group_by_columns_data(self):
+        """
+        get_columns_data() emits number_format on numeric columns only, with correct merge.
+
+        Expected for field_plain (no override):
+            {"decimal_places": 2, "use_locale": True, "thousands_separator": ","}  ← global default
+
+        Expected for field_overridden (decimal_places=0):
+            {"decimal_places": 0, "use_locale": True, "thousands_separator": ","}  ← merged
+
+        The "name" text column must NOT receive a number_format key.
+        """
+        report = self._make_report(["name", self.field_plain, self.field_overridden])
+        cols = {c["name"]: c for c in report.get_columns_data()}
+
+        with self.subTest("numeric gets number_format, text does not"):
+            self.assertIn("number_format", cols[self.field_plain.name])
+            self.assertNotIn("number_format", cols["name"])  # "name" is a text column
+
+        with self.subTest("global default has all keys"):
+            # field_plain has no override → all three keys come from the global default
+            self._assert_fully_resolved_format(list(cols.values()))
+
+        with self.subTest("per-field decimal_places overrides global"):
+            # field_overridden sets decimal_places=0; use_locale and thousands_separator
+            # are inherited from the global and must still be present
+            self.assertEqual(cols[self.field_overridden.name]["number_format"]["decimal_places"], 0)
+
+    # --- settings override ---
+
+    def test_global_settings_override(self):
+        """
+        SLICK_REPORTING_SETTINGS["NUMBER_FORMAT"] is deep-merged with the built-in default.
+
+        User only has to specify the keys they want to change; omitted keys keep their
+        default values.  E.g. setting just decimal_places=4 leaves use_locale untouched.
+
+        Expected resolved format with {"decimal_places": 4}:
+            {"decimal_places": 4, "use_locale": True, "thousands_separator": ","}
+        """
+        with override_settings(SLICK_REPORTING_SETTINGS={"NUMBER_FORMAT": {"decimal_places": 4}}):
+            from slick_reporting.app_settings import get_slick_reporting_settings
+            resolved = get_slick_reporting_settings()
+            with self.subTest("override applied"):
+                self.assertEqual(resolved["NUMBER_FORMAT"]["decimal_places"], 4)
+            with self.subTest("other keys fall back to defaults"):
+                # use_locale was not overridden → must still be present from the built-in default
+                self.assertIn("use_locale", resolved["NUMBER_FORMAT"])
+
+    # --- time-series ---
+
+    def test_time_series_columns_data(self):
+        """
+        Time-series columns carry both ``type`` and ``number_format`` in get_columns_data().
+
+        Time-series columns are named  "<field_name>TS<YYYYMMDD>" (e.g. "nf_plainTS20200131").
+        They were previously missing the ``type`` key, which would silently skip formatting.
+
+        Expected: each TS column has type="number" and a fully-resolved number_format dict.
+        """
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            date_field="doc_date",
+            group_by="client",
+            columns=["name", "__time_series__"],
+            time_series_columns=[self.field_plain],
+            time_series_pattern="monthly",
+            start_date=datetime(2020, 1, 1),
+            end_date=datetime(2020, 3, 31),  # 3 monthly columns
+        )
+        with self.subTest("parsed columns have type key"):
+            # get_time_series_parsed_columns() is the internal source; type must be present
+            # before get_columns_data() can forward it to the frontend
+            for col in report.get_time_series_parsed_columns():
+                self.assertIn("type", col)
+        with self.subTest("columns_data has number_format for TS columns"):
+            ts_cols = [c for c in report.get_columns_data() if "TS" in c["name"]]
+            self._assert_fully_resolved_format(ts_cols)
+
+    # --- crosstab ---
+
+    def test_crosstab_columns_data(self):
+        """
+        Crosstab columns carry both ``type`` and ``number_format`` in get_columns_data().
+
+        Crosstab columns are named "<field_name>CT<id>" (e.g. "value__sumCT1").
+        Like time-series, they were previously missing the ``type`` key.
+
+        Expected: each CT column has type="number" and a fully-resolved number_format dict.
+        """
+        report = CrosstabOnClient(crosstab_ids=[self.client1.pk], crosstab_compute_remainder=False)
+        with self.subTest("parsed columns have type key"):
+            # get_crosstab_parsed_columns() is the internal source for crosstab column metadata
+            for col in report.get_crosstab_parsed_columns():
+                self.assertIn("type", col)
+        with self.subTest("columns_data has number_format for CT columns"):
+            ct_cols = [c for c in report.get_columns_data() if "CT" in c["name"]]
+            self._assert_fully_resolved_format(ct_cols)

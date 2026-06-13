@@ -830,6 +830,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                         "end_date": dt[1],
                         "source": "magic_field" if magic_field_class else "",
                         "is_summable": magic_field_class.is_summable,
+                        "type": magic_field_class.type,
                     }
                 )
 
@@ -944,6 +945,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     "is_remainder": counter == ids_length if self.crosstab_compute_remainder else False,
                     "source": "magic_field" if magic_field_class else "",
                     "is_summable": magic_field_class.is_summable,
+                    "type": magic_field_class.type,
                     "computation_flag": "crosstab",  # a flag, todo find a better way probably
                 }
                 crosstab_column["queryset_filters"] = self._construct_crosstab_filter(crosstab_column, queryset_filters)
@@ -1007,20 +1009,26 @@ class ReportGenerator(ReportGeneratorAPI, object):
         :param columns:
         :return:
         """
+        from .app_settings import SLICK_REPORTING_SETTINGS
+
         columns = self.get_list_display_columns()
+        global_number_format = SLICK_REPORTING_SETTINGS.get("NUMBER_FORMAT", {})
         data = []
 
         for col in columns:
-            data.append(
-                {
-                    "name": col["name"],
-                    "computation_field": col.get("original_name", ""),
-                    "verbose_name": col["verbose_name"],
-                    "visible": col.get("visible", True),
-                    "type": col.get("type", "text"),
-                    "is_summable": col.get("is_summable", ""),
-                }
-            )
+            col_type = col.get("type", "text")
+            entry = {
+                "name": col["name"],
+                "computation_field": col.get("original_name", ""),
+                "verbose_name": col["verbose_name"],
+                "visible": col.get("visible", True),
+                "type": col_type,
+                "is_summable": col.get("is_summable", ""),
+            }
+            if col_type == "number":
+                field_fmt = getattr(col.get("ref"), "number_format", None) or {}
+                entry["number_format"] = {**global_number_format, **field_fmt}
+            data.append(entry)
         return data
 
     def get_full_response(

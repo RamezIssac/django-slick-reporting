@@ -97,6 +97,7 @@
         })
         $.slick_reporting.report_loader.chart_engines = chartSettings;
         $.slick_reporting.defaults.total_label = settings["MESSAGES"]["TOTAL_LABEL"];
+        $.slick_reporting.defaults.number_format = settings["NUMBER_FORMAT"] || null;
     }
 
     function _get_chart_icon(chart_type) {

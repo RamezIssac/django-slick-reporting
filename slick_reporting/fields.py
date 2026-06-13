@@ -36,6 +36,10 @@ class ComputationField(object):
     type = "number"
     """Just a string describing what this computation field return, usually passed to frontend"""
 
+    number_format = None
+    """Per-field number format override. Dict with keys: decimal_places, use_locale, thousands_separator.
+    None means use the global NUMBER_FORMAT setting."""
+
     is_summable = True
     """Indicate if this computation can be summed over. Useful to be passed to frontend or whenever needed"""
 
@@ -71,7 +75,7 @@ class ComputationField(object):
         return super(ComputationField, cls).__new__(cls)
 
     @classmethod
-    def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
+    def create(cls, method, field, name=None, verbose_name=None, is_summable=True, number_format=None):
         """
         Creates a ReportField class on the fly
         :param method: The computation Method to be used
@@ -79,6 +83,8 @@ class ComputationField(object):
         :param name: a name to refer to this field else where
         :param verbose_name: Verbose name
         :param is_summable:
+        :param number_format: Optional dict to override global NUMBER_FORMAT for this field.
+            Keys: decimal_places, use_locale, thousands_separator.
         :return:
         """
         if not name:
@@ -95,6 +101,7 @@ class ComputationField(object):
                 "calculation_field": field,
                 "calculation_method": method,
                 "is_summable": is_summable,
+                "number_format": number_format,
             },
         )
         return report_klass
@@ -541,9 +548,9 @@ class SlickReportField(ComputationField):
         )
 
     @classmethod
-    def create(cls, method, field, name=None, verbose_name=None, is_summable=True):
+    def create(cls, method, field, name=None, verbose_name=None, is_summable=True, number_format=None):
         cls.warn()
-        return super().create(method, field, name, verbose_name, is_summable)
+        return super().create(method, field, name, verbose_name, is_summable, number_format=number_format)
 
     def __new__(cls, *args, **kwargs):
         cls.warn()

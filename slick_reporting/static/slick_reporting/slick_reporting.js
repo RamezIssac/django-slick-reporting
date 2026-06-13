@@ -94,13 +94,39 @@
     }
 
 
+    let _numberFormatCache = {};
+
+    function formatNumber(value, fmt) {
+        if (value === null || value === undefined || value === '') return '';
+        let num = parseFloat(value);
+        if (isNaN(num)) return value;
+        let cacheKey = JSON.stringify(fmt);
+        if (!_numberFormatCache[cacheKey]) {
+            _numberFormatCache[cacheKey] = fmt.use_locale
+                ? new Intl.NumberFormat(undefined, {
+                    minimumFractionDigits: fmt.decimal_places,
+                    maximumFractionDigits: fmt.decimal_places,
+                })
+                : '__manual__';
+        }
+        if (fmt.use_locale) {
+            return _numberFormatCache[cacheKey].format(num);
+        }
+        let fixed = num.toFixed(fmt.decimal_places);
+        let parts = fixed.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, fmt.thousands_separator);
+        return parts.join('.');
+    }
+
     $.slick_reporting = {
         'getObjFromArray': getObjFromArray,
         'calculateTotalOnObjectArray': calculateTotalOnObjectArray,
         "executeFunctionByName": executeFunctionByName,
         "get_xpath": get_xpath,
+        "formatNumber": formatNumber,
         defaults: {
             total_label: 'Total',
+            number_format: null,
         }
 
     }

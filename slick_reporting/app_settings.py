@@ -88,6 +88,11 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
         "export_to_csv": _("Export to CSV"),
         "print_report": _("Print"),
     },
+    "NUMBER_FORMAT": {
+        "decimal_places": 2,
+        "use_locale": True,
+        "thousands_separator": ",",
+    },
     "REPORT_VIEW_ACCESS_FUNCTION": "slick_reporting.helpers.user_test_function",
 }
 
@@ -112,6 +117,9 @@ def get_slick_reporting_settings():
     slick_chart_settings.update(user_chart_settings)
     slick_settings.update(user_settings)
     slick_settings["CHARTS"] = slick_chart_settings
+
+    user_number_format = user_settings.get("NUMBER_FORMAT", {})
+    slick_settings["NUMBER_FORMAT"] = {**SLICK_REPORTING_SETTINGS_DEFAULT["NUMBER_FORMAT"], **user_number_format}
 
     # slick_settings = {**SLICK_REPORTING_SETTINGS_DEFAULT, **getattr(settings, "SLICK_REPORTING_SETTINGS", {})}
     start_date = getattr(settings, "SLICK_REPORTING_DEFAULT_START_DATE", False)

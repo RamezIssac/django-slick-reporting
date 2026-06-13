@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - Unreleased
+
+### New Features
+
+- **Datatable number formatting** — numeric columns in the datatable can now be displayed
+  with locale-aware thousands separators and configurable decimal places.
+  Raw values are kept in the JSON response so DataTables sorting and footer summation
+  are unaffected; formatting is display-only via a DataTables `render` callback.
+
+  **Global default** — add to Django settings:
+
+  ```python
+  SLICK_REPORTING_SETTINGS = {
+      "NUMBER_FORMAT": {
+          "decimal_places": 2,       # digits after the decimal point
+          "use_locale": True,        # use browser Intl.NumberFormat (recommended)
+          "thousands_separator": ",", # used only when use_locale=False
+      }
+  }
+  ```
+
+  **Per-field override** — passed to `ComputationField.create()` or set as a class
+  attribute on a `ComputationField` subclass. Only the specified keys override the
+  global; omitted keys are inherited:
+
+  ```python
+  # Integer quantity — no decimal places
+  QuantityField = ComputationField.create(Sum, "quantity", name="qty", number_format={"decimal_places": 0})
+
+  # Subclass approach
+  class RevenueField(ComputationField):
+      calculation_method = Sum
+      calculation_field = "value"
+      name = "revenue"
+      number_format = {"decimal_places": 2}
+  ```
+
+### Bug Fixes
+
+- Time-series and crosstab column metadata was missing the ``type`` key, which would
+  silently prevent number formatting from applying to those column types.
+
 ## [1.4.0] - 2026-05-01
 
 ### New Features
