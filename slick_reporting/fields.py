@@ -279,7 +279,7 @@ class ComputationField(object):
         :return: a solid number or value
         """
         debit_value, credit_value = self.extract_data(prepared_results, current_pk)
-        value = debit_value or 0 - credit_value or 0
+        value = (debit_value or 0) - (credit_value or 0)
         return value
 
     def do_resolve(self, current_obj, current_row=None):

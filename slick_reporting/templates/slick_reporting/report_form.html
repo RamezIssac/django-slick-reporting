@@ -13,6 +13,8 @@
     <div class="card-footer text-end">
         <input type="submit" value="{% translate "Filter" %}"
                class="btn btn-primary  refreshReport" data-get-results-button>
+        <button type="button" class="btn btn-outline-secondary" data-share-report-btn
+                data-copied-label="{% translate 'Copied!' %}">{% translate "Share" %}</button>
 
 
         {% for export_action in report.get_export_actions %}

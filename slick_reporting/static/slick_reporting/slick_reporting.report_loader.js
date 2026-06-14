@@ -66,6 +66,8 @@
         let formSelector = $elem.attr('data-form-selector');
         if (formSelector) {
             data = $(formSelector).serialize();
+            const newUrl = window.location.pathname + (data ? '?' + data : '');
+            history.pushState(null, '', newUrl);
         } else {
             if (url === '#') return; // there is no actual url, probably not enough permissions
 
@@ -91,6 +93,12 @@
         $('[data-report-widget]').not('[data-no-auto-load]').each(function (i, elem) {
             refreshReportWidget($(elem));
         });
+
+        if (window.location.search) {
+            $('[data-report-widget][data-no-auto-load]').each(function (i, elem) {
+                refreshReportWidget($(elem));
+            });
+        }
 
         Object.keys(settings["CHARTS"]).forEach(function (key) {
             chartSettings[key] = settings.CHARTS[key].entryPoint;
@@ -163,6 +171,17 @@
             event.preventDefault();
             let $elem = $('[data-report-widget]')
             $.slick_reporting.report_loader.refreshReportWidget($elem)
+        });
+
+        $('body').on('click', '[data-share-report-btn]', function (e) {
+            e.preventDefault();
+            let $btn = $(this);
+            let copiedLabel = $btn.attr('data-copied-label') || 'Copied!';
+            navigator.clipboard.writeText(window.location.href).then(function () {
+                let originalHtml = $btn.html();
+                $btn.html(copiedLabel);
+                setTimeout(function () { $btn.html(originalHtml); }, 2000);
+            });
         });
 
     });
