@@ -61,6 +61,15 @@
                 total_container[columns[i]] += parseFloat(val);
             }
         }
+        // Strip floating-point noise (e.g. 0.1+0.2 → 0.30000000000004).
+        // toPrecision(14) preserves up to 14 significant digits — enough for any
+        // realistic financial value — while dropping binary-representation artifacts.
+        for (let i = 0; i < columns.length; i++) {
+            let v = total_container[columns[i]];
+            if (typeof v === 'number' && isFinite(v) && v !== 0) {
+                total_container[columns[i]] = parseFloat(v.toPrecision(14));
+            }
+        }
         return total_container;
     }
 
