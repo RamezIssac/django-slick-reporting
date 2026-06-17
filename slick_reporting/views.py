@@ -13,7 +13,7 @@ from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
-from .app_settings import SLICK_REPORTING_SETTINGS, get_access_function
+from .app_settings import SLICK_REPORTING_SETTINGS, get_access_function, get_end_date, get_start_date
 from .forms import (
     report_form_factory,
     get_crispy_helper,
@@ -41,9 +41,9 @@ class ExportToCSV(object):
         return self.report_title
 
     def get_response(self):
-        response = HttpResponse(content_type="text/csv")
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = "attachment; filename={filename}.csv".format(filename=self.get_filename())
-
+        # response.write("\ufeff")  # UTF-8 BOM for correct Arabic/non-ASCII rendering in Excel
         writer = csv.writer(response)
         for rows in self.get_rows():
             writer.writerow(rows)
@@ -75,9 +75,15 @@ class ExportToStreamingCSV(ExportToCSV):
 
         pseudo_buffer = Echo()
         writer = csv.writer(pseudo_buffer)
+
+        def rows_with_bom():
+            # yield "\ufeff"  # UTF-8 BOM for correct Arabic/non-ASCII rendering in Excel
+            for row in self.get_rows():
+                yield writer.writerow(row)
+
         return StreamingHttpResponse(
-            (writer.writerow(row) for row in self.get_rows()),
-            content_type="text/csv",
+            rows_with_bom(),
+            content_type="text/csv; charset=utf-8",
             headers={
                 "Content-Disposition": 'attachment; filename="{filename}.csv"'.format(filename=self.get_filename())
             },
@@ -477,8 +483,8 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         initial = self.initial.copy()
         initial.update(
             {
-                "start_date": SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"],
-                "end_date": SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],
+                "start_date": get_start_date,
+                "end_date": get_end_date,
             }
         )
         return initial

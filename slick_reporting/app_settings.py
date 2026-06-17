@@ -23,7 +23,10 @@ def get_start_date():
 
 def get_end_date():
     end_date = getattr(settings, "SLICK_REPORTING_DEFAULT_END_DATE", False)
-    return end_date or datetime.datetime.today()
+    if end_date:
+        return end_date
+    d = datetime.datetime.today()
+    return d.replace(hour=23, minute=59, second=59, microsecond=0)
 
 
 SLICK_REPORTING_DEFAULT_START_DATE = lazy(get_start_date, datetime.datetime)()

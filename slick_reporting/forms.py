@@ -278,14 +278,14 @@ def report_form_factory(
         fields["start_date"] = forms.DateTimeField(
             required=False,
             label=_("From date"),
-            initial=initial.get("start_date", "") or app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"],
+            initial=initial.get("start_date", "") or app_settings.get_start_date,
             widget=forms.DateTimeInput(attrs={"autocomplete": "off"}),
         )
     if add_end_date:
         fields["end_date"] = forms.DateTimeField(
             required=False,
             label=_("To  date"),
-            initial=initial.get("end_date", "") or app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],
+            initial=initial.get("end_date", "") or app_settings.get_end_date,
             widget=forms.DateTimeInput(attrs={"autocomplete": "off"}),
         )
 
