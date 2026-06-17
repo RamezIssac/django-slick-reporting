@@ -97,6 +97,11 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
         "thousands_separator": ",",
     },
     "REPORT_VIEW_ACCESS_FUNCTION": "slick_reporting.helpers.user_test_function",
+    # DataTables language strings. Keys/values are passed directly to DataTables' `language` option.
+    # See https://datatables.net/reference/option/language for available keys.
+    # Example: {"url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/ar.json"}
+    # Or pass inline strings — see SLICK_REPORTING_SETTINGS in consumer project settings.
+    "DATATABLE_LANGUAGE": {},
 }
 
 
