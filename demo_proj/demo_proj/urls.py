@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 
 from demo_app import views
 from demo_app import helpers
@@ -24,4 +24,6 @@ urlpatterns = helpers.get_urls_patterns() + [
     path("", views.HomeView.as_view(), name="home"),
     path("dashboard/", views.Dashboard.as_view(), name="dashboard"),
     path("admin/", admin.site.urls),
+    path("accounts/", include("django.contrib.auth.urls")),
+    path("sr-dashboard/", include("slick_reporting.dashboard.urls")),
 ]

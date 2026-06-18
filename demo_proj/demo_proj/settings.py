@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     "crispy_forms",
     "crispy_bootstrap5",
     "slick_reporting",
-    # "slick_reporting.dashboards",
+    "slick_reporting.dashboard",
 ]
 
 MIDDLEWARE = [
@@ -145,3 +145,5 @@ SLICK_REPORTING_SETTINGS = {
 
 STATIC_ROOT = os.getenv("STATIC_ROOT", BASE_DIR / "collected_static")
 MEDIA_ROOT = os.getenv("MEDIA_ROOT", str(BASE_DIR / "media"))
+
+LOGIN_URL = "/admin/login/"

@@ -1,0 +1,103 @@
+{% extends "slick_reporting/dashboard/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Configure Dashboard" %}{% endblock %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/gridstack@10/dist/gridstack-extra.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+<div class="d-flex" style="height: 100vh; overflow: hidden;">
+
+    <!-- Sidebar: available reports -->
+    <div id="reports-sidebar" class="bg-light border-end d-flex flex-column" style="width: 260px; min-width: 260px; overflow-y: auto;">
+        <div class="p-3 border-bottom">
+            <h6 class="mb-1 fw-bold">{% trans "Available Reports" %}</h6>
+            <small class="text-muted">{% trans "Drag or click + to add to dashboard" %}</small>
+        </div>
+        <div class="p-2" id="sidebar-report-list">
+            {% for report in available_reports %}
+                <div class="sidebar-report-item card card-sm mb-2 cursor-grab"
+                     data-report-url-name="{{ report.url_name }}"
+                     data-report-title="{{ report.title }}"
+                     title="{{ report.description }}">
+                    <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold small">{{ report.title }}</div>
+                            {% if report.description %}
+                                <div class="text-muted" style="font-size: 0.7rem;">{{ report.description|truncatechars:50 }}</div>
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-2 add-report-btn flex-shrink-0"
+                                data-report-url-name="{{ report.url_name }}"
+                                data-report-title="{{ report.title }}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="text-muted text-center p-3 small">
+                    {% trans "No reports found. Register ReportView subclasses in your urls.py." %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Main area: grid editor -->
+    <div class="flex-grow-1 d-flex flex-column overflow-hidden">
+        <!-- Toolbar -->
+        <div class="p-3 border-bottom bg-white d-flex align-items-center gap-2">
+            <span class="fw-bold me-auto">
+                {% if dashboard %}{{ dashboard.name }}{% else %}{% trans "My Dashboard" %}{% endif %}
+            </span>
+            <a href="{{ dashboard_url }}" class="btn btn-sm btn-outline-secondary">
+                {% trans "Cancel" %}
+            </a>
+            <button type="button" id="save-dashboard-btn" class="btn btn-sm btn-primary">
+                <i class="fas fa-save me-1"></i>{% trans "Save" %}
+            </button>
+        </div>
+
+        <!-- GridStack canvas -->
+        <div class="flex-grow-1 p-3 overflow-auto bg-white">
+            {% if not available_reports and not current_widgets %}
+                <div class="text-muted text-center py-5">
+                    <i class="fas fa-th-large fa-2x mb-2"></i>
+                    <p>{% trans "No reports are registered yet." %}</p>
+                </div>
+            {% endif %}
+            <div class="grid-stack" id="configurator-grid">
+                {% for widget in current_widgets %}
+                    <div class="grid-stack-item"
+                         gs-x="{{ widget.gs_x }}"
+                         gs-y="{{ widget.gs_y }}"
+                         gs-w="{{ widget.gs_w }}"
+                         gs-h="{{ widget.gs_h }}"
+                         data-report-url-name="{{ widget.report_url_name }}"
+                         data-report-title="{{ widget.title|default:widget.report_url_name }}"
+                         data-display-chart="{{ widget.display_chart|lower }}"
+                         data-display-table="{{ widget.display_table|lower }}">
+                        <div class="grid-stack-item-content">
+                            {% include "slick_reporting/dashboard/widget_placeholder.html" with title=widget.title|default:widget.report_url_name %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        SlickDashboard.initConfigurator({
+            gridEl: '#configurator-grid',
+            saveUrl: '{{ save_url }}',
+            viewUrl: '{{ dashboard_url }}',
+            csrfToken: '{{ csrf_token }}',
+        });
+    });
+</script>
+{% endblock %}

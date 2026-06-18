@@ -1,0 +1,56 @@
+{% extends "slick_reporting/dashboard/base.html" %}
+{% load i18n slick_reporting_tags %}
+
+{% block title %}{% trans "Dashboard" %}{% endblock %}
+
+{% block body %}
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{% trans "Dashboard" %}</h2>
+        <a href="{% url 'slick_reporting_dashboard:configurator' %}" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-cog me-1"></i>{% trans "Edit Dashboard" %}
+        </a>
+    </div>
+
+    {% if widgets %}
+        <div class="grid-stack" id="dashboard-grid">
+            {% for widget in widgets %}
+                <div class="grid-stack-item"
+                     gs-x="{{ widget.gs_x }}"
+                     gs-y="{{ widget.gs_y }}"
+                     gs-w="{{ widget.gs_w }}"
+                     gs-h="{{ widget.gs_h }}">
+                    <div class="grid-stack-item-content">
+                        {% get_widget_from_url url_name=widget.report_url_name display_chart=widget.display_chart display_table=widget.display_table title=widget.title %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card text-center py-5">
+            <div class="card-body">
+                <i class="fas fa-th-large fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">{% trans "No widgets configured" %}</h4>
+                <p class="text-muted">{% trans "Add reports to your dashboard to get started." %}</p>
+                <a href="{% url 'slick_reporting_dashboard:configurator' %}" class="btn btn-primary">
+                    {% trans "Configure Dashboard" %}
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var grid = GridStack.init({
+            column: 12,
+            cellHeight: 80,
+            staticGrid: true,
+            disableDrag: true,
+            disableResize: true,
+        }, '#dashboard-grid');
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% load i18n %}
+<div class="h-100 d-flex flex-column">
+    <div class="d-flex align-items-center px-2 py-1 bg-light border-bottom widget-placeholder-header">
+        <i class="fas fa-grip-vertical text-muted me-2 drag-handle"></i>
+        <span class="fw-semibold small flex-grow-1 text-truncate">{{ title }}</span>
+        <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1 remove-widget-btn" title="{% trans 'Remove' %}">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="flex-grow-1 d-flex align-items-center justify-content-center text-muted">
+        <div class="text-center">
+            <i class="fas fa-chart-bar fa-2x mb-1 opacity-25"></i>
+            <div class="small">{% trans "Chart / Table" %}</div>
+        </div>
+    </div>
+</div>
