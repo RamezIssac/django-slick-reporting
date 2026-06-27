@@ -7,22 +7,18 @@
 <div class="container-fluid py-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-0">{% trans "Dashboard" %}</h2>
-        <a href="{% url 'slick_reporting_dashboard:configurator' %}" class="btn btn-outline-primary btn-sm">
-            <i class="fas fa-cog me-1"></i>{% trans "Edit Dashboard" %}
-        </a>
+        {% if can_edit %}
+            <a href="{% url 'slick_reporting_dashboard:configurator' %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-cog me-1"></i>{% trans "Edit Dashboard" %}
+            </a>
+        {% endif %}
     </div>
 
     {% if widgets %}
-        <div class="grid-stack" id="dashboard-grid">
-            {% for widget in widgets %}
-                <div class="grid-stack-item"
-                     gs-x="{{ widget.gs_x }}"
-                     gs-y="{{ widget.gs_y }}"
-                     gs-w="{{ widget.gs_w }}"
-                     gs-h="{{ widget.gs_h }}">
-                    <div class="grid-stack-item-content">
-                        {% get_widget_from_url url_name=widget.report_url_name display_chart=widget.display_chart display_table=widget.display_table title=widget.title %}
-                    </div>
+        <div class="row">
+            {% for placement in widgets %}
+                <div class="col-12 col-lg-{{ placement.saved_widget.column_span }} mb-3">
+                    {% get_widget_from_url url_name=placement.saved_widget.report_url_name chart_id=placement.saved_widget.chart_id display_chart=placement.saved_widget.display_chart display_table=placement.saved_widget.display_table extra_params=placement.saved_widget.extra_params title=placement.saved_widget.name %}
                 </div>
             {% endfor %}
         </div>
@@ -31,26 +27,16 @@
             <div class="card-body">
                 <i class="fas fa-th-large fa-3x text-muted mb-3"></i>
                 <h4 class="text-muted">{% trans "No widgets configured" %}</h4>
-                <p class="text-muted">{% trans "Add reports to your dashboard to get started." %}</p>
-                <a href="{% url 'slick_reporting_dashboard:configurator' %}" class="btn btn-primary">
-                    {% trans "Configure Dashboard" %}
-                </a>
+                {% if can_edit %}
+                    <p class="text-muted">{% trans "Build and add reports to your dashboard to get started." %}</p>
+                    <a href="{% url 'slick_reporting_dashboard:configurator' %}" class="btn btn-primary">
+                        {% trans "Configure Dashboard" %}
+                    </a>
+                {% endif %}
             </div>
         </div>
     {% endif %}
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var grid = GridStack.init({
-            column: 12,
-            cellHeight: 80,
-            staticGrid: true,
-            disableDrag: true,
-            disableResize: true,
-        }, '#dashboard-grid');
-    });
-</script>
-{% endblock %}
+{% block extra_js %}{{ block.super }}{% endblock %}

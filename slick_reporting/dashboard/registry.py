@@ -47,9 +47,32 @@ class DashboardReportRegistry:
                         "title": view_class.get_report_title(),
                         "report_slug": view_class.get_report_slug(),
                         "description": getattr(view_class, "report_description", ""),
+                        "charts": self._get_report_charts(view_class),
                     }
                 )
         return results
+
+    @staticmethod
+    def _get_report_charts(view_class):
+        """
+        Return the report's charts as [{id, title, type}], using the generator's own
+        normalization so the ids match what the front end uses to select a chart.
+        """
+        try:
+            charts = view_class.report_generator_class.get_chart_settings(
+                chart_settings=view_class.chart_settings or [],
+                default_chart_title=view_class.get_report_title(),
+            )
+        except Exception:
+            return []
+        return [{"id": c.get("id"), "title": c.get("title", ""), "type": c.get("type", "")} for c in charts]
+
+    def get_report(self, url_name):
+        """Return the cached metadata dict for a single report url_name, or None."""
+        for report in self.get_available_reports():
+            if report["url_name"] == url_name:
+                return report
+        return None
 
     def get_available_reports(self):
         if self._cache is not None:

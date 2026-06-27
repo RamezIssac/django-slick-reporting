@@ -1,6 +1,13 @@
 from django.urls import path
 
-from .views import AvailableReportsAPIView, DashboardConfiguratorView, DashboardSaveView, DashboardView
+from .views import (
+    AvailableReportsAPIView,
+    DashboardConfiguratorView,
+    DashboardSaveView,
+    DashboardView,
+    SavedWidgetView,
+    WidgetBuilderFormView,
+)
 
 app_name = "slick_reporting_dashboard"
 
@@ -9,4 +16,6 @@ urlpatterns = [
     path("edit/", DashboardConfiguratorView.as_view(), name="configurator"),
     path("save/", DashboardSaveView.as_view(), name="save"),
     path("reports/", AvailableReportsAPIView.as_view(), name="available_reports"),
+    path("builder-form/", WidgetBuilderFormView.as_view(), name="builder_form"),
+    path("saved-widget/", SavedWidgetView.as_view(), name="saved_widget"),
 ]
