@@ -60,11 +60,20 @@ class RequireDashboardEditMixin:
 
 class DashboardMixin:
     def get_dashboard(self, request):
-        """Return the user's personal Dashboard, or the shared default, or None."""
+        """
+        Return the dashboard to display: the user's personal Dashboard, else the
+        shared default. When editing is disabled, personal dashboards can't be
+        created/curated by users, so any that linger are stale — always use the
+        shared default instead (otherwise a stale personal dashboard would shadow
+        the curated one and the page would look empty).
+        """
+        shared_default = Dashboard.objects.filter(user__isnull=True, is_default=True).first()
+        if not dashboard_edit_allowed():
+            return shared_default
         try:
             return Dashboard.objects.get(user=request.user)
         except Dashboard.DoesNotExist:
-            return Dashboard.objects.filter(user__isnull=True, is_default=True).first()
+            return shared_default
 
     def get_or_create_user_dashboard(self, request):
         dashboard, _ = Dashboard.objects.get_or_create(
