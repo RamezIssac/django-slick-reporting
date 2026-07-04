@@ -1051,7 +1051,11 @@ class ReportGenerator(ReportGeneratorAPI, object):
         """
         Ensure the sane settings are passed to the front end. ?
         """
-        chart_engine = chart_engine or SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
+        chart_engine = (
+            chart_engine
+            or app_settings.SLICK_REPORTING_SETTINGS.get("DEFAULT_CHARTS_ENGINE")
+            or SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
+        )
         output = []
         chart_settings = chart_settings or []
         report_title = default_chart_title or ""
