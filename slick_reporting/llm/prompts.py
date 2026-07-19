@@ -9,40 +9,34 @@ Two-stage flow:
 
 import json
 
-PLAN_SYSTEM_PROMPT = """You are a senior data analyst. Your job is to translate a business question into a precise reporting configuration for a Django reporting library called slick_reporting.
+PLAN_SYSTEM_PROMPT = """You are a senior data analyst. Translate a business question into a JSON report configuration.
 
-You will be given a catalog of available models, computation fields, aggregation methods, and time series patterns. You must output a JSON object with exactly this shape:
-
+Use this exact JSON structure:
 {
-  "thinking": "short reasoning about which model, group_by, date_field, and columns to use",
+  "thinking": "short reasoning",
   "report": {
-    "report_model": "app_label.ModelName",
-    "date_field": "a DateTimeField or DateField on the report_model",
+    "report_model": "demo_app.SalesTransaction",
+    "date_field": "date",
     "start_date": "YYYY-MM-DD",
     "end_date": "YYYY-MM-DD",
-    "group_by": "field on report_model or traversing fk, e.g. 'product' or 'client__country'. Omit for no grouping.",
+    "group_by": "product",
     "columns": ["name", {"method": "Sum", "field": "value", "name": "value__sum"}],
-    "time_series_pattern": "monthly|quarterly|annually|... or omit",
+    "time_series_pattern": "quarterly",
     "time_series_columns": [{"method": "Sum", "field": "value", "name": "value__sum"}],
-    "crosstab_field": "field on report_model, e.g. 'product' or omit",
-    "crosstab_columns": [{"method": "Sum", "field": "value", "name": "value__sum"}],
-    "crosstab_ids": [1, 2],
-    "filters": {
-      "product_id__in": [1, 2]
-    }
+    "filters": {"product_id__in": [1, 2]}
   }
 }
 
 Rules:
-* Only use model/field names that exist in the catalog.
-* For columns, use either a string field name or a dict with method, field and name.
-* If the user asks for values over time, set a time_series_pattern (e.g. monthly/quarterly) and time_series_columns.
-* If the user asks to compare two dimensions (e.g. Product 1 vs Product 2), use crosstab_field + crosstab_ids, or a time series with filters.
-* Put filters as Django ORM kwargs filters (e.g. product_id__in, client__country__in). Use numeric IDs when filtering foreign keys; the caller will resolve names when possible.
-* date_field is mandatory whenever start_date/end_date are provided.
-* For relative dates like "this year" or "last year" compute them from today_iso in the catalog.
-* If the request is not answerable with the available catalog, set report to null and explain why in thinking.
-* Return ONLY the JSON object; do not wrap it in markdown code fences.
+* Only use fields/models that exist in the catalog.
+* Column entry: a string field name OR {"method": "Sum", "field": "value", "name": "value__sum"}.
+* Use time_series_pattern (monthly/quarterly/annually) and time_series_columns for values over time.
+* Filters are Django ORM kwargs (e.g. product_id__in, client__country__in).
+* When the user refers to a related object by its human-readable name (e.g. "Product 1"), use the name string in the filter value (e.g. "product_id__in": ["Product 1"]) and the system will resolve it to the database primary key.
+* date_field is required when start_date/end_date are used.
+* Use today_iso for relative dates. Q3 = July 1 to September 30. This year = the current year in today_iso.
+* If the request cannot be answered, set "report": null.
+* Output ONLY JSON. No markdown code fences.
 """
 
 
@@ -78,6 +72,19 @@ def _catalog_to_text(catalog):
     return json.dumps(catalog, indent=2, default=str)
 
 
+def _report_data_to_text(reports_with_data):
+    """Keep only the first 100 rows of each report so local LLMs stay fast."""
+    output = []
+    for report in reports_with_data:
+        copy = {
+            "config": report.get("config"),
+            "columns": report.get("columns"),
+            "data": (report.get("data") or [])[:100],
+        }
+        output.append(copy)
+    return json.dumps(output, indent=2, default=str)
+
+
 def plan_prompt(question, catalog):
     """Return the full prompt text for stage 1 (config generation)."""
     return (
@@ -91,6 +98,6 @@ def answer_prompt(question, reports_with_data):
     return (
         f"{ANSWER_SYSTEM_PROMPT}\n\n"
         f"User question: {question}\n\n"
-        f"Reports used as proof:\n{json.dumps(reports_with_data, indent=2, default=str)}\n\n"
+        f"Reports used as proof:\n{_report_data_to_text(reports_with_data)}\n\n"
         "Return the JSON answer."
     )

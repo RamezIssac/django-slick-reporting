@@ -133,6 +133,30 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 
 SLICK_REPORTING_DEFAULT_CHARTS_ENGINE = "highcharts"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "debug": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "debug",
+        },
+    },
+    "loggers": {
+        "slick_reporting": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}
+
 SLICK_REPORTING_SETTINGS = {
     "CHARTS": {
         "apexcharts": {
@@ -140,6 +164,14 @@ SLICK_REPORTING_SETTINGS = {
             "js": ("https://cdn.jsdelivr.net/npm/apexcharts", "slick_reporting/slick_reporting.chartsjs.js"),
             "css": {"all": ("https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.css",)},
         },
+    },
+    # Local llama.cpp OpenAI-compatible server used for the "Ask the data" assistant.
+    "LLM_BACKEND": "slick_reporting.llm.backends.OpenAICompatibleBackend",
+    "LLM_BACKEND_OPTIONS": {
+        "api_url": "http://192.168.178.100:8080/v1/chat/completions",
+        "api_key": "not-needed",
+        "model": "local",
+        "temperature": 0.2,
     },
 }
 

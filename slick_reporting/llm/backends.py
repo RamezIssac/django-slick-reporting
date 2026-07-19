@@ -75,18 +75,7 @@ class OpenAICompatibleBackend(LLMBackend):
     def complete(self, prompt: str) -> str:
         import urllib.request
 
-        messages = []
-        # Allow callers to pass a pre-structured JSON message list in the
-        # prompt by trying to decode it; otherwise treat the whole value as
-        # the user message.  This keeps the same interface while supporting
-        # multi-turn structured prompts in subclasses/tests.
-        try:
-            parsed = json.loads(prompt)
-            if isinstance(parsed, list):
-                messages = parsed
-        except (json.JSONDecodeError, TypeError):
-            messages = [{"role": "user", "content": prompt}]
-
+        messages = self._messages_from_prompt(prompt)
         if not messages:
             messages = [{"role": "user", "content": prompt}]
 
@@ -106,13 +95,28 @@ class OpenAICompatibleBackend(LLMBackend):
                 "Content-Type": "application/json",
             },
         )
-        with urllib.request.urlopen(req, timeout=120) as response:
+        timeout = self.options.get("timeout", 600)
+        with urllib.request.urlopen(req, timeout=timeout) as response:
             result = json.loads(response.read().decode("utf-8"))
 
         message = result["choices"][0].get("message", {})
         content = message.get("content", "")
         logger.debug("LLM raw response: %s", content[:500])
         return content
+
+    def _messages_from_prompt(self, prompt: str):
+        """
+        Allow callers to pass a pre-structured JSON message list in the
+        prompt by trying to decode it; otherwise treat the whole value as
+        the user message.
+        """
+        try:
+            parsed = json.loads(prompt)
+            if isinstance(parsed, list):
+                return parsed
+        except (json.JSONDecodeError, TypeError):
+            pass
+        return None
 
 
 def _default_backend_options():

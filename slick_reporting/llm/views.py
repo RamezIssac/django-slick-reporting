@@ -69,6 +69,7 @@ class AskLLMView(View):
         logger.debug("Planning prompt length: %d", len(plan_prompt_text))
 
         plan_response_text = backend.complete(plan_prompt_text)
+        logger.debug("Plan response text: %s", plan_response_text)
         plan = parse_llm_json(plan_response_text)
         if plan is None:
             return JsonResponse(
@@ -113,6 +114,7 @@ class AskLLMView(View):
         ]
         answer_prompt_text = answer_prompt(question, reports_for_answer)
         answer_response_text = backend.complete(answer_prompt_text)
+        logger.debug("Answer response text: %s", answer_response_text)
         answer_json = parse_llm_json(answer_response_text)
         if answer_json is None:
             answer_json = {

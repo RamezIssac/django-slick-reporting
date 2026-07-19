@@ -69,7 +69,44 @@ def _resolve_labels_to_ids(model, field_name, values):
 
     base_field = field_name.replace("__in", "").replace("__exact", "").replace("__iexact", "").replace("__isnull", "")
     if base_field.endswith("_id") and base_field != "id":
-        return [int(v) if isinstance(v, str) and v.isdigit() else v for v in values]
+        result = []
+        # The field name ends in _id, so the filter likely expects numeric ids
+        # even if the LLM passed the human-readable name. Try to resolve the
+        # value through the target model of the foreign key.
+        target_model = None
+        try:
+            from django.db.models import ForeignKey
+
+            field = model._meta.get_field(base_field)
+            if isinstance(field, ForeignKey):
+                target_model = field.related_model
+        except Exception:
+            pass
+
+        for val in values:
+            if isinstance(val, (int, float)) and not isinstance(val, bool):
+                result.append(val)
+                continue
+            if isinstance(val, str) and val.isdigit():
+                result.append(int(val))
+                continue
+            if target_model is not None:
+                resolved = _resolve_single_label_to_id(target_model, val)
+                if resolved is not None:
+                    result.append(resolved)
+                    continue
+            result.append(val)
+        return result
+
+    return [_resolve_single_label_to_id(model, val) or val for val in values]
+
+
+def _resolve_single_label_to_id(model, val):
+    """Resolve one human-readable label to a primary key on ``model``."""
+    if isinstance(val, (int, float)) and not isinstance(val, bool):
+        return val
+    if isinstance(val, str) and val.isdigit():
+        return int(val)
 
     candidate_fields = [
         f.name
@@ -78,36 +115,14 @@ def _resolve_labels_to_ids(model, field_name, values):
         or f.get_internal_type() in {"CharField", "TextField"}
     ]
 
-    result = []
-    for val in values:
-        if isinstance(val, (int, float)) and not isinstance(val, bool):
-            result.append(val)
-            continue
-        # Already numeric string?
+    for candidate in candidate_fields:
         try:
-            result.append(int(val))
+            match = model.objects.filter(**{f"{candidate}__iexact": str(val)}).first()
+            if match:
+                return match.pk
+        except Exception:
             continue
-        except (ValueError, TypeError):
-            pass
-        try:
-            result.append(float(val))
-            continue
-        except (ValueError, TypeError):
-            pass
-
-        for candidate in candidate_fields:
-            try:
-                match = model.objects.filter(**{f"{candidate}__iexact": str(val)}).first()
-                if match:
-                    result.append(match.pk)
-                    break
-            except Exception:
-                continue
-        else:
-            # Could not resolve; keep the original value and let the filter fail
-            # noisily if invalid.
-            result.append(val)
-    return result
+    return None
 
 
 def _build_computation_field(column_config):
@@ -126,6 +141,45 @@ def _build_computation_field(column_config):
     )
 
 
+def _target_model_for_kwarg(report_model, key):
+    """
+    Return the model whose primary key should be used when resolving label
+    values for ``key``.  For FK filters like product__in or product_id__in
+    we need the Product model, not SalesTransaction.
+    """
+    suffixes = ("__in", "__exact", "__iexact", "__isnull")
+    base_field = key
+    for suffix in suffixes:
+        if base_field.endswith(suffix):
+            base_field = base_field[: -len(suffix)]
+            break
+
+    relation_path = None
+    if base_field.endswith("_id") and base_field != "id":
+        relation_path = base_field[:-3]
+    elif "__" not in base_field and base_field != "id":
+        # A bare relation name like "product"
+        relation_path = base_field
+    elif "__" in base_field:
+        relation_path = base_field
+    else:
+        return report_model
+
+    try:
+        from django.db.models import ForeignKey
+
+        rel_model = report_model
+        for part in relation_path.split("__"):
+            field = rel_model._meta.get_field(part)
+            if isinstance(field, ForeignKey):
+                rel_model = field.related_model
+            else:
+                return rel_model
+        return rel_model
+    except Exception:
+        return report_model
+
+
 def prepare_filters(report_model, filters):
     """Split filters into Q objects and kwargs, resolving labels to IDs."""
     q_filters = []
@@ -138,10 +192,31 @@ def prepare_filters(report_model, filters):
         if key.lower().startswith("q_"):
             # Allow advanced configs to pass raw Q objects; not encouraged for LLM.
             continue
+        target_model = _target_model_for_kwarg(report_model, key)
         if isinstance(value, list):
-            value = _resolve_labels_to_ids(report_model, key, value)
+            value = _resolve_labels_to_ids(target_model, key, value)
+        elif isinstance(value, str):
+            resolved = _resolve_single_label_to_id(target_model, value)
+            if resolved is not None:
+                value = resolved
         kw_filters[key] = value
     return q_filters, kw_filters
+
+
+def _normalize_llm_columns(columns, group_by):
+    """
+    Fix common LLM mistakes when group_by points to a ForeignKey.
+
+    If group_by == "product" and a column entry is also "product" or
+    "product__name", replace it with "name" so the report shows the related
+    model's name instead of a non-existent field on the related model.
+    """
+    normalized = []
+    for col in columns or []:
+        if col == group_by or (group_by and str(col).startswith(f"{group_by}__")):
+            col = "name"
+        normalized.append(col)
+    return normalized
 
 
 def run_llm_report_config(config):
@@ -167,7 +242,9 @@ def run_llm_report_config(config):
     if report_model is None:
         raise ValueError(f"Could not resolve report_model {config['report_model']!r}")
 
-    columns = [_build_computation_field(c) for c in config.get("columns", [])]
+    group_by = config.get("group_by") or None
+    columns = _normalize_llm_columns(config.get("columns", []), group_by)
+    columns = [_build_computation_field(c) for c in columns]
     time_series_columns = [_build_computation_field(c) for c in config.get("time_series_columns", [])]
     crosstab_columns = [_build_computation_field(c) for c in config.get("crosstab_columns", [])]
 

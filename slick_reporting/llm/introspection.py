@@ -75,9 +75,16 @@ def _resolve_model(model_identifier):
     return None
 
 
+def _field_is_reverse_relation(field):
+    """Exclude auto-generated reverse relations like client->salestransaction."""
+    return bool(getattr(field, "auto_created", False) and field.is_relation)
+
+
 def _model_to_catalog(model):
     fields = []
     for field in model._meta.get_fields():
+        if _field_is_reverse_relation(field):
+            continue
         info = {
             "name": field.name,
             "type": field.get_internal_type(),
@@ -166,7 +173,8 @@ def build_reporting_catalog(extra_models=None):
             if model:
                 models_list.append(model)
     else:
-        models_list = apps.get_models()
+        # Limit the catalog to app models to keep local LLM prompts small.
+        models_list = [m for m in apps.get_models() if m._meta.app_label == "demo_app"]
 
     if extra_models:
         for identifier in extra_models:
