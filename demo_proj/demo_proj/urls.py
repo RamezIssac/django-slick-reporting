@@ -14,8 +14,9 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 
 from demo_app import views
 from demo_app import helpers
@@ -23,5 +24,6 @@ from demo_app import helpers
 urlpatterns = helpers.get_urls_patterns() + [
     path("", views.HomeView.as_view(), name="home"),
     path("dashboard/", views.Dashboard.as_view(), name="dashboard"),
+    path("dashboard/", include("slick_reporting.llm.urls")),
     path("admin/", admin.site.urls),
 ]

@@ -12,6 +12,37 @@
         </label>
     </div>
 
+    <div class="card mb-4">
+        <div class="card-header"><h3 class="card-title">Ask the data</h3></div>
+        <div class="card-body">
+            <form id="ai-question-form" class="row g-2">
+                <div class="col">
+                    <input type="text" id="ai-question" class="form-control"
+                           placeholder="e.g. Compare sales of Product 1 and Product 2 in Q3 this year and last year"
+                           autocomplete="off">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="ai-loading spinner-border spinner-border-sm d-none" role="status"></span>
+                        Ask
+                    </button>
+                </div>
+            </form>
+            <div id="ai-answer" class="mt-3 d-none">
+                <div class="alert alert-info mb-2" id="ai-answer-text"></div>
+                <div id="ai-proof-container"></div>
+                <div class="mt-3" id="ai-report-widget"
+                     data-report-widget data-report-url=""
+                     data-display-chart-selector="False">
+                    <div data-report-chart></div>
+                </div>
+                <pre id="ai-raw-response" class="d-none bg-light p-2 rounded"></pre>
+                <button type="button" class="btn btn-sm btn-ghost-secondary mt-2" id="ai-toggle-raw">Toggle raw response</button>
+            </div>
+            <div id="ai-error" class="alert alert-danger mt-3 d-none"></div>
+        </div>
+    </div>
+
     <div id="dashboard-container" class="row row-cards">
         <div class="col-lg-6">
             {% get_widget_from_url url_name="product-sales" %}
@@ -95,5 +126,73 @@
                 $container.children().addClass('col-lg-6');
             }
         });
+
+        (function () {
+            const askUrl = "{% url 'slick_reporting_llm:ask' %}";
+            function renderProofs(proofs) {
+                if (!proofs || proofs.length === 0) return '';
+                let html = '<h4 class="mt-3">Proofs</h4><div class="list-group list-group-flush">';
+                proofs.forEach(function (proof) {
+                    html += '<div class="list-group-item">';
+                    html += '<div class="fw-bold">' + (proof.title || 'Report proof') + '</div>';
+                    html += '<div class="text-secondary small">' + (proof.summary || '') + '</div>';
+                    if (proof.key_numbers) {
+                        html += '<ul class="mb-0 small">';
+                        Object.keys(proof.key_numbers).forEach(function (k) {
+                            html += '<li><strong>' + k + ':</strong> ' + proof.key_numbers[k] + '</li>';
+                        });
+                        html += '</ul>';
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+                return html;
+            }
+
+            $('#ai-question-form').on('submit', function (e) {
+                e.preventDefault();
+                const question = $('#ai-question').val().trim();
+                if (!question) return;
+
+                $('#ai-error').addClass('d-none').text('');
+                $('#ai-answer').addClass('d-none');
+                $('#ai-answer-text').text('');
+                $('#ai-proof-container').html('');
+                $('#ai-raw-response').text('').addClass('d-none');
+                $('.ai-loading').removeClass('d-none');
+
+                $.ajax({
+                    url: askUrl,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({question: question}),
+                    success: function (data) {
+                        $('.ai-loading').addClass('d-none');
+                        $('#ai-answer').removeClass('d-none');
+                        $('#ai-answer-text').text(data.answer || 'No answer returned.');
+                        $('#ai-proof-container').html(renderProofs(data.proofs || []));
+                        $('#ai-raw-response').text(JSON.stringify(data, null, 2));
+
+                        // Render the supporting report as a widget using the library's loader.
+                        const $widget = $('#ai-report-widget');
+                        $widget.attr('data-report-url', '');
+                        if (data.report_data && data.report_config) {
+                            $.slick_reporting.loadReport($widget, askUrl + '?format=raw', data.report_data);
+                        }
+                    },
+                    error: function (xhr) {
+                        $('.ai-loading').addClass('d-none');
+                        const msg = xhr.responseJSON && xhr.responseJSON.error
+                            ? xhr.responseJSON.error
+                            : 'An unexpected error occurred.';
+                        $('#ai-error').removeClass('d-none').text(msg);
+                    }
+                });
+            });
+
+            $('#ai-toggle-raw').on('click', function () {
+                $('#ai-raw-response').toggleClass('d-none');
+            });
+        })();
     </script>
 {% endblock %}
