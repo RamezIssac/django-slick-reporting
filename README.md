@@ -12,7 +12,7 @@
 
 Grouped totals, time-series, crosstabs and pivots — each one a small Python class, each one chartable with a single line, in **Highcharts, Chart.js or ApexCharts**.
 
-[**Live Demo**](https://django-slick-reporting.com/) · [**Documentation**](https://django-slick-reporting.readthedocs.io/) · [**Quickstart**](#-quickstart)
+[**Live Demo**](https://django-slick-reporting.com/) · [**Documentation**](https://django-slick-reporting.readthedocs.io/) · [**Quickstart**](#quickstart)
 
 <img src="https://raw.githubusercontent.com/ra-systems/django-slick-reporting/develop/docs/source/topics/_static/srr-hero.png" alt="Django Slick Reporting dashboard" width="900">
 
@@ -20,7 +20,7 @@ Grouped totals, time-series, crosstabs and pivots — each one a small Python cl
 
 ---
 
-## ✨ One report class, every chart
+## One report class, every chart
 
 Declare the calculation **once**. Switch the visualization by changing a single argument — no new query, no new template.
 
@@ -32,14 +32,14 @@ Declare the calculation **once**. Switch the visualization by changing a single 
 
 ## Why Django Slick Reporting?
 
-- 📊 **Every report shape** — simple aggregates, group-by, time-series, crosstab/pivot, and combinations of them.
-- 🎨 **Charts included** — Highcharts, Chart.js and ApexCharts wrappers. Bar, column, line, area, pie — stacked or totalled — from one `Chart(...)` line.
-- 🧮 **Custom calculations** — build reusable computation fields, chain dependencies, compute percentages and balances.
-- 🧱 **Dashboards** — drop any report onto a page as a self-contained widget with a template tag.
-- 🗄️ **Model-optional** — report against a Django model, a traversed relation, a raw SQL table, or precomputed/aggregated data.
-- 🚀 **Fast & extendable** — optimized queries, CSV export out of the box, and hooks for everything.
+- **Every report shape** — simple aggregates, group-by, time-series, crosstab/pivot, and combinations of them.
+- **Charts included** — Highcharts, Chart.js and ApexCharts wrappers. Bar, column, line, area, pie — stacked or totalled — from one `Chart(...)` line.
+- **Custom calculations** — build reusable computation fields, chain dependencies, compute percentages and balances.
+- **Dashboards** — drop any report onto a page as a self-contained widget with a template tag.
+- **Model-optional** — report against a Django model, a traversed relation, a raw SQL table, or precomputed/aggregated data.
+- **Fast & extendable** — optimized queries, CSV export out of the box, and hooks for everything.
 
-## 📦 Installation
+## Installation
 
 ```console
 pip install django-slick-reporting
@@ -56,7 +56,7 @@ INSTALLED_APPS = [
 ]
 ```
 
-## ⚡ Quickstart
+## Quickstart
 
 Given a typical `SalesTransaction` model, here is a **group-by** report — total value sold per product — with a bar chart:
 
@@ -111,7 +111,7 @@ path("product-sales/", ProductSales.as_view()),
 
 That's the whole report — filter form, chart, sortable data table and CSV export are generated for you.
 
-## 🎛️ Same data, any visualization
+## Same data, any visualization
 
 The chart is just configuration. Keep the report, change the `Chart(...)` line:
 
@@ -164,10 +164,10 @@ Set `chart_engine` on the report (or per `Chart`). The same data renders through
 </tr>
 </table>
 
-## 📚 Report types
+## Report types
 
 <details>
-<summary><b>⏱️ Time series</b> — one column per period (daily / weekly / monthly / yearly / custom)</summary>
+<summary><b>Time series</b> — one column per period (daily / weekly / monthly / yearly / custom)</summary>
 
 <br>
 
@@ -193,7 +193,7 @@ Calculations are performed for each period and laid out as repeating columns, wi
 </details>
 
 <details>
-<summary><b>🔀 Crosstab / Pivot</b> — matrix reports with rows, columns and intersecting totals</summary>
+<summary><b>Crosstab / Pivot</b> — matrix reports with rows, columns and intersecting totals</summary>
 
 <br>
 
@@ -223,7 +223,7 @@ Crosstab and time-series can even be combined for a matrix over periods. Already
 </details>
 
 <details>
-<summary><b>📄 List view</b> — ungrouped, row-level data</summary>
+<summary><b>List view</b> — ungrouped, row-level data</summary>
 
 <br>
 
@@ -241,7 +241,7 @@ class LastTenSales(ListReportView):
 </details>
 
 <details>
-<summary><b>🧩 Low-level engine</b> — get raw data without a view</summary>
+<summary><b>Low-level engine</b> — get raw data without a view</summary>
 
 <br>
 
@@ -261,7 +261,7 @@ report.get_report_data()
 
 </details>
 
-## 🧱 Dashboards
+## Dashboards
 
 Compose any report into a page as a self-contained widget — chart, table, or both — with one template tag:
 
@@ -274,7 +274,7 @@ Compose any report into a page as a self-contained widget — chart, table, or b
 
 See the [live dashboard example](https://django-slick-reporting.com/dashboard/).
 
-## 🖥️ Demo site
+## Demo site
 
 Live at **[django-slick-reporting.com](https://django-slick-reporting.com/)**, or run it locally:
 
@@ -289,7 +289,7 @@ python manage.py create_entries   # generates demo data
 python manage.py runserver
 ```
 
-## 📖 Documentation
+## Documentation
 
 Full documentation lives on [Read the Docs](https://django-slick-reporting.readthedocs.io/en/latest/). Build it locally with:
 
@@ -299,7 +299,7 @@ pip install -r requirements.txt
 sphinx-build -b html source build
 ```
 
-## ✅ Running the tests
+## Running the tests
 
 ```console
 git clone git@github.com:ra-systems/django-slick-reporting.git
@@ -310,17 +310,17 @@ python runtests.py
 coverage run --include=../* runtests.py && coverage html
 ```
 
-## 🤝 Contributing
+## Contributing
 
 PRs and reviews are most welcome. We follow
 [Django's contributing guidelines](https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/).
-If the project is useful to you, please consider giving it a ⭐ — it keeps the project visible and motivated.
+If the project is useful to you, please consider giving it a star — it keeps the project visible and motivated.
 
-## 👤 Authors
+## Authors
 
 - **Ramez Ashraf** — *Initial work* — [@RamezIssac](https://github.com/RamezIssac)
 
-## 🔗 You might also like
+## You might also like
 
 - [**Django ERP Framework**](https://github.com/ra-systems/RA) — build business solutions with ease.
 - [**Django Tabular Permissions**](https://github.com/RamezIssac/django-tabular-permissions) — Django permissions in a translatable, filterable HTML table.

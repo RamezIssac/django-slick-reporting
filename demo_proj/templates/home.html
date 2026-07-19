@@ -36,28 +36,49 @@
         }
         .srr-engine { border:1px dashed var(--tblr-border-color); border-radius:12px; padding:.9rem 1rem; text-align:center; font-weight:600; }
         .srr-code pre { border-radius:14px; margin:0; font-size:.86rem; }
+        .srr-badge svg, .srr-hero .btn svg { width:16px; height:16px; flex-shrink:0; }
+        .srr-ficon svg { width:24px; height:24px; }
     </style>
 
     <!-- Hero -->
     <div class="srr-hero mb-4">
         <div class="row align-items-center g-4">
             <div class="col-lg-6">
-                <span class="srr-badge mb-3">⚡ Reporting engine for Django</span>
+                <span class="srr-badge mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"/></svg>
+                    Reporting engine for Django
+                </span>
                 <h1 class="mb-3">Reports, charts &amp; dashboards in a few lines of code.</h1>
                 <p class="lead mb-4">
                     Group-by, time-series, crosstab and pivot reports — each a small Python class,
-                    each chartable with a single line in <b>Highcharts</b>, <b>Chart.js</b> or <b>ApexCharts</b>.
+                    each chartable with a single line in <b>Highcharts</b> or <b>Chart.js</b> —
+                    or plug in any JS charting library you like (<b>ApexCharts</b> shown as an example).
                 </p>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="{% url 'product-sales' %}" class="btn btn-primary btn-lg">🚀 Start the walk-through</a>
+                    <a href="{% url 'product-sales' %}" class="btn btn-primary btn-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 4v16l13 -8l-13 -8"/></svg>
+                        Start the walk-through
+                    </a>
                     <a href="{% url 'dashboard' %}" class="btn btn-outline-light btn-lg">View dashboard</a>
                     <a href="https://github.com/ra-systems/django-slick-reporting" class="btn btn-ghost-light btn-lg">GitHub ★</a>
                 </div>
                 <div class="mt-4 d-flex flex-wrap gap-2">
-                    <span class="srr-badge">📊 4 report types</span>
-                    <span class="srr-badge">🎨 3 chart engines</span>
-                    <span class="srr-badge">🧱 Dashboard widgets</span>
-                    <span class="srr-badge">📤 CSV export built-in</span>
+{#                    <span class="srr-badge">#}
+{#                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 5a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2"/><path d="M9 17v-5"/><path d="M12 17v-1"/><path d="M15 17v-3"/></svg>#}
+{#                        4 report types#}
+{#                    </span>#}
+                    <span class="srr-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 3.2a9 9 0 1 0 10.8 10.8a1 1 0 0 0 -1 -1h-6.8a2 2 0 0 1 -2 -2v-7a.9 .9 0 0 0 -1 -.8"/><path d="M15 3.5a9 9 0 0 1 5.5 5.5h-4.5a1 1 0 0 1 -1 -1v-4.5"/></svg>
+                        Built-in + custom chart engines
+                    </span>
+                    <span class="srr-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1"/><path d="M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1"/><path d="M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1"/><path d="M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1"/></svg>
+                        Dashboard widgets
+                    </span>
+                    <span class="srr-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M11.5 21h-4.5a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v5m-5 6h7m-3 -3l3 3l-3 3"/></svg>
+                        CSV export built-in
+                    </span>
                 </div>
             </div>
             <div class="col-lg-6">
@@ -83,28 +104,36 @@
     <div class="row row-cards mb-2">
         <div class="col-md-6 col-lg-3">
             <div class="srr-feature p-3">
-                <div class="srr-ficon" style="background:rgba(59,130,246,.14);color:#3b82f6;">📊</div>
+                <div class="srr-ficon" style="background:rgba(59,130,246,.14);color:#3b82f6;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 5a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2"/><path d="M9 17v-5"/><path d="M12 17v-1"/><path d="M15 17v-3"/></svg>
+                </div>
                 <h3 class="mb-1">Every report shape</h3>
                 <p class="text-secondary mb-0">Simple aggregates, group-by, time-series, crosstab/pivot — and combinations of them.</p>
             </div>
         </div>
         <div class="col-md-6 col-lg-3">
             <div class="srr-feature p-3">
-                <div class="srr-ficon" style="background:rgba(16,185,129,.14);color:#10b981;">🎨</div>
+                <div class="srr-ficon" style="background:rgba(16,185,129,.14);color:#10b981;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 3.2a9 9 0 1 0 10.8 10.8a1 1 0 0 0 -1 -1h-6.8a2 2 0 0 1 -2 -2v-7a.9 .9 0 0 0 -1 -.8"/><path d="M15 3.5a9 9 0 0 1 5.5 5.5h-4.5a1 1 0 0 1 -1 -1v-4.5"/></svg>
+                </div>
                 <h3 class="mb-1">Charts included</h3>
-                <p class="text-secondary mb-0">Bar, column, line, area, pie — stacked or totalled — from one <code>Chart(...)</code> line.</p>
+                <p class="text-secondary mb-0">Bar, column, line, area, pie — stacked or totalled — from one <code>Chart(...)</code> line. Not a Highcharts/Chart.js fan? Bring your own JS charting library instead.</p>
             </div>
         </div>
         <div class="col-md-6 col-lg-3">
             <div class="srr-feature p-3">
-                <div class="srr-ficon" style="background:rgba(168,85,247,.14);color:#a855f7;">🧱</div>
+                <div class="srr-ficon" style="background:rgba(168,85,247,.14);color:#a855f7;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1"/><path d="M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1"/><path d="M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1"/><path d="M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1"/></svg>
+                </div>
                 <h3 class="mb-1">Drop-in dashboards</h3>
                 <p class="text-secondary mb-0">Embed any report as a self-contained widget with a single template tag.</p>
             </div>
         </div>
         <div class="col-md-6 col-lg-3">
             <div class="srr-feature p-3">
-                <div class="srr-ficon" style="background:rgba(245,158,11,.14);color:#f59e0b;">🚀</div>
+                <div class="srr-ficon" style="background:rgba(245,158,11,.14);color:#f59e0b;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M13.41 10.59l2.59 -2.59"/><path d="M7 12a5 5 0 0 1 5 -5"/></svg>
+                </div>
                 <h3 class="mb-1">Fast &amp; extendable</h3>
                 <p class="text-secondary mb-0">Optimized queries, model-optional (even raw SQL), and hooks for everything.</p>
             </div>
@@ -142,18 +171,18 @@
             <div class="card h-100">
                 <div class="card-header"><h3 class="card-title">Pick your chart engine</h3></div>
                 <div class="card-body">
-                    <p class="text-secondary">The same data renders through the engine you choose — just set <code>chart_engine</code>.</p>
+                    <p class="text-secondary">The same data renders through the engine you choose — just set <code>chart_engine</code>. <b>Highcharts</b> (default) and <b>Chart.js</b> ship built-in; <b>ApexCharts</b> below shows how to plug in <a href="https://django-slick-reporting.readthedocs.io/en/latest/topics/charts.html">any JS charting library</a> of your own.</p>
                     <div class="row g-2 mb-3">
                         <div class="col-4"><div class="srr-engine">Highcharts</div></div>
                         <div class="col-4"><div class="srr-engine">Chart.js</div></div>
-                        <div class="col-4"><div class="srr-engine">ApexCharts</div></div>
+                        <div class="col-4"><div class="srr-engine">ApexCharts<br><small class="text-secondary fw-normal">(custom example)</small></div></div>
                     </div>
                     <div class="list-group list-group-flush">
                         <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{% url 'highcharts-examples' %}">Highcharts examples <span>→</span></a>
                         <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{% url 'chartjs-examples' %}">Chart.js examples <span>→</span></a>
-                        <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{% url 'apexcharts-examples' %}">ApexCharts examples <span>→</span></a>
+                        <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{% url 'apexcharts-examples' %}">ApexCharts examples (custom engine) <span>→</span></a>
                     </div>
-                    <a href="https://django-slick-reporting.readthedocs.io/" class="btn btn-primary w-100 mt-3">Read the docs</a>
+                    <a href="https://django-slick-reporting.readthedocs.io/en/latest/topics/charts.html" class="btn btn-primary w-100 mt-3">Add your own chart engine →</a>
                 </div>
             </div>
         </div>
