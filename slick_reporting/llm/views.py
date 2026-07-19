@@ -8,6 +8,7 @@ Dashboard API endpoints for the natural-language reporting assistant.
 
 import json
 import logging
+import time
 
 from django.http import JsonResponse
 from django.views import View
@@ -39,6 +40,7 @@ class AskLLMView(View):
     http_method_names = ["post", "head", "options"]
 
     def post(self, request, *args, **kwargs):
+        started_at = time.perf_counter()
         if not llm_access_check(request):
             return JsonResponse({"error": "Forbidden"}, status=403)
 
@@ -123,11 +125,14 @@ class AskLLMView(View):
                 "proofs": [],
             }
 
+        duration = time.perf_counter() - started_at
         response_data = {
             "answer": answer_json.get("answer", ""),
             "reasoning": answer_json.get("reasoning", ""),
             "proofs": answer_json.get("proofs", []),
             "report_config": report_config,
             "report_data": report_data,
+            "duration": round(duration, 3),
         }
+        logger.debug("AskLLMView completed in %.3fs", duration)
         return JsonResponse(response_data)

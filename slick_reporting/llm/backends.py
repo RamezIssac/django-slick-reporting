@@ -87,6 +87,15 @@ class OpenAICompatibleBackend(LLMBackend):
         if self.max_tokens is not None:
             payload["max_tokens"] = self.max_tokens
 
+        logger.debug(
+            "LLM request to %s (model=%s, temperature=%s, messages=%d)\n%s",
+            self.api_url,
+            self.model,
+            self.temperature,
+            len(messages),
+            json.dumps(payload, indent=2),
+        )
+
         req = urllib.request.Request(
             self.api_url,
             data=json.dumps(payload).encode("utf-8"),
@@ -101,7 +110,7 @@ class OpenAICompatibleBackend(LLMBackend):
 
         message = result["choices"][0].get("message", {})
         content = message.get("content", "")
-        logger.debug("LLM raw response: %s", content[:500])
+        logger.debug("LLM response status=%s\n%s", response.status, content)
         return content
 
     def _messages_from_prompt(self, prompt: str):

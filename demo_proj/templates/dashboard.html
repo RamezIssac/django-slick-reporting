@@ -29,7 +29,10 @@
                 </div>
             </form>
             <div id="ai-answer" class="mt-3 d-none">
-                <div class="alert alert-info mb-2" id="ai-answer-text"></div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="alert alert-info mb-0 flex-grow-1" id="ai-answer-text"></div>
+                    <span class="badge bg-secondary ms-2" id="ai-answer-duration"></span>
+                </div>
                 <div id="ai-proof-container"></div>
                 <div class="mt-3" id="ai-report-widget"
                      data-report-widget data-report-url=""
@@ -170,6 +173,8 @@
                         $('.ai-loading').addClass('d-none');
                         $('#ai-answer').removeClass('d-none');
                         $('#ai-answer-text').text(data.answer || 'No answer returned.');
+                        const duration = data.duration || 0;
+                        $('#ai-answer-duration').text(duration + 's');
                         $('#ai-proof-container').html(renderProofs(data.proofs || []));
                         $('#ai-raw-response').text(JSON.stringify(data, null, 2));
 
