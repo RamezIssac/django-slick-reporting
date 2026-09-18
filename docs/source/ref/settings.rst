@@ -54,7 +54,15 @@ Below are the default settings for django-slick-reporting. You can override them
         },
         "MESSAGES": {
             "total": _("Total"),
+            "export_to_csv": _("Export to CSV"),
+            "print_report": _("Print"),
         },
+        # LLM assistant settings
+        "LLM_BACKEND": None,
+        "LLM_BACKEND_OPTIONS": None,
+        "LLM_CATALOG_MODELS": None,
+        "LLM_ASK_URL": None,
+        "LLM_PLAIN_TEXT_RESPONSE": False,
     }
 
 * JQUERY_URL:
@@ -84,6 +92,37 @@ Below are the default settings for django-slick-reporting. You can override them
 * MESSAGES:
 
    The strings used in the front end. You can override them here, it also gives a chance to set and translate them per your requirements.
+
+* LLM_BACKEND:
+
+    Dotted path to an LLM backend class. Built-in options are
+    ``slick_reporting.llm.backends.OpenAICompatibleBackend`` and
+    ``slick_reporting.llm.backends.EchoBackend``. Defaults to
+    ``EchoBackend`` if no backend is configured.
+
+* LLM_BACKEND_OPTIONS:
+
+    Dictionary passed as keyword arguments when instantiating the
+    ``LLM_BACKEND`` class. For ``OpenAICompatibleBackend`` supply
+    ``api_url``, ``api_key``, ``model``, and optionally ``temperature``
+    and ``timeout``.
+
+* LLM_CATALOG_MODELS:
+
+    Optional list of ``app_label.ModelName`` strings restricting which
+    models are visible to the LLM assistant. If omitted, the catalog
+    includes all installed models.
+
+* LLM_ASK_URL:
+
+    Optional URL suffix for the assistant endpoint. Defaults to ``ask/``
+    under the dashboard path.
+
+* LLM_PLAIN_TEXT_RESPONSE:
+
+    If ``True``, the assistant exchanges reports and answers as structured
+    plain text instead of JSON. Useful for smaller/local LLMs. Defaults to
+    ``False``.
 
 
 Old versions settings:

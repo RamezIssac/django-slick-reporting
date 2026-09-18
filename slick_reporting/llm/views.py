@@ -17,7 +17,12 @@ from django.utils.decorators import method_decorator
 
 from ..app_settings import SLICK_REPORTING_SETTINGS, get_access_function
 from .backends import get_llm_backend
-from .executor import parse_llm_json, run_llm_report_config
+from .executor import (
+    parse_llm_json,
+    parse_llm_plain_text_answer,
+    parse_llm_plain_text_plan,
+    run_llm_report_config,
+)
 from .introspection import build_reporting_catalog
 from .prompts import answer_prompt, plan_prompt
 
@@ -65,14 +70,20 @@ class AskLLMView(View):
                 status=400,
             )
 
+        plain_text = bool(SLICK_REPORTING_SETTINGS.get("LLM_PLAIN_TEXT_RESPONSE"))
+
         # Stage 1: plan the report configuration.
         catalog = build_reporting_catalog(extra_models=None)
-        plan_prompt_text = plan_prompt(question, catalog)
+        plan_prompt_text = plan_prompt(question, catalog, plain_text=plain_text)
         logger.debug("Planning prompt length: %d", len(plan_prompt_text))
 
         plan_response_text = backend.complete(plan_prompt_text)
         logger.debug("Plan response text: %s", plan_response_text)
-        plan = parse_llm_json(plan_response_text)
+        plan = (
+            parse_llm_plain_text_plan(plan_response_text)
+            if plain_text
+            else parse_llm_json(plan_response_text)
+        )
         if plan is None:
             return JsonResponse(
                 {
@@ -114,10 +125,13 @@ class AskLLMView(View):
                 "columns": report_data["columns"],
             }
         ]
-        answer_prompt_text = answer_prompt(question, reports_for_answer)
+        answer_prompt_text = answer_prompt(question, reports_for_answer, plain_text=plain_text)
         answer_response_text = backend.complete(answer_prompt_text)
         logger.debug("Answer response text: %s", answer_response_text)
-        answer_json = parse_llm_json(answer_response_text)
+        if plain_text:
+            answer_json = parse_llm_plain_text_answer(answer_response_text)
+        else:
+            answer_json = parse_llm_json(answer_response_text)
         if answer_json is None:
             answer_json = {
                 "answer": "The assistant returned an unreadable answer.",

@@ -89,6 +89,7 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
     "LLM_BACKEND_OPTIONS": None,
     "LLM_CATALOG_MODELS": None,
     "LLM_ASK_URL": None,  # defaults to "ask/" under the dashboard path
+    "LLM_PLAIN_TEXT_RESPONSE": False,  # if True, exchange plan/answer as plain text instead of JSON
 }
 
 

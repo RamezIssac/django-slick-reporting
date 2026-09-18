@@ -92,11 +92,13 @@ class OpenAICompatibleBackend(LLMBackend):
         if self.enable_thinking is not None:
             payload["enable_thinking"] = bool(self.enable_thinking)
 
-        # llama.cpp reasoning controls. enable_thinking=False goes through
-        # chat_template_kwargs (the real off switch for qwen); a budget caps tokens.
-        if self.enable_thinking is False:
-            payload.setdefault("chat_template_kwargs", {})["enable_thinking"] = False
-        if self.reasoning_budget is not None:
+        # llama.cpp reasoning controls. enable_thinking=False and a zero budget both
+        # mean "no thinking", and the reliable off switch across templates is
+        # chat_template_kwargs (qwen ignores the top-level enable_thinking flag).
+        thinking_off = self.enable_thinking is False or self.reasoning_budget == 0
+        if thinking_off:
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
+        if self.reasoning_budget is not None and self.reasoning_budget > 0:
             payload["reasoning_budget"] = int(self.reasoning_budget)
 
         logger.debug(
