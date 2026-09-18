@@ -1,0 +1,18 @@
+[
+  {
+    "name": "local-llama",
+    "backend_path": "slick_reporting.llm.backends.OpenAICompatibleBackend",
+    "backend_options": {
+      "api_url": "http://192.168.178.100:8080/v1/chat/completions",
+      "api_key": "not-needed",
+      "model": "local",
+      "temperature": 0.2,
+      "timeout": 600
+    }
+  },
+  {
+    "name": "fake-smoke-test",
+    "backend_path": "demo_app.eval_backends.FakeBackend",
+    "backend_options": {}
+  }
+]

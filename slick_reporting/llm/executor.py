@@ -10,6 +10,7 @@ name-to-ID resolution helpers so the LLM can refer to human-readable labels
 import datetime
 import json
 import logging
+import re
 
 from django.db.models import Model
 from django.utils.module_loading import import_string
@@ -17,6 +18,15 @@ from django.utils.module_loading import import_string
 from ..fields import ComputationField
 from ..generator import ReportGenerator
 from .introspection import resolve_aggregation_method
+
+__all__ = [
+    "run_llm_report_config",
+    "prepare_filters",
+    "parse_llm_json",
+    "parse_llm_plain_text_plan",
+    "parse_llm_plain_text_answer",
+    "clean_json_output",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -55,50 +65,30 @@ def _parse_date(value):
     raise ValueError(f"Cannot parse date {value!r}")
 
 
-def _resolve_labels_to_ids(model, field_name, values):
+def _resolve_labels_to_ids(report_model, field_name, values):
     """
-    Try to convert a list of string labels/names to primary keys on ``model``.
+    Try to convert a list of string labels/names to primary keys.
 
-    * If ``field_name`` ends with ``_id`` or ``_id__in`` we are already dealing
-      with IDs; return as-is.
-    * Otherwise search for the first Char/Text-ish field on ``model`` that
-      matches one of the values and return its primary key.
+    The filter key may be a foreign-key ID filter (``product_id__in``), a
+    relation filter (``product__in``), or a direct field filter. We derive the
+    model that owns the searched value from ``report_model`` and the key.
     """
     if not values:
         return values
 
-    base_field = field_name.replace("__in", "").replace("__exact", "").replace("__iexact", "").replace("__isnull", "")
-    if base_field.endswith("_id") and base_field != "id":
-        result = []
-        # The field name ends in _id, so the filter likely expects numeric ids
-        # even if the LLM passed the human-readable name. Try to resolve the
-        # value through the target model of the foreign key.
-        target_model = None
-        try:
-            from django.db.models import ForeignKey
+    target_model = _target_model_for_kwarg(report_model, field_name)
 
-            field = model._meta.get_field(base_field)
-            if isinstance(field, ForeignKey):
-                target_model = field.related_model
-        except Exception:
-            pass
-
-        for val in values:
-            if isinstance(val, (int, float)) and not isinstance(val, bool):
-                result.append(val)
-                continue
-            if isinstance(val, str) and val.isdigit():
-                result.append(int(val))
-                continue
-            if target_model is not None:
-                resolved = _resolve_single_label_to_id(target_model, val)
-                if resolved is not None:
-                    result.append(resolved)
-                    continue
+    result = []
+    for val in values:
+        if isinstance(val, (int, float)) and not isinstance(val, bool):
             result.append(val)
-        return result
-
-    return [_resolve_single_label_to_id(model, val) or val for val in values]
+            continue
+        if isinstance(val, str) and val.isdigit():
+            result.append(int(val))
+            continue
+        resolved = _resolve_single_label_to_id(target_model, val)
+        result.append(resolved if resolved is not None else val)
+    return result
 
 
 def _resolve_single_label_to_id(model, val):
@@ -192,10 +182,10 @@ def prepare_filters(report_model, filters):
         if key.lower().startswith("q_"):
             # Allow advanced configs to pass raw Q objects; not encouraged for LLM.
             continue
-        target_model = _target_model_for_kwarg(report_model, key)
         if isinstance(value, list):
-            value = _resolve_labels_to_ids(target_model, key, value)
+            value = _resolve_labels_to_ids(report_model, key, value)
         elif isinstance(value, str):
+            target_model = _target_model_for_kwarg(report_model, key)
             resolved = _resolve_single_label_to_id(target_model, value)
             if resolved is not None:
                 value = resolved
@@ -207,13 +197,18 @@ def _normalize_llm_columns(columns, group_by):
     """
     Fix common LLM mistakes when group_by points to a ForeignKey.
 
-    If group_by == "product" and a column entry is also "product" or
-    "product__name", replace it with "name" so the report shows the related
-    model's name instead of a non-existent field on the related model.
+    Only when group_by is a bare relation name (no "__") does slick_reporting
+    re-point the queryset at the related model, in which case an echo of the
+    group_by (e.g. "product" or "product__name") is replaced with "name", the
+    related model's display field. When group_by is a field path such as
+    "client__country", the queryset stays on the report model, so the column
+    must be left untouched.
     """
+    if not group_by or "__" in group_by:
+        return list(columns or [])
     normalized = []
     for col in columns or []:
-        if col == group_by or (group_by and str(col).startswith(f"{group_by}__")):
+        if col == group_by or str(col).startswith(f"{group_by}__"):
             col = "name"
         normalized.append(col)
     return normalized
@@ -293,3 +288,142 @@ def parse_llm_json(text, default=None):
     except json.JSONDecodeError:
         logger.debug("Failed to parse LLM JSON: %s", text[:500])
         return default
+
+
+def parse_llm_plain_text_plan(text):
+    """
+    Convert a plain-text plan response into the JSON-shaped dict that the
+    rest of the LLM pipeline expects.
+
+    Expected sections (case-insensitive keys, any order):
+    REPORT_MODEL, DATE_FIELD, START_DATE, END_DATE, GROUP_BY, COLUMNS,
+    TIME_SERIES_PATTERN, TIME_SERIES_COLUMNS, CROSSTAB_FIELD,
+    CROSSTAB_COLUMNS, FILTERS.
+    """
+    lines = clean_json_output(text).splitlines()
+    sections = {}
+    for line in lines:
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip().upper()
+        value = value.strip()
+        # Keep the first non-empty value for each key.
+        if value and key not in sections:
+            sections[key] = value
+
+    if sections.get("REPORT", "").lower() == "null":
+        return {"thinking": sections.get("THINKING", ""), "report": None}
+
+    report = {
+        "report_model": sections.get("REPORT_MODEL"),
+        "date_field": sections.get("DATE_FIELD") or None,
+        "start_date": sections.get("START_DATE") or None,
+        "end_date": sections.get("END_DATE") or None,
+        "group_by": sections.get("GROUP_BY") or None,
+        "columns": _parse_plain_text_columns(sections.get("COLUMNS", "")),
+        "time_series_pattern": sections.get("TIME_SERIES_PATTERN") or None,
+        "time_series_columns": _parse_plain_text_columns(sections.get("TIME_SERIES_COLUMNS", "")),
+        "crosstab_field": sections.get("CROSSTAB_FIELD") or None,
+        "crosstab_columns": _parse_plain_text_columns(sections.get("CROSSTAB_COLUMNS", "")),
+        "filters": _parse_plain_text_filters(sections.get("FILTERS", "")),
+    }
+    # Remove empty optional values.
+    report = {k: v for k, v in report.items() if v not in (None, [], {})}
+    return {"thinking": sections.get("THINKING", ""), "report": report}
+
+
+def parse_llm_plain_text_answer(text):
+    """
+    Convert a plain-text answer response into the JSON-shaped dict that the
+    rest of the LLM pipeline expects.
+
+    Expected sections: ANSWER, REASONING, PROOF_TITLE, PROOF_REPORT_MODEL,
+    PROOF_SUMMARY, PROOF_KEY_NUMBERS.
+    """
+    lines = clean_json_output(text).splitlines()
+    sections = {}
+    for line in lines:
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip().upper()
+        value = value.strip()
+        if value and key not in sections:
+            sections[key] = value
+
+    return {
+        "answer": sections.get("ANSWER", ""),
+        "reasoning": sections.get("REASONING", ""),
+        "proofs": [
+            {
+                "title": sections.get("PROOF_TITLE", ""),
+                "report_model": sections.get("PROOF_REPORT_MODEL", ""),
+                "summary": sections.get("PROOF_SUMMARY", ""),
+                "key_numbers": _parse_plain_text_key_numbers(sections.get("PROOF_KEY_NUMBERS", "")),
+            }
+        ],
+    }
+
+
+def _parse_plain_text_columns(value):
+    """Parse 'name, Sum(value), Avg(quantity)' into list of strings/dicts."""
+    columns = []
+    if not value:
+        return columns
+    for part in re.split(r",(?![^()]*\))", value):
+        part = part.strip()
+        if not part:
+            continue
+        match = re.match(r"^(\w+)\(([^)]+)\)$", part)
+        if match:
+            method, field = match.groups()
+            columns.append(
+                {
+                    "method": method.capitalize(),
+                    "field": field.strip(),
+                    "name": f"{field.strip()}__{method.lower()}",
+                }
+            )
+        else:
+            columns.append(part)
+    return columns
+
+
+def _parse_plain_text_filters(value):
+    """Parse 'k1=v1,v2; k2=v3' into a dict of lists/strings."""
+    filters = {}
+    if not value:
+        return filters
+    for part in value.split(";"):
+        part = part.strip()
+        if "=" not in part:
+            continue
+        key, val = part.split("=", 1)
+        key = key.strip()
+        values = [v.strip() for v in val.split(",") if v.strip()]
+        filters[key] = values if len(values) > 1 else values[0]
+    return filters
+
+
+def _parse_plain_text_key_numbers(value):
+    """Parse 'Key: 123; Another: 456' into a dict."""
+    out = {}
+    if not value:
+        return out
+    for part in value.split(";"):
+        part = part.strip()
+        if ":" not in part:
+            continue
+        key, val = part.split(":", 1)
+        key = key.strip()
+        raw_val = val.strip()
+        # Try to coerce numeric-looking values.
+        try:
+            if "." in raw_val:
+                out[key] = float(raw_val)
+            else:
+                out[key] = int(raw_val)
+        except ValueError:
+            out[key] = raw_val
+    return out
