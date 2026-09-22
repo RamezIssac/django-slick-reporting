@@ -165,14 +165,31 @@ SLICK_REPORTING_SETTINGS = {
             "css": {"all": ("https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.css",)},
         },
     },
-    # Local llama.cpp OpenAI-compatible server used for the "Ask the data" assistant.
-    "LLM_BACKEND": "slick_reporting.llm.backends.OpenAICompatibleBackend",
+    # "Ask the data" assistant, powered by OpenRouter (https://openrouter.ai)
+    # using a free-tier model. Put your key in the OPENROUTER_API_KEY env var
+    # (never in this file). Override the model via SLICK_REPORTING_LLM_MODEL;
+    # browse free models at https://openrouter.ai/models?q=free
+    # nex-agi/nex-n2.5-mini:free verified best on the demo evaluation set
+    # (2026-09); google/gemma-4-31b-it:free is an alternative but its free
+    # pool is often rate-limited upstream.
+    "LLM_BACKEND": "slick_reporting.llm.backends.OpenRouterBackend",
     "LLM_BACKEND_OPTIONS": {
-        "api_url": "http://192.168.178.100:8080/v1/chat/completions",
-        "api_key": "not-needed",
-        "model": "local",
+        "model": os.getenv("SLICK_REPORTING_LLM_MODEL", "nex-agi/nex-n2.5-mini:free"),
         "temperature": 0.2,
+        # Free-tier models may be briefly rate-limited upstream; give them time.
+        "timeout": 300,
     },
+    # Alternative: a local llama.cpp OpenAI-compatible server. No key needed:
+    # "LLM_BACKEND": "slick_reporting.llm.backends.OpenAICompatibleBackend",
+    # "LLM_BACKEND_OPTIONS": {
+    #     "base_url": "http://192.168.178.100:8080/v1",
+    #     "api_key": "not-needed",
+    #     "model": "local",
+    #     "temperature": 0.2,
+    #     # llama.cpp reasoning controls:
+    #     # "enable_thinking": False,
+    #     # "reasoning_budget": 0,
+    # },
 }
 
 STATIC_ROOT = os.getenv("STATIC_ROOT", BASE_DIR / "collected_static")

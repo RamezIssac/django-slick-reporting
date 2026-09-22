@@ -271,51 +271,65 @@ class Command(BaseCommand):
             for cfg in configs:
                 if "name" not in cfg or "backend_options" not in cfg:
                     raise ValueError("Each config must contain 'name' and 'backend_options'.")
-                cfg.setdefault("backend_path", "slick_reporting.llm.backends.OpenAICompatibleBackend")
+                cfg.setdefault(
+                    "backend_path",
+                    SLICK_REPORTING_SETTINGS.get("LLM_BACKEND")
+                    or "slick_reporting.llm.backends.OpenAICompatibleBackend",
+                )
             return configs
 
         # Single implicit config from CLI / settings.
         return [
             {
                 "name": options["model"] or "default",
-                "backend_path": options["backend"] or "slick_reporting.llm.backends.OpenAICompatibleBackend",
+                "backend_path": options["backend"]
+                or SLICK_REPORTING_SETTINGS.get("LLM_BACKEND")
+                or "slick_reporting.llm.backends.OpenAICompatibleBackend",
                 "backend_options": self._single_config_options(options),
             }
         ]
 
     def _single_config_options(self, options):
-        user_options = SLICK_REPORTING_SETTINGS.get("LLM_BACKEND_OPTIONS") or {}
-        run_options = {}
+        user_options = dict(SLICK_REPORTING_SETTINGS.get("LLM_BACKEND_OPTIONS") or {})
+        # Pass through every settings key the backend understands (api_url,
+        # base_url, api_key, api_key_env, model, temperature, max_tokens,
+        # timeout, enable_thinking, reasoning_budget, extra_headers,
+        # extra_payload, ...); the backend raises a clear error if it is
+        # missing something it needs.
+        run_options = {k: v for k, v in user_options.items() if k in self.PASSTHROUGH_OPTION_KEYS}
 
         if options["api_url"]:
             run_options["api_url"] = options["api_url"]
-        elif user_options.get("api_url"):
-            run_options["api_url"] = user_options["api_url"]
-        else:
-            raise ValueError(
-                "No api_url provided. Pass --api-url, --configs-file, or set "
-                "SLICK_REPORTING_SETTINGS['LLM_BACKEND_OPTIONS']['api_url']."
-            )
-
-        run_options["api_key"] = (
-            options["api_key"] if options["api_key"] is not None else user_options.get("api_key", "")
-        )
-        run_options["model"] = options["model"] if options["model"] is not None else user_options.get("model", "local")
-        run_options["temperature"] = float(user_options.get("temperature", 0.2))
+        if options["api_key"] is not None:
+            run_options["api_key"] = options["api_key"]
+        if options["model"] is not None:
+            run_options["model"] = options["model"]
+        run_options["temperature"] = float(run_options.get("temperature", 0.2))
         # CLI --enable-thinking takes precedence; then fall back to settings (default False).
-        if "enable_thinking" in user_options:
-            run_options["enable_thinking"] = bool(user_options["enable_thinking"])
-        else:
+        if "enable_thinking" not in run_options:
             run_options["enable_thinking"] = bool(options["enable_thinking"])
         if options["reasoning_budget"] is not None:
             run_options["reasoning_budget"] = options["reasoning_budget"]
-        elif user_options.get("reasoning_budget") is not None:
-            run_options["reasoning_budget"] = user_options["reasoning_budget"]
         if options["timeout"] is not None:
             run_options["timeout"] = options["timeout"]
-        elif user_options.get("timeout"):
-            run_options["timeout"] = user_options["timeout"]
         return run_options
+
+    PASSTHROUGH_OPTION_KEYS = {
+        "api_url",
+        "base_url",
+        "api_key",
+        "api_key_env",
+        "model",
+        "temperature",
+        "max_tokens",
+        "timeout",
+        "enable_thinking",
+        "reasoning_budget",
+        "extra_headers",
+        "extra_payload",
+        "site_url",
+        "app_name",
+    }
 
     def _catalog_models(self, options):
         if options["catalog_models"]:

@@ -17,6 +17,13 @@ Guidance for OpenCode sessions in this repo. See `CLAUDE.md` for deeper architec
 - Test DB is SQLite with `MIGRATE: False` (see `tests/settings.py`) — the app has no migrations; test tables are created directly from models
 - Test models live in `tests/models.py`; shared fixture data (multiple dates, for time-series tests) comes from `BaseTestData` in `tests/tests.py`
 - `demo_proj/` is a separate runnable Django demo app (own `manage.py`, `db.sqlite3`, `requirements.txt`) used for manual/visual verification — it is not part of the automated test suite
+- `tests/llm_tests.py` holds the LLM assistant tests; `tests/test_llm.py` re-exports them because the default `test*.py` discovery pattern does not match `llm_tests.py` — extend `llm_tests.py`, keep the shim
+
+## LLM assistant
+
+- Code lives in `slick_reporting/llm/` (backends, executor, prompts, views); docs in `docs/source/topics/llm_assistant.rst`
+- Configure via `SLICK_REPORTING_SETTINGS["LLM_BACKEND"]` + `["LLM_BACKEND_OPTIONS"]`; `OpenRouterBackend` (key from `OPENROUTER_API_KEY` env, free-tier default model) and `OpenAICompatibleBackend` (covers local llama.cpp via `base_url`) are built in
+- Benchmark end-to-end with `demo_proj/manage.py evaluate_llm --questions-file demo_proj/demo_app/fixtures/llm_eval_questions.json [--model <id>] [--plain-text]`
 
 ## Architecture (see CLAUDE.md for details)
 

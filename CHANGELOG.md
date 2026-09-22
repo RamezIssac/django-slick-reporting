@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### New Features
+
+- **Natural-language "Ask the data" assistant** (`slick_reporting.llm`) — users post a plain-English
+  business question; the assistant plans a report configuration with an LLM, executes it with the
+  reporting engine, and answers with reasoning and data-backed proofs. Ships with a pluggable backend
+  interface: ``OpenRouterBackend`` (hosted `OpenRouter <https://openrouter.ai>`_ models, including
+  free-tier ones; API key read from the ``OPENROUTER_API_KEY`` environment variable) and
+  ``OpenAICompatibleBackend`` (any OpenAI-compatible endpoint, e.g. OpenAI, Groq, or a local llama.cpp
+  server via ``base_url``). Backend options support ``api_url``/``base_url``, ``api_key``/``api_key_env``,
+  ``model``, ``temperature``, ``max_tokens``, ``timeout``, ``extra_headers``, ``extra_payload`` (e.g.
+  OpenRouter reasoning controls) and the llama.cpp ``enable_thinking``/``reasoning_budget`` switches.
+  If no backend is configured it is auto-detected from the environment. Planning and answering can
+  exchange JSON (default) or structured plain text for smaller/local models
+  (``LLM_PLAIN_TEXT_RESPONSE``). Includes an ``evaluate_llm`` management command in the demo project
+  to benchmark models against a set of questions. See :doc:`topics/llm_assistant`.
+
 ## [1.4.0] - 2026-05-01
 
 ### New Features

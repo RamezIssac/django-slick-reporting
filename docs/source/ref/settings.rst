@@ -96,16 +96,34 @@ Below are the default settings for django-slick-reporting. You can override them
 * LLM_BACKEND:
 
     Dotted path to an LLM backend class. Built-in options are
-    ``slick_reporting.llm.backends.OpenAICompatibleBackend`` and
-    ``slick_reporting.llm.backends.EchoBackend``. Defaults to
-    ``EchoBackend`` if no backend is configured.
+    ``slick_reporting.llm.backends.OpenRouterBackend`` (preconfigured for
+    `OpenRouter <https://openrouter.ai>`_, key read from the
+    ``OPENROUTER_API_KEY`` environment variable, defaults to a free-tier
+    model), ``slick_reporting.llm.backends.OpenAICompatibleBackend`` (any
+    OpenAI-compatible endpoint, including a local llama.cpp server) and
+    ``slick_reporting.llm.backends.EchoBackend``. If unset, the backend is
+    auto-detected from the environment (``OPENROUTER_API_KEY``, then
+    ``OPENAI_API_KEY``), defaulting to ``EchoBackend``.
 
 * LLM_BACKEND_OPTIONS:
 
     Dictionary passed as keyword arguments when instantiating the
-    ``LLM_BACKEND`` class. For ``OpenAICompatibleBackend`` supply
-    ``api_url``, ``api_key``, ``model``, and optionally ``temperature``
-    and ``timeout``.
+    ``LLM_BACKEND`` class. For ``OpenAICompatibleBackend`` (and
+    ``OpenRouterBackend``) supply:
+
+    * ``api_url``: the full chat-completions URL, or ``base_url``: an
+      OpenAI-style base URL (``/chat/completions`` is appended).
+    * ``api_key``: the literal API key, or ``api_key_env``: the name of an
+      environment variable to read it from (``OpenRouterBackend`` defaults
+      to ``OPENROUTER_API_KEY``).
+    * ``model``: the model identifier (``OpenRouterBackend`` defaults to
+      ``slick_reporting.llm.backends.OPENROUTER_DEFAULT_MODEL``).
+    * optionally ``temperature``, ``max_tokens``, ``timeout``,
+      ``extra_headers`` (dict merged into request headers),
+      ``extra_payload`` (dict merged into every request payload, e.g.
+      OpenRouter reasoning controls ``{"reasoning": {"effort": "low"}}``),
+      and the llama.cpp reasoning switches ``enable_thinking`` /
+      ``reasoning_budget``.
 
 * LLM_CATALOG_MODELS:
 

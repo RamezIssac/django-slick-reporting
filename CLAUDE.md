@@ -63,6 +63,12 @@ Columns in `columns` list can be: model field names (str), traversing field name
 
 Tests live in `tests/` with settings in `tests/settings.py` (SQLite, no migrations). Test models (`Product`, `Client`, `SimpleSales`, etc.) are defined in `tests/models.py`. `BaseTestData` in `tests/tests.py` creates fixture data across multiple dates for time-series testing.
 
+The LLM assistant tests live in `tests/llm_tests.py`; `tests/test_llm.py` re-exports them because the default `test*.py` discovery pattern does not match `llm_tests.py` — extend `llm_tests.py`, keep the shim.
+
+## LLM assistant
+
+The optional natural-language assistant lives in `slick_reporting/llm/` (backends, executor, prompts, views) and is documented in `docs/source/topics/llm_assistant.rst`. Configure it via `SLICK_REPORTING_SETTINGS["LLM_BACKEND"]` + `["LLM_BACKEND_OPTIONS"]`; built-in backends are `OpenRouterBackend` (hosted, key from the `OPENROUTER_API_KEY` env var, free-tier default model) and `OpenAICompatibleBackend` (any OpenAI-compatible endpoint, including a local llama.cpp server via `base_url`). Benchmark it end-to-end with `demo_proj/manage.py evaluate_llm`.
+
 ## Code style
 
 - Black + Ruff, line length 120

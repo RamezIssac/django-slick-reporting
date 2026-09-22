@@ -1,9 +1,18 @@
 [
   {
+    "name": "openrouter-default-free",
+    "backend_path": "slick_reporting.llm.backends.OpenRouterBackend",
+    "backend_options": {
+      "model": "nex-agi/nex-n2.5-mini:free",
+      "temperature": 0.2,
+      "timeout": 300
+    }
+  },
+  {
     "name": "local-llama",
     "backend_path": "slick_reporting.llm.backends.OpenAICompatibleBackend",
     "backend_options": {
-      "api_url": "http://192.168.178.100:8080/v1/chat/completions",
+      "base_url": "http://192.168.178.100:8080/v1",
       "api_key": "not-needed",
       "model": "local",
       "temperature": 0.2,

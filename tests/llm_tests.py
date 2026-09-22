@@ -1,11 +1,18 @@
 import json
+import os
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.urls import path, include
 
 from slick_reporting.generator import ReportGenerator
-from slick_reporting.llm.backends import EchoBackend, OpenAICompatibleBackend
+from slick_reporting.llm.backends import (
+    OPENROUTER_DEFAULT_MODEL,
+    EchoBackend,
+    OpenAICompatibleBackend,
+    OpenRouterBackend,
+    get_llm_backend,
+)
 from slick_reporting.llm.executor import (
     _normalize_llm_columns,
     clean_json_output,
@@ -184,6 +191,27 @@ class ReportConfigExecutionTests(BaseTestData):
         self.assertTrue(response["metadata"]["time_series_column_names"])
 
 
+class _FakeHTTPResponse:
+    """Minimal context-manager response for mocked urllib.request.urlopen calls."""
+
+    def __init__(self, payload):
+        self._payload = payload
+        self.status = 200
+
+    def read(self):
+        return json.dumps(self._payload).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def _chat_response(content):
+    return _FakeHTTPResponse({"choices": [{"message": {"content": content}}]})
+
+
 class BackendTests(TestCase):
     def test_echo_backend(self):
         backend = EchoBackend()
@@ -202,6 +230,113 @@ class BackendTests(TestCase):
             )
             result = backend.complete('{"a": 1}')
             self.assertEqual(result, '{"a": 1}')
+
+    def test_base_url_resolution(self):
+        backend = OpenAICompatibleBackend(base_url="https://api.example.com/v1/", api_key="k", model="m")
+        self.assertEqual(backend.api_url, "https://api.example.com/v1/chat/completions")
+        # An explicit api_url always wins over base_url.
+        backend = OpenAICompatibleBackend(
+            base_url="https://api.example.com/v1",
+            api_url="https://other.example.com/chat/completions",
+            api_key="k",
+            model="m",
+        )
+        self.assertEqual(backend.api_url, "https://other.example.com/chat/completions")
+
+    def test_api_key_env_resolution(self):
+        with patch.dict(os.environ, {"MY_LLM_KEY": "secret-from-env"}, clear=True):
+            backend = OpenAICompatibleBackend(base_url="https://api.example.com/v1", api_key_env="MY_LLM_KEY", model="m")
+        self.assertEqual(backend.api_key, "secret-from-env")
+        # A literal api_key wins over the env var.
+        with patch.dict(os.environ, {"MY_LLM_KEY": "secret-from-env"}, clear=True):
+            backend = OpenAICompatibleBackend(
+                base_url="https://api.example.com/v1", api_key_env="MY_LLM_KEY", api_key="literal", model="m"
+            )
+        self.assertEqual(backend.api_key, "literal")
+
+    def test_missing_url_or_model_raise(self):
+        with self.assertRaises(ValueError):
+            OpenAICompatibleBackend(api_key="k", model="m")
+        with self.assertRaises(ValueError):
+            OpenAICompatibleBackend(base_url="https://api.example.com/v1", api_key="k")
+
+    def test_openrouter_backend_defaults(self):
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "or-key"}, clear=True):
+            backend = OpenRouterBackend()
+        self.assertEqual(backend.api_url, "https://openrouter.ai/api/v1/chat/completions")
+        self.assertEqual(backend.api_key, "or-key")
+        self.assertEqual(backend.model, OPENROUTER_DEFAULT_MODEL)
+
+    def test_openrouter_attribution_headers(self):
+        backend = OpenRouterBackend(api_key="k", model="m", site_url="https://example.com", app_name="Demo")
+        self.assertEqual(backend.extra_headers["HTTP-Referer"], "https://example.com")
+        self.assertEqual(backend.extra_headers["X-Title"], "Demo")
+
+    def test_openrouter_backend_payload(self):
+        """Mocked OpenRouter round trip: URL, auth header, model and extra_payload."""
+        captured = {}
+
+        def fake_urlopen(req, timeout=None):
+            captured["url"] = req.full_url
+            captured["auth"] = req.get_header("Authorization")
+            captured["payload"] = json.loads(req.data.decode("utf-8"))
+            return _chat_response('{"ok": true}')
+
+        backend = OpenRouterBackend(
+            api_key="or-key",
+            model="google/gemma-4-31b-it:free",
+            extra_payload={"reasoning": {"effort": "low"}},
+        )
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            result = backend.complete("Return the JSON configuration.")
+
+        self.assertEqual(result, '{"ok": true}')
+        self.assertEqual(captured["url"], "https://openrouter.ai/api/v1/chat/completions")
+        self.assertEqual(captured["auth"], "Bearer or-key")
+        self.assertEqual(captured["payload"]["model"], "google/gemma-4-31b-it:free")
+        self.assertEqual(captured["payload"]["reasoning"], {"effort": "low"})
+        self.assertEqual(captured["payload"]["messages"], [{"role": "user", "content": "Return the JSON configuration."}])
+
+    def test_openrouter_backend_null_content(self):
+        # Some providers return explicit null content; treat it as empty text.
+        def fake_urlopen(req, timeout=None):
+            return _FakeHTTPResponse({"choices": [{"message": {"content": None}}]})
+
+        backend = OpenRouterBackend(api_key="or-key", model="m")
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            self.assertEqual(backend.complete("hi"), "")
+
+    def test_get_llm_backend_autodetects_openrouter(self):
+        with patch("slick_reporting.llm.backends.SLICK_REPORTING_SETTINGS", {}):
+            with patch.dict(os.environ, {"OPENROUTER_API_KEY": "or-key"}, clear=True):
+                backend = get_llm_backend()
+        self.assertIsInstance(backend, OpenRouterBackend)
+        self.assertEqual(backend.api_key, "or-key")
+        self.assertEqual(backend.model, OPENROUTER_DEFAULT_MODEL)
+
+    def test_get_llm_backend_autodetects_openai(self):
+        with patch("slick_reporting.llm.backends.SLICK_REPORTING_SETTINGS", {}):
+            with patch.dict(os.environ, {"OPENAI_API_KEY": "oa-key"}, clear=True):
+                backend = get_llm_backend()
+        self.assertIsInstance(backend, OpenAICompatibleBackend)
+        self.assertNotIsInstance(backend, OpenRouterBackend)
+        self.assertEqual(backend.api_url, "https://api.openai.com/v1/chat/completions")
+
+    def test_get_llm_backend_falls_back_to_echo(self):
+        with patch("slick_reporting.llm.backends.SLICK_REPORTING_SETTINGS", {}):
+            with patch.dict(os.environ, {}, clear=True):
+                backend = get_llm_backend()
+        self.assertIsInstance(backend, EchoBackend)
+
+    def test_get_llm_backend_respects_configured_backend(self):
+        settings_dict = {
+            "LLM_BACKEND": "slick_reporting.llm.backends.OpenRouterBackend",
+            "LLM_BACKEND_OPTIONS": {"api_key": "or-key", "model": "some/model:free"},
+        }
+        with patch("slick_reporting.llm.backends.SLICK_REPORTING_SETTINGS", settings_dict):
+            backend = get_llm_backend()
+        self.assertIsInstance(backend, OpenRouterBackend)
+        self.assertEqual(backend.model, "some/model:free")
 
 
 class AskLLMViewTests(BaseTestData):
@@ -286,6 +421,68 @@ class AskLLMViewTests(BaseTestData):
 urlpatterns = [
     path("dashboard/", include("slick_reporting.llm.urls")),
 ]
+
+
+class AskLLMViewOpenRouterTests(BaseTestData):
+    """End-to-end ask flow through the OpenRouter backend with HTTP mocked out."""
+
+    databases = "__all__"
+    urls = "tests.llm_tests"
+
+    def setUp(self):
+        super().setUp()
+        self.url = "/dashboard/ask/"
+        self.user.is_superuser = True
+        self.user.save()
+
+    def test_ask_endpoint_with_openrouter_backend(self):
+        plan = {
+            "thinking": "Group by product and sum value",
+            "report": {
+                "report_model": "tests.SimpleSales",
+                "date_field": "doc_date",
+                "start_date": "{year}-01-01".format(year=self.year),
+                "end_date": "{year}-04-01".format(year=self.year),
+                "group_by": "product",
+                "columns": [
+                    "name",
+                    {"method": "Sum", "field": "value", "name": "value__sum"},
+                ],
+            },
+        }
+        answer = {
+            "answer": "Product 1 sold a lot.",
+            "reasoning": "Summed value over the period.",
+            "proofs": [{"title": "Product totals", "summary": "Totals", "key_numbers": {"Total": 100}}],
+        }
+        captured = []
+
+        def fake_urlopen(req, timeout=None):
+            payload = json.loads(req.data.decode("utf-8"))
+            is_plan = any("Available catalog" in m.get("content", "") for m in payload["messages"])
+            captured.append({"url": req.full_url, "auth": req.get_header("Authorization"), "payload": payload})
+            return _chat_response(json.dumps(plan if is_plan else answer))
+
+        backend = OpenRouterBackend(api_key="or-key", model="google/gemma-4-31b-it:free")
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            with patch("slick_reporting.llm.views.get_llm_backend", return_value=backend):
+                response = self.client.post(
+                    self.url,
+                    data=json.dumps({"question": "How much did Product 1 sell?"}),
+                    content_type="application/json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["answer"], "Product 1 sold a lot.")
+        self.assertIn("report_data", data)
+        # Both stages (plan + answer) hit the OpenRouter endpoint with the
+        # configured model and the bearer key.
+        self.assertEqual(len(captured), 2)
+        for call in captured:
+            self.assertEqual(call["url"], "https://openrouter.ai/api/v1/chat/completions")
+            self.assertEqual(call["auth"], "Bearer or-key")
+            self.assertEqual(call["payload"]["model"], "google/gemma-4-31b-it:free")
 
 
 class FakeBackend:

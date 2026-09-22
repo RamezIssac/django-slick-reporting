@@ -30,14 +30,81 @@ Configuration
 Add an ``LLM_BACKEND`` and ``LLM_BACKEND_OPTIONS`` to your
 ``SLICK_REPORTING_SETTINGS`` dictionary.
 
+OpenRouter (hosted, free-tier models)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`OpenRouter <https://openrouter.ai>`_ exposes many models through one
+OpenAI-compatible API, including free-tier models (ids ending in ``:free``).
+The ``OpenRouterBackend`` defaults to the OpenRouter API URL, reads the API
+key from the ``OPENROUTER_API_KEY`` environment variable, and uses a free
+model unless told otherwise:
+
+.. code-block:: python
+
+    SLICK_REPORTING_SETTINGS = {
+        # ... your other settings ...
+        "LLM_BACKEND": "slick_reporting.llm.backends.OpenRouterBackend",
+        "LLM_BACKEND_OPTIONS": {
+            # Any OpenRouter model id; browse free ones at
+            # https://openrouter.ai/models?q=free
+            # (nex-agi/nex-n2.5-mini:free verified best on the demo
+            # evaluation set as of 2026-09)
+            "model": "nex-agi/nex-n2.5-mini:free",
+            "temperature": 0.2,
+            # Optional OpenRouter reasoning controls (or any extra payload keys):
+            # "extra_payload": {"reasoning": {"effort": "low"}},
+            # Optional OpenRouter attribution headers:
+            # "site_url": "https://your-site.example",
+            # "app_name": "Your App",
+        },
+    }
+
+    # and in your shell environment (never in code):
+    # export OPENROUTER_API_KEY=sk-or-...
+
+Free-tier models share an upstream pool that is frequently rate-limited
+(popular ones such as ``google/gemma-4-*:free`` may answer with HTTP 429 for
+stretches of time); pick a verified model with the ``evaluate_llm`` command
+shown below, and choose a paid model for production workloads.
+
+A local llama.cpp server
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+A locally hosted `llama.cpp <https://github.com/ggml-org/llama.cpp>`_ server
+speaks the same OpenAI-compatible protocol and needs no real API key:
+
 .. code-block:: python
 
     SLICK_REPORTING_SETTINGS = {
         # ... your other settings ...
         "LLM_BACKEND": "slick_reporting.llm.backends.OpenAICompatibleBackend",
         "LLM_BACKEND_OPTIONS": {
+            "base_url": "http://localhost:8080/v1",
+            "api_key": "not-needed",
+            "model": "local",
+            "temperature": 0.2,
+            # llama.cpp reasoning controls:
+            # "enable_thinking": False,
+            # "reasoning_budget": 0,
+        },
+    }
+
+Any other OpenAI-compatible provider
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+    SLICK_REPORTING_SETTINGS = {
+        # ... your other settings ...
+        "LLM_BACKEND": "slick_reporting.llm.backends.OpenAICompatibleBackend",
+        "LLM_BACKEND_OPTIONS": {
+            # Either the full chat-completions URL:
             "api_url": "https://api.openai.com/v1/chat/completions",
+            # ... or an OpenAI-style base URL ("/chat/completions" is appended):
+            # "base_url": "https://api.openai.com/v1",
+            # A literal key, or the name of an env var to read it from:
             "api_key": os.environ.get("OPENAI_API_KEY"),
+            # "api_key_env": "OPENAI_API_KEY",
             "model": "gpt-4o-mini",
             "temperature": 0.2,
         },
@@ -47,6 +114,12 @@ Add an ``LLM_BACKEND`` and ``LLM_BACKEND_OPTIONS`` to your
             # "myapp.SalesTransaction",
         ],
     }
+
+If ``LLM_BACKEND`` is not set at all, the backend is auto-detected from the
+environment: ``OPENROUTER_API_KEY`` selects the OpenRouter backend with its
+default free model, ``OPENAI_API_KEY`` selects the OpenAI backend, and
+otherwise the no-op ``EchoBackend`` is used (the ask endpoint then answers
+with a "no backend configured" error).
 
 Then include the assistant URLs wherever you mount the reporting dashboard:
 
@@ -129,6 +202,12 @@ captures timing information.
         --questions-file demo_app/fixtures/llm_eval_questions.json \
         --output eval_report.json
 
+    # One-off overrides, e.g. try an OpenRouter model:
+    python manage.py evaluate_llm \
+        --api-url https://openrouter.ai/api/v1/chat/completions \
+        --api-key "$OPENROUTER_API_KEY" \
+        --model nex-agi/nex-n2.5-mini:free
+
 Writing a custom backend
 ------------------------
 
@@ -153,4 +232,5 @@ Point to it with::
     }
 
 The included ``OpenAICompatibleBackend`` works with any provider exposing the
-OpenAI chat-completions JSON schema.
+OpenAI chat-completions JSON schema; ``OpenRouterBackend`` is a preconfigured
+subclass for OpenRouter.
