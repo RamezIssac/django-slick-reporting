@@ -20,6 +20,7 @@ Guidance for OpenCode sessions in this repo. See `CLAUDE.md` for deeper architec
 - `demo_proj/` is a separate runnable Django demo app (own `manage.py`, `db.sqlite3`, `requirements.txt`) used for manual/visual verification — it is not part of the automated test suite
 - `demo_proj` has its own tests, run separately: `cd demo_proj && python manage.py test demo_app`
 - View tests (e.g. `tests.tests.TestView`) get 302 redirects when run standalone because `tests/settings.py` leaves `DEBUG=False`, so the default `REPORT_VIEW_ACCESS_FUNCTION` demands a superuser; they pass in a full-suite run — validate with the whole `python runtests.py`, not single-test runs
+- `demo_proj/demo_proj/settings.py` loads `<demo_proj>/.env` (next to `manage.py`) via python-dotenv before reading any env var; `override=False` so an explicitly exported var wins over the deployed `.env`. `DJANGO_DOTENV_PATH` overrides the location (the tests use it with a tmp dir)
 - `tests/llm_tests.py` holds the LLM assistant tests; `tests/test_llm.py` re-exports them because the default `test*.py` discovery pattern does not match `llm_tests.py` — extend `llm_tests.py`, keep the shim
 
 ## LLM assistant
