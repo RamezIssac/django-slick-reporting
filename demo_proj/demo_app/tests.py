@@ -8,7 +8,9 @@ from django.utils import timezone
 from . import helpers
 from .models import Client, MonthlySalesSummary, Product, ProductCategory, SalesTransaction
 
-ALL_REPORTS = helpers.TUTORIAL + helpers.GROUP_BY + helpers.TIME_SERIES + helpers.CROSSTAB + helpers.PIVOT + helpers.OTHER
+ALL_REPORTS = (
+    helpers.TUTORIAL + helpers.GROUP_BY + helpers.TIME_SERIES + helpers.CROSSTAB + helpers.PIVOT + helpers.OTHER
+)
 
 
 class DemoSanityTests(TestCase):
@@ -26,8 +28,12 @@ class DemoSanityTests(TestCase):
         cls.c3 = Client.objects.create(name="Client KW", country="KW")
 
         pairs = [
-            (cls.p1, cls.c1), (cls.p2, cls.c2), (cls.p1, cls.c3),
-            (cls.p3, cls.c1), (cls.p2, cls.c2), (cls.p3, cls.c3),
+            (cls.p1, cls.c1),
+            (cls.p2, cls.c2),
+            (cls.p1, cls.c3),
+            (cls.p3, cls.c1),
+            (cls.p2, cls.c2),
+            (cls.p3, cls.c3),
         ]
         for i, (product, client) in enumerate(pairs):
             SalesTransaction.objects.create(
@@ -83,6 +89,31 @@ class DemoSanityTests(TestCase):
                 )
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("data", response.json())
+
+    def test_report_response_contains_date_window(self):
+        response = self.client.get(
+            "/product-sales/",
+            data={"start_date": "2024-01-01", "end_date": "2024-12-31"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        date_window = response.json()["metadata"]["date_window"]
+        self.assertEqual(date_window["label"], "From 2024-01-01 to 2024-12-31")
+
+    def test_dashboard_ask_raw_response_is_a_details_toggle(self):
+        response = self.client.get("/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("<details", content)
+        self.assertIn("View raw response", content)
+        self.assertIn('id="ai-raw-response"', content)
+
+    def test_home_highlights_ask_the_data(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Ask the data", content)
+        self.assertIn('href="/dashboard/"', content)
 
     def test_precomputed_crosstab_fk_group_by_returns_data(self):
         """Regression: precomputed crosstab with FK group_by was returning empty rows.

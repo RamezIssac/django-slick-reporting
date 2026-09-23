@@ -19,6 +19,16 @@ All notable changes to this project will be documented in this file.
   exchange JSON (default) or structured plain text for smaller/local models
   (``LLM_PLAIN_TEXT_RESPONSE``). Includes an ``evaluate_llm`` management command in the demo project
   to benchmark models against a set of questions. See :doc:`topics/llm_assistant`.
+- **Effective date window on report widgets** — widgets and report pages now display the date window the
+  report actually covers: ``From <start> to <end>`` when both dates are set, ``As of <end>`` for open-ended
+  (financial-style) reports with only an end date, and ``All time`` when the report is not date-filtered.
+  Exposed as ``metadata.date_window`` in the report response and rendered by the report loader.
+
+### Fixes
+
+- **"Ask the data" answer polish** — the raw response block is now theme-aware (readable on light and dark
+  sections) and collapsed under a ``View raw response`` details toggle; the answer's supporting report
+  renders inside the widget (new ``$.slick_reporting.loadReport`` helper).
 
 ## [1.4.0] - 2026-05-01
 

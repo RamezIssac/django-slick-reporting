@@ -25,6 +25,10 @@ Adding a widget to a page is as easy as this code
 
 The `get_widget_from_url` with create a card block, which will contain the report results and charts. You can customize the widget by passing arguments to the template tag.
 
+Once the report data loads, the widget also displays the effective date window of the report in the card header:
+``From <start> to <end>`` when both dates are set, ``As of <end>`` for open-ended reports with only an end date,
+and ``All time`` when the report is not date-filtered.
+
 Arguments
 ---------
 

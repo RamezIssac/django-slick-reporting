@@ -10,6 +10,7 @@ from django.utils.timezone import now
 
 from slick_reporting.fields import ComputationField, BalanceReportField
 from slick_reporting.generator import ReportGenerator
+from slick_reporting.templatetags.slick_reporting_tags import get_widget
 from slick_reporting.views import ReportView
 from slick_reporting.registry import field_registry
 from tests.report_generators import (
@@ -20,7 +21,7 @@ from tests.report_generators import (
     TimeSeriesWithOutGroupBy,
     ProductClientSalesMatrixwSimpleSales2,
 )
-from . import report_generators
+from . import report_generators, views
 from .models import (
     Client,
     Contact,
@@ -657,6 +658,46 @@ class TestView(BaseTestData, TestCase):
         data = response.json()
         self.assertTrue(data["chart_settings"][0]["id"] != "")
         self.assertTrue(data["chart_settings"][0]["title"], "awesome report title")
+
+    def test_date_window_in_response(self):
+        response = self.client.get(
+            reverse("report1"),
+            data={"start_date": "2020-01-01", "end_date": "2020-12-31"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        date_window = response.json()["metadata"]["date_window"]
+        self.assertEqual(date_window["start"], "2020-01-01")
+        self.assertEqual(date_window["end"], "2020-12-31")
+        self.assertEqual(date_window["label"], "From 2020-01-01 to 2020-12-31")
+
+    def test_date_window_end_date_only(self):
+        # open-ended (financial style) request: only an end date is provided
+        response = self.client.get(
+            reverse("product_crosstab_client"),
+            data={"start_date": "", "end_date": "2020-12-31"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        date_window = response.json()["metadata"]["date_window"]
+        self.assertIsNone(date_window["start"])
+        self.assertEqual(date_window["label"], "As of 2020-12-31")
+
+    def test_date_window_default_when_no_dates(self):
+        # a bare widget load: no dates requested, the default window is applied and displayed
+        response = self.client.get(
+            reverse("report1"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        date_window = response.json()["metadata"]["date_window"]
+        self.assertTrue(date_window["label"].startswith("From "))
+        self.assertTrue(date_window["start"])
+        self.assertTrue(date_window["end"])
+
+    def test_widget_template_renders_date_window_placeholder(self):
+        html = get_widget(report=views.MonthlyProductSales, report_url="/report1/")
+        self.assertIn("data-report-date-window", html)
 
     @skip
     def test_error_on_missing_date_field(self):

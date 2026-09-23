@@ -256,6 +256,15 @@ Compose any report into a page as a self-contained widget — chart, table, or b
 
 See the [live dashboard example](https://django-slick-reporting.com/dashboard/).
 
+## Ask the data — the LLM assistant
+
+New: let your users ask questions in plain English and get an answer **backed by a live report**, with proofs.
+The assistant plans a report configuration, runs it through the same reporting engine, and answers with the numbers — you can inspect the generated report and the raw response right on the dashboard.
+
+<img src="docs/source/topics/_static/srr-ask-the-data.png" alt="Ask the data: a plain-English question answered with a live report and proofs" width="100%">
+
+Works with OpenRouter (free models included), any OpenAI-compatible endpoint, or a local llama.cpp server. [Docs](https://django-slick-reporting.readthedocs.io/en/latest/topics/llm_assistant.html) · [Try it live](https://django-slick-reporting.com/dashboard/)
+
 ## Features
 
 - **Every report shape** — simple aggregates, group-by, time-series, crosstab/pivot, and combinations of them.

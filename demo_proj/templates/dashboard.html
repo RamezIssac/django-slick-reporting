@@ -35,12 +35,16 @@
                 </div>
                 <div id="ai-proof-container"></div>
                 <div class="mt-3" id="ai-report-widget"
-                     data-report-widget data-report-url=""
+                     data-report-widget data-report-url="" data-no-auto-load
                      data-display-chart-selector="False">
                     <div data-report-chart></div>
+                    <div data-report-table></div>
                 </div>
-                <pre id="ai-raw-response" class="d-none bg-light p-2 rounded"></pre>
-                <button type="button" class="btn btn-sm btn-ghost-secondary mt-2" id="ai-toggle-raw">Toggle raw response</button>
+                <details class="mt-3">
+                    <summary class="text-secondary">View raw response</summary>
+                    <pre id="ai-raw-response" class="mt-2 p-2 rounded border small"
+                         style="color: inherit; background: transparent; white-space: pre-wrap; word-break: break-word;"></pre>
+                </details>
             </div>
             <div id="ai-error" class="alert alert-danger mt-3 d-none"></div>
         </div>
@@ -161,7 +165,7 @@
                 $('#ai-answer').addClass('d-none');
                 $('#ai-answer-text').text('');
                 $('#ai-proof-container').html('');
-                $('#ai-raw-response').text('').addClass('d-none');
+                $('#ai-raw-response').text('');
                 $('.ai-loading').removeClass('d-none');
 
                 $.ajax({
@@ -195,9 +199,6 @@
                 });
             });
 
-            $('#ai-toggle-raw').on('click', function () {
-                $('#ai-raw-response').toggleClass('d-none');
-            });
         })();
     </script>
 {% endblock %}
