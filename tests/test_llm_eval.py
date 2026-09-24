@@ -19,13 +19,13 @@ from slick_reporting.llm.evaluator import (
 from slick_reporting.llm.executor import (
     parse_llm_json,
     parse_llm_plain_text_plan,
-    parse_toonn_plan,
-    parse_toonn_answer,
 )
 from slick_reporting.llm.toonn import (
-    answer_prompt_toonn,
+    parse_toonn_plan,
+    parse_toonn_answer,
     parse_toonn_columns,
     parse_toonn_filters,
+    answer_prompt_toonn,
     plan_prompt_toonn,
 )
 
@@ -52,21 +52,21 @@ class DeterministicFixtureTests(TestCase):
         self.assertEqual(e["expected_value"], 5000.0)
         self.assertEqual(e["expected_quantity"], 100)
 
-    def test_product2_us_vs_eg(self):
-        """Product 2: US entries total 1250, EG entries total 1500."""
-        e = self.expected["product2_us_vs_eg_q1"]
-        country_vals = e["expected_country_values"]
-        self.assertEqual(country_vals["US"], 1250.0)
-        self.assertEqual(country_vals["EG"], 1500.0)
-        # Verify US != EG to make the comparison meaningful
-        self.assertNotEqual(country_vals["US"], country_vals["EG"])
+    def test_product2_client_comparison(self):
+        """Product 2: Alpha US total 1250, Beta EG total 1500."""
+        e = self.expected["product2_client_comparison_q1"]
+        client_vals = e["expected_client_values"]
+        self.assertEqual(client_vals["Alpha US"], 1250.0)
+        self.assertEqual(client_vals["Beta EG"], 1500.0)
+        # Verify Alpha != Beta to make the comparison meaningful
+        self.assertNotEqual(client_vals["Alpha US"], client_vals["Beta EG"])
 
-    def test_product2_has_us_and_eg(self):
-        """Product 2 has entries in both US and EG countries."""
+    def test_product2_has_alpha_and_beta(self):
+        """Product 2 has entries from both Alpha US and Beta EG clients."""
         product2_entries = [e for e in DETERMINISTIC_FIXTURE if e.product_name == "Product 2"]
-        countries = set(e.client_country for e in product2_entries)
-        self.assertIn("US", countries)
-        self.assertIn("EG", countries)
+        clients = set(e.client_name for e in product2_entries)
+        self.assertIn("Alpha US", clients)
+        self.assertIn("Beta EG", clients)
 
     def test_product3_totals(self):
         """Product 3: 3 entries × qty 10, price 30 = total 900."""
@@ -89,7 +89,7 @@ class DeterministicFixtureTests(TestCase):
         expected_qids = [
             "product1_sales_q1",
             "product1_quantity_q1",
-            "product2_us_vs_eg_q1",
+            "product2_client_comparison_q1",
             "product1_monthly_q1",
             "top_client_product1_q1",
         ]
@@ -110,7 +110,7 @@ class ToonnParserTests(TestCase):
     def test_parse_toonn_plan_basic(self):
         text = """```toonn
 <THINKING>Group by product and sum value.</THINKING>
-<REPORT_MODEL>demo_app.SalesTransaction</REPORT_MODEL>
+<REPORT_MODEL>tests.SimpleSales</REPORT_MODEL>
 <DATE_FIELD>date</DATE_FIELD>
 <START_DATE>2026-01-01</START_DATE>
 <END_DATE>2026-03-31</END_DATE>
@@ -122,7 +122,7 @@ class ToonnParserTests(TestCase):
 ```"""
         plan = parse_toonn_plan(text)
         self.assertIsNotNone(plan)
-        self.assertEqual(plan["report"]["report_model"], "demo_app.SalesTransaction")
+        self.assertEqual(plan["report"]["report_model"], "tests.SimpleSales")
         self.assertEqual(plan["report"]["group_by"], "product")
         self.assertEqual(plan["report"]["start_date"], "2026-01-01")
         self.assertEqual(plan["report"]["end_date"], "2026-03-31")
@@ -144,7 +144,7 @@ class ToonnParserTests(TestCase):
     def test_parse_toonn_plan_no_fences(self):
         """Should handle text without fences."""
         text = """<THINKING>simple</THINKING>
-<REPORT_MODEL>demo_app.SalesTransaction</REPORT_MODEL>
+<REPORT_MODEL>tests.SimpleSales</REPORT_MODEL>
 <DATE_FIELD>date</DATE_FIELD>
 <START_DATE>2026-01-01</START_DATE>
 <END_DATE>2026-03-31</END_DATE>
@@ -162,7 +162,7 @@ class ToonnParserTests(TestCase):
 <PROOFS>
   <PROOF>
     <TITLE>Product totals</TITLE>
-    <REPORT_MODEL>demo_app.SalesTransaction</REPORT_MODEL>
+    <REPORT_MODEL>tests.SimpleSales</REPORT_MODEL>
     <SUMMARY>Total value per product.</SUMMARY>
     <KEY_NUMBERS>
       <KEY>Product 1</KEY>
@@ -177,7 +177,7 @@ class ToonnParserTests(TestCase):
         self.assertEqual(len(answer["proofs"]), 1)
         proof = answer["proofs"][0]
         self.assertEqual(proof["title"], "Product totals")
-        self.assertEqual(proof["report_model"], "demo_app.SalesTransaction")
+        self.assertEqual(proof["report_model"], "tests.SimpleSales")
         self.assertEqual(proof["key_numbers"], {"Product 1": 5000.0})
 
     def test_parse_toonn_answer_multiple_proofs(self):
@@ -187,12 +187,12 @@ class ToonnParserTests(TestCase):
 <PROOFS>
   <PROOF>
     <TITLE>Product 1</TITLE>
-    <REPORT_MODEL>demo_app.SalesTransaction</REPORT_MODEL>
+    <REPORT_MODEL>tests.SimpleSales</REPORT_MODEL>
     <SUMMARY>Product 1 totals.</SUMMARY>
   </PROOF>
   <PROOF>
     <TITLE>Product 2</TITLE>
-    <REPORT_MODEL>demo_app.SalesTransaction</REPORT_MODEL>
+    <REPORT_MODEL>tests.SimpleSales</REPORT_MODEL>
     <SUMMARY>Product 2 totals.</SUMMARY>
   </PROOF>
 </PROOFS>
@@ -250,7 +250,7 @@ class EvaluationScorerTests(TestCase):
             "plan_success": True,
             "parse_success": True,
             "report_executed": False,
-            "report_config": {"report_model": "demo_app.SalesTransaction", "group_by": "product"},
+            "report_config": {"report_model": "tests.SimpleSales", "group_by": "product"},
             "report_data": None,
             "answer": {"answer": "Product 1 sold well.", "reasoning": "Sum", "proofs": []},
             "error": None,
@@ -322,7 +322,7 @@ class EvaluationScorerTests(TestCase):
     def test_score_normalized_plan_perfect(self):
         result = self._make_result(
             report_config={
-                "report_model": "demo_app.SalesTransaction",
+                "report_model": "tests.SimpleSales",
                 "group_by": "product",
                 "time_series_pattern": None,
                 "columns": [
@@ -354,7 +354,7 @@ class EvaluationScorerTests(TestCase):
         results = [
             self._make_result(
                 plan_success=True, parse_success=True, report_executed=True,
-                report_config={"report_model": "demo_app.SalesTransaction", "group_by": "product"},
+                report_config={"report_model": "tests.SimpleSales", "group_by": "product"},
             )
             for _ in range(3)
         ]
@@ -377,7 +377,7 @@ class EvaluationScorerTests(TestCase):
         results = [
             self._make_result(
                 plan_success=True, error=None,
-                report_config={"report_model": "demo_app.SalesTransaction", "group_by": "product"},
+                report_config={"report_model": "tests.SimpleSales", "group_by": "product"},
             ),
             self._make_result(
                 plan_success=False, error="Bad plan",
@@ -385,7 +385,7 @@ class EvaluationScorerTests(TestCase):
             ),
             self._make_result(
                 plan_success=True, error=None,
-                report_config={"report_model": "demo_app.SalesTransaction", "group_by": "product"},
+                report_config={"report_model": "tests.SimpleSales", "group_by": "product"},
             ),
         ]
         # Populate only plan correctness scores (result_values needs report data)
@@ -415,20 +415,20 @@ class ToonnPromptBuilderTests(TestCase):
 
     def test_plan_prompt_toonn_contains_catalog(self):
         catalog = {
-            "models": [{"identifier": "demo_app.SalesTransaction", "fields": []}],
+            "models": [{"identifier": "tests.SimpleSales", "fields": []}],
             "time_series_patterns": ["monthly"],
             "today_iso": "2026-01-01T00:00:00",
         }
         prompt = plan_prompt_toonn("Show sales for Product 1", catalog)
         self.assertIn("```toonn", prompt)
         self.assertIn("THINKING", prompt)
-        self.assertIn("demo_app.SalesTransaction", prompt)
+        self.assertIn("tests.SimpleSales", prompt)
         self.assertIn("Product 1", prompt)
 
     def test_answer_prompt_toonn_contains_reports(self):
         reports = [
             {
-                "config": {"report_model": "demo_app.SalesTransaction"},
+                "config": {"report_model": "tests.SimpleSales"},
                 "data": [{"name": "Product 1", "value__sum": 5000}],
                 "columns": [],
             }
@@ -452,7 +452,7 @@ class ExistingFormatCompatibilityTests(TestCase):
 
     def test_parse_llm_plain_text_plan(self):
         text = """THINKING: simple
-REPORT_MODEL: demo_app.SalesTransaction
+REPORT_MODEL: tests.SimpleSales
 DATE_FIELD: date
 START_DATE: 2026-01-01
 END_DATE: 2026-03-31

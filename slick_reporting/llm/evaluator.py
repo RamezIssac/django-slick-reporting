@@ -24,8 +24,6 @@ from django.utils.module_loading import import_string
 
 from .executor import run_llm_report_config
 from .introspection import build_reporting_catalog
-
-
 # ---------------------------------------------------------------------------
 # Deterministic fixture
 # ---------------------------------------------------------------------------
@@ -40,8 +38,6 @@ class FixtureEntry:
     product_name: str
     quantity: int
     price: float
-
-
 # Fixed Q1 2026 sales data.  Product 2 has entries for both US and EG.
 # These values are chosen so expected results are simple and verifiable.
 DETERMINISTIC_FIXTURE: List[FixtureEntry] = [
@@ -65,8 +61,6 @@ DETERMINISTIC_FIXTURE: List[FixtureEntry] = [
     FixtureEntry("Q1-P3-002", "2026-03-15", "Gamma DE", "DE", "Product 3", 10, 30.00),
     FixtureEntry("Q1-P3-003", "2026-03-25", "Beta EG",  "EG", "Product 3", 10, 30.00),
 ]
-
-
 def _build_fixture_data() -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
     """
     Build the deterministic fixture and return (entries, expected_results).
@@ -107,7 +101,7 @@ def _build_fixture_data() -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any
         "product1_sales_q1": {
             "question": "What are the total sales for Product 1 in Q1 2026?",
             "checks": {
-                "report_model": "demo_app.SalesTransaction",
+                "report_model": "tests.SimpleSales",
                 "group_by": "product",
                 "aggregation": "Sum",
                 "filter": {"product_id__in": ["Product 1"]},
@@ -119,30 +113,27 @@ def _build_fixture_data() -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any
         "product1_quantity_q1": {
             "question": "What is the total quantity sold for Product 1 in Q1 2026?",
             "checks": {
-                "report_model": "demo_app.SalesTransaction",
+                "report_model": "tests.SimpleSales",
                 "group_by": "product",
                 "filter": {"product_id__in": ["Product 1"]},
                 "metric": "Sum(quantity)",
             },
             "expected_quantity": product_total_quantity.get("Product 1", 0),
         },
-        "product2_us_vs_eg_q1": {
-            "question": "How does Product 2 sales compare between US and EG in Q1 2026?",
+        "product2_client_comparison_q1": {
+            "question": "How does Product 2 sales compare between clients in Q1 2026?",
             "checks": {
-                "report_model": "demo_app.SalesTransaction",
-                "group_by": "client__country",
+                "report_model": "tests.SimpleSales",
+                "group_by": "client",
                 "filter": {"product_id__in": ["Product 2"]},
                 "metric": "Sum(value)",
             },
-            "expected_country_values": {
-                "US": country_product_value.get("US", {}).get("Product 2", 0),
-                "EG": country_product_value.get("EG", {}).get("Product 2", 0),
-            },
+            "expected_client_values": product_client_value.get("Product 2", {}),
         },
         "product1_monthly_q1": {
             "question": "What were Product 1 monthly sales across Q1 2026?",
             "checks": {
-                "report_model": "demo_app.SalesTransaction",
+                "report_model": "tests.SimpleSales",
                 "group_by": "product",
                 "time_series_pattern": "monthly",
                 "filter": {"product_id__in": ["Product 1"]},
@@ -153,7 +144,7 @@ def _build_fixture_data() -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any
         "top_client_product1_q1": {
             "question": "Which client bought the most of Product 1 by sales value in Q1 2026?",
             "checks": {
-                "report_model": "demo_app.SalesTransaction",
+                "report_model": "tests.SimpleSales",
                 "group_by": "client",
                 "filter": {"product_id__in": ["Product 1"]},
                 "metric": "Sum(value)",
@@ -162,13 +153,9 @@ def _build_fixture_data() -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any
         },
     }
     return entries, expected
-
-
 # ---------------------------------------------------------------------------
 # Scorer
 # ---------------------------------------------------------------------------
-
-
 @dataclass
 class EvaluationResult:
     """Single result for one question-backend-format combination."""
@@ -188,8 +175,6 @@ class EvaluationResult:
     error: Optional[str] = None
     scores: Dict[str, Any] = field(default_factory=dict)
     token_counts: Dict[str, Any] = field(default_factory=dict)
-
-
 class EvaluationScorer:
     """Score evaluation results across multiple dimensions."""
 
@@ -243,6 +228,13 @@ class EvaluationScorer:
             expected_qty = expected["expected_quantity"]
             actual = EvaluationFixture._extract_value(result, "quantity")
             scores["quantity_match"] = actual == expected_qty if actual is not None else False
+
+        if "expected_client_values" in expected:
+            expected_cvs = expected["expected_client_values"]
+            actual_cvs = EvaluationFixture._extract_client_values(result)
+            for client, exp_val in expected_cvs.items():
+                scores[f"client_{client}_match"] = \
+                    abs(actual_cvs.get(client, 0) - exp_val) < 0.01
 
         if "expected_country_values" in expected:
             expected_cvs = expected["expected_country_values"]
@@ -399,13 +391,9 @@ class EvaluationScorer:
                 for r in results if r.error or not r.scores.get("result_values", (False, ""))[0]
             ],
         }
-
-
 # ---------------------------------------------------------------------------
 # Fixture management
 # ---------------------------------------------------------------------------
-
-
 class EvaluationFixture:
     """Manage the deterministic fixture data."""
 
@@ -530,19 +518,16 @@ class EvaluationFixture:
             lines.append(f"  [{qid}] {q.get('question', '???')}")
 
         return "\n".join(lines)
-
-
 # ---------------------------------------------------------------------------
 # Evaluation Runner
 # ---------------------------------------------------------------------------
-
-
 def run_evaluation(
     backend_class: str,
     backend_options: Dict[str, Any],
     questions: Optional[List[Dict[str, Any]]] = None,
     formats: List[str] = None,
     repetitions: int = 3,
+    question_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Run the full evaluation against a backend.
@@ -561,7 +546,7 @@ def run_evaluation(
         formats = ["json", "plain", "toonn"]
 
     _entries, expected = EvaluationFixture.setup()
-    question_ids = EvaluationFixture.get_all_question_ids()
+    question_ids = question_ids or EvaluationFixture.get_all_question_ids()
 
     if questions:
         # Use custom questions
@@ -576,6 +561,7 @@ def run_evaluation(
         for fmt in formats:
             is_plain_text = fmt == "plain"
             is_toonn = fmt == "toonn"
+            
 
             for qid in question_ids:
                 q = expected[qid]
@@ -592,19 +578,22 @@ def run_evaluation(
 
                 try:
                     # Build catalog
-                    catalog = build_reporting_catalog(extra_models=["demo_app.SalesTransaction"])
+                    catalog = build_reporting_catalog(extra_models=["tests.SimpleSales"])
 
                     # Stage 1: Plan
-                    from .prompts import plan_prompt
-
                     plan_start = time.perf_counter()
-                    plan_prompt_text = plan_prompt(
-                        question_text, catalog, plain_text=is_plain_text, toonn=is_toonn
-                    )
+                    if is_toonn:
+                        from .toonn import plan_prompt_toonn
+                        plan_prompt_text = plan_prompt_toonn(question_text, catalog)
+                    else:
+                        from .prompts import plan_prompt
+                        plan_prompt_text = plan_prompt(
+                            question_text, catalog, plain_text=is_plain_text
+                        )
                     plan_raw = backend.complete(plan_prompt_text)
                     plan_duration = time.perf_counter() - plan_start
 
-                    result.raw_plan = plan_raw[:500]
+                    result.raw_plan = plan_raw[:500] if plan_raw else ""
                     result.timings["plan_seconds"] = round(plan_duration, 4)
 
                     # Parse plan
@@ -643,10 +632,14 @@ def run_evaluation(
                                 "columns": result.report_data.get("columns", []),
                             }
                         ]
-                        from .prompts import answer_prompt
-                        answer_prompt_text = answer_prompt(
-                            question_text, reports_for_answer, plain_text=is_plain_text, toonn=is_toonn
-                        )
+                        if is_toonn:
+                            from .toonn import answer_prompt_toonn
+                            answer_prompt_text = answer_prompt_toonn(question_text, reports_for_answer)
+                        else:
+                            from .prompts import answer_prompt
+                            answer_prompt_text = answer_prompt(
+                                question_text, reports_for_answer, plain_text=is_plain_text
+                            )
                         answer_raw = backend.complete(answer_prompt_text)
                         result.raw_answer = answer_raw[:500]
 
