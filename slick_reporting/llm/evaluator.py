@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from django.db import transaction
 from django.db.models import Model
 from django.utils.module_loading import import_string
+from django.utils import timezone
 
 from .executor import run_llm_report_config
 from .introspection import build_reporting_catalog
@@ -153,6 +154,75 @@ def _build_fixture_data() -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any
         },
     }
     return entries, expected
+
+
+def _create_fixture_data() -> None:
+    """Create the deterministic fixture data in the database.
+
+    This creates Products, Clients, and SimpleSales records so that
+    the filter resolution step (_resolve_single_label_to_id) can look
+    up product/client names and resolve them to primary keys.
+    """
+    from django.core.management import call_command
+    from tests.models import Product, Client, SimpleSales
+    from datetime import datetime, timezone
+
+    # Ensure database tables exist (run migrations if needed)
+    try:
+        call_command("migrate", "--run-syncdb", verbosity=0)
+    except Exception:
+        pass  # Tables may already exist
+
+    # Create products (get_or_create to be idempotent)
+    product_map = {}
+    for product_name in ["Product 1", "Product 2", "Product 3"]:
+        product, created = Product.objects.get_or_create(
+            name=product_name,
+            defaults={
+                "slug": product_name.lower().replace(" ", "-"),
+                "sku": product_name.upper().replace(" ", "-"),
+                "category": "small",
+                "notes": "Evaluation fixture product",
+            },
+        )
+        product_map[product_name] = product
+
+    # Create clients (get_or_create to be idempotent)
+    client_map = {}
+    for client_name in ["Alpha US", "Beta EG", "Gamma DE"]:
+        client, created = Client.objects.get_or_create(
+            name=client_name,
+            defaults={
+                "slug": client_name.lower().replace(" ", "-"),
+                "email": f"{client_name.lower().replace(' ', '')}@example.com",
+                "notes": "Evaluation fixture client",
+                "sex": "OTHER",
+            },
+        )
+        client_map[client_name] = client
+
+    # Create sales records (get_or_create by slug to be idempotent)
+    for entry in DETERMINISTIC_FIXTURE:
+        date_obj = datetime.strptime(entry.date, "%Y-%m-%d")
+        date_obj = date_obj.replace(tzinfo=timezone.utc)
+        SimpleSales.objects.get_or_create(
+            slug=entry.number,
+            defaults={
+                "doc_date": date_obj,
+                "client": client_map[entry.client_name],
+                "product": product_map[entry.product_name],
+                "quantity": entry.quantity,
+                "price": entry.price,
+                "value": entry.quantity * entry.price,
+                "created_at": date_obj,
+                "flag": "sales",
+            },
+        )
+
+    # Verify counts
+    total_sales = SimpleSales.objects.filter(slug__startswith="Q1-").count()
+    print(f"Fixture created: {total_sales} sales records, "
+          f"{len(product_map)} products, {len(client_map)} clients")
 # ---------------------------------------------------------------------------
 # Scorer
 # ---------------------------------------------------------------------------
@@ -273,20 +343,19 @@ class EvaluationScorer:
         answer_text = result.answer.get("answer", "").lower()
         checks = expected.get("checks", {})
 
+        has_product1 = True
+        has_product2 = True
+
         # Check for presence of key product names or values
         if "Product 1" in expected.get("question", ""):
             has_product1 = "product 1" in answer_text
-        elif "Product 2" in expected.get("question", ""):
+        if "Product 2" in expected.get("question", ""):
             has_product2 = "product 2" in answer_text
-        elif "top client" in expected.get("question", "").lower():
+        if "top client" in expected.get("question", "").lower():
             # For top client questions, check if any client name is mentioned
             has_client = any(c in answer_text for c in ["alpha", "beta", "gamma", "client"])
             has_product1 = "product 1" in answer_text
             has_product2 = False
-            has_product1 = has_product1  # product 1 is still relevant
-        else:
-            has_product1 = True
-            has_product2 = True
 
         correct = has_product1 or has_product2
         return correct, f"answer_present={bool(answer_text)}"
@@ -548,6 +617,9 @@ def run_evaluation(
     _entries, expected = EvaluationFixture.setup()
     question_ids = question_ids or EvaluationFixture.get_all_question_ids()
 
+    # Create fixture data in the database so filter resolution can work
+    _create_fixture_data()
+
     if questions:
         # Use custom questions
         pass
@@ -598,7 +670,7 @@ def run_evaluation(
 
                     # Parse plan
                     if is_toonn:
-                        from .executor import parse_toonn_plan
+                        from .toonn import parse_toonn_plan
                         plan = parse_toonn_plan(plan_raw)
                     elif is_plain_text:
                         from .executor import parse_llm_plain_text_plan
@@ -644,7 +716,7 @@ def run_evaluation(
                         result.raw_answer = answer_raw[:500]
 
                         if is_toonn:
-                            from .executor import parse_toonn_answer
+                            from .toonn import parse_toonn_answer
                             answer_json = parse_toonn_answer(answer_raw)
                         elif is_plain_text:
                             from .executor import parse_llm_plain_text_answer

@@ -24,11 +24,11 @@ from slick_reporting.llm.evaluator import run_evaluation, EvaluationFixture
 
 
 def main():
-    # Local Ollama endpoint (OpenAI-compatible API)
+    # Configured local Qwen endpoint
     backend_class = "slick_reporting.llm.backends.OpenAICompatibleBackend"
     backend_options = {
-        "api_url": "http://localhost:11434/v1/chat/completions",
-        "model": "qwen2.5-coder:1.5b-base",
+        "api_url": "http://192.168.178.100:8080/v1/chat/completions",
+        "model": "local",
         "temperature": 0.2,
         "timeout": 300,
         "enable_thinking": False,
@@ -36,8 +36,7 @@ def main():
     }
 
     formats = ["json", "plain", "toonn"]
-    repetitions = 2  # Reduced for local model speed
-    questions_subset = ["product1_sales_q1", "product1_quantity_q1"]  # Subset for speed
+    repetitions = 3
 
     print("=" * 70)
     print("LLM FORMAT COMPARISON BENCHMARK")
@@ -67,7 +66,6 @@ def main():
         backend_options=backend_options,
         formats=formats,
         repetitions=repetitions,
-        question_ids=questions_subset,
     )
     elapsed = time.perf_counter() - start
 
