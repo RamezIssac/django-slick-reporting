@@ -5,6 +5,7 @@ from inspect import isclass
 
 from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
 from django.db.models import Q, ForeignKey
+from django.utils.translation import gettext as _
 
 from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import ComputationField
@@ -227,6 +228,11 @@ class ReportGenerator(ReportGeneratorAPI, object):
         super().__init__()
 
         _table_name = table_name or self.table_name
+
+        # Keep the dates as passed (before falling back to the default window)
+        # so we can display the effective date window the report covers.
+        self.requested_start_date = start_date
+        self.requested_end_date = end_date
         if _table_name and not (report_model or self.report_model):
             from .dynamic_model import get_dynamic_model
 
@@ -984,6 +990,45 @@ class ReportGenerator(ReportGeneratorAPI, object):
         """
         return computation_class.get_crosstab_field_verbose_name(model, id)
 
+    @staticmethod
+    def _date_window_point(value):
+        """Normalize a date/datetime to a date object for display."""
+        if isinstance(value, datetime.datetime):
+            return value.date()
+        return value
+
+    def get_date_window(self):
+        """
+        Compute the effective date window the report covers, for display on widgets and report pages.
+
+        :return: a dict {"start": date|None, "end": date|None, "label": str}
+            - both dates: the report is limited to that window ("From X to Y")
+            - only an end date: the report is open-ended ("As of Y")
+            - neither: no date filtering is applied ("All time")
+        """
+        if not (self.date_field or (self.start_date_field_name and self.end_date_field_name)):
+            # No date filtering is applied at all
+            start = end = None
+        else:
+            start, end = self.requested_start_date, self.requested_end_date
+            if not (start or end):
+                # Nothing was requested; the report falls back to the default window
+                start, end = self.start_date, self.end_date
+
+        start = self._date_window_point(start)
+        end = self._date_window_point(end)
+
+        if start and end:
+            label = _("From %(start)s to %(end)s") % {"start": start, "end": end}
+        elif end:
+            label = _("As of %(end)s") % {"end": end}
+        elif start:
+            label = _("From %(start)s") % {"start": start}
+        else:
+            label = _("All time")
+
+        return {"start": start, "end": end, "label": label}
+
     def get_metadata(self):
         """
         A hook to send data about the report for front end which can later be used in charting
@@ -998,6 +1043,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             "crosstab_model": self.crosstab_field or "",
             "crosstab_column_names": [x["name"] for x in crosstab_columns],
             "crosstab_column_verbose_names": [x["verbose_name"] for x in crosstab_columns],
+            "date_window": self.get_date_window(),
         }
         return metadata
 
