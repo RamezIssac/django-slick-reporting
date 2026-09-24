@@ -52,9 +52,9 @@ class DeterministicFixtureTests(TestCase):
         self.assertEqual(e["expected_value"], 5000.0)
         self.assertEqual(e["expected_quantity"], 100)
 
-    def test_product2_client_comparison(self):
+    def test_product2_country_comparison(self):
         """Product 2: Alpha US total 1250, Beta EG total 1500."""
-        e = self.expected["product2_client_comparison_q1"]
+        e = self.expected["product2_country_comparison_q1"]
         client_vals = e["expected_client_values"]
         self.assertEqual(client_vals["Alpha US"], 1250.0)
         self.assertEqual(client_vals["Beta EG"], 1500.0)
@@ -89,7 +89,7 @@ class DeterministicFixtureTests(TestCase):
         expected_qids = [
             "product1_sales_q1",
             "product1_quantity_q1",
-            "product2_client_comparison_q1",
+            "product2_country_comparison_q1",
             "product1_monthly_q1",
             "top_client_product1_q1",
         ]

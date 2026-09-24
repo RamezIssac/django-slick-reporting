@@ -121,14 +121,15 @@ def _build_fixture_data() -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any
             },
             "expected_quantity": product_total_quantity.get("Product 1", 0),
         },
-        "product2_client_comparison_q1": {
-            "question": "How does Product 2 sales compare between clients in Q1 2026?",
+        "product2_country_comparison_q1": {
+            "question": "How does Product 2 sales compare between countries (US vs EG) in Q1 2026?",
             "checks": {
                 "report_model": "tests.SimpleSales",
-                "group_by": "client",
+                "group_by": "client",  # country is encoded in client name
                 "filter": {"product_id__in": ["Product 2"]},
                 "metric": "Sum(value)",
             },
+            "expected_country_values": {"US": 1250.0, "EG": 1500.0},
             "expected_client_values": product_client_value.get("Product 2", {}),
         },
         "product1_monthly_q1": {
@@ -332,7 +333,7 @@ class EvaluationScorer:
 
     @staticmethod
     def score_answer_correctness(result: EvaluationResult) -> Tuple[bool, str]:
-        """Score whether the answer text is semantically correct."""
+        """Score whether the answer matches expected numeric values."""
         if not result.answer or not result.answer.get("answer"):
             return False, "no answer text"
 
@@ -340,25 +341,61 @@ class EvaluationScorer:
         if not expected:
             return False, "no expected data"
 
-        answer_text = result.answer.get("answer", "").lower()
         checks = expected.get("checks", {})
+        scores = {}
+        answer_text = result.answer.get("answer", "").lower()
 
-        has_product1 = True
-        has_product2 = True
+        # Score 1: Check key numbers from report data match expected values
+        if "expected_value" in expected and result.report_data and result.report_executed:
+            expected_val = expected["expected_value"]
+            actual = EvaluationFixture._extract_value(result, "value")
+            if actual is not None:
+                scores["answer_value_match"] = abs(actual - expected_val) < 0.01
+            else:
+                scores["answer_value_match"] = False
 
-        # Check for presence of key product names or values
+        if "expected_quantity" in expected and result.report_data and result.report_executed:
+            expected_qty = expected["expected_quantity"]
+            actual = EvaluationFixture._extract_value(result, "quantity")
+            if actual is not None:
+                scores["answer_quantity_match"] = abs(actual - expected_qty) < 0.01
+            else:
+                scores["answer_quantity_match"] = False
+
+        if "expected_client_values" in expected and result.report_data and result.report_executed:
+            expected_cvs = expected["expected_client_values"]
+            actual_cvs = EvaluationFixture._extract_client_values(result)
+            for client, exp_val in expected_cvs.items():
+                actual_val = actual_cvs.get(client, 0)
+                scores[f"answer_client_{client}_match"] = \
+                    abs(actual_val - exp_val) < 0.01
+
+        if "expected_country_values" in expected and result.report_data and result.report_executed:
+            expected_cvs = expected["expected_country_values"]
+            # Use client-to-country extraction for country comparison questions
+            actual_cvs = EvaluationFixture._extract_client_to_country_values(result)
+            for country, exp_val in expected_cvs.items():
+                actual_val = actual_cvs.get(country, 0)
+                scores[f"answer_country_{country}_match"] = \
+                    abs(actual_val - exp_val) < 0.01
+
+        # Score 2: Check answer text mentions key entities
+        has_key_entities = True
         if "Product 1" in expected.get("question", ""):
-            has_product1 = "product 1" in answer_text
+            has_key_entities = "product 1" in answer_text
         if "Product 2" in expected.get("question", ""):
-            has_product2 = "product 2" in answer_text
+            has_key_entities = "product 2" in answer_text
         if "top client" in expected.get("question", "").lower():
-            # For top client questions, check if any client name is mentioned
-            has_client = any(c in answer_text for c in ["alpha", "beta", "gamma", "client"])
-            has_product1 = "product 1" in answer_text
-            has_product2 = False
+            has_key_entities = any(c in answer_text for c in ["alpha", "beta", "gamma"])
+        if "country" in expected.get("question", "").lower():
+            has_key_entities = any(c in answer_text for c in ["us", "eg", "de", "united", "egypt", "country"])
+        scores["answer_mentions_entities"] = has_key_entities
 
-        correct = has_product1 or has_product2
-        return correct, f"answer_present={bool(answer_text)}"
+        if not scores:
+            return False, "no scoring criteria matched"
+
+        passed = all(scores.values())
+        return passed, json.dumps(scores)
 
     @staticmethod
     def score_normalized_plan(result: EvaluationResult) -> float:
@@ -435,9 +472,17 @@ class EvaluationScorer:
         variance = sum((r - mean_rate) ** 2 for r in plan_rates) / len(plan_rates) if plan_rates else 0.0
         std_dev = variance ** 0.5
 
-        # Avg latency
+        # Avg latency (includes both plan execution and answer call)
         total_times = [r.timings.get("total_seconds", 0) for r in results]
         avg_latency = sum(total_times) / len(total_times) if total_times else 0.0
+        answer_times = [r.timings.get("answer_seconds", 0) for r in results]
+        avg_answer_latency = sum(answer_times) / len(answer_times) if answer_times else 0.0
+
+        # Token statistics
+        plan_tokens = [r.token_counts.get("plan_total_tokens", 0) for r in results]
+        avg_plan_tokens = sum(plan_tokens) / len(plan_tokens) if plan_tokens else 0
+        answer_tokens = [r.token_counts.get("answer_total_tokens", 0) for r in results]
+        avg_answer_tokens = sum(answer_tokens) / len(answer_tokens) if answer_tokens else 0
 
         return {
             "total_questions": total,
@@ -449,6 +494,9 @@ class EvaluationScorer:
             "avg_normalized_plan_score": round(avg_normalized_plan, 2),
             "plan_correctness_stddev": round(std_dev, 4),
             "avg_total_latency_seconds": round(avg_latency, 3),
+            "avg_answer_latency_seconds": round(avg_answer_latency, 3),
+            "avg_plan_tokens": round(avg_plan_tokens, 0),
+            "avg_answer_tokens": round(avg_answer_tokens, 0),
             "failures": [
                 {
                     "question_id": r.question_id,
@@ -515,6 +563,33 @@ class EvaluationFixture:
             value = row.get("value__sum", row.get("value__sum__sum", 0))
             try:
                 values[country] = float(value)
+            except (ValueError, TypeError):
+                pass
+        return values
+
+    @staticmethod
+    def _extract_client_to_country_values(result: EvaluationResult) -> Dict[str, float]:
+        """Extract country -> value mapping by deriving country from client names.
+
+        Client names like 'Alpha US', 'Beta EG', 'Gamma DE' encode the country
+        as the last word. This derives country-level totals from client-level
+        report results.
+        """
+        if not result.report_data or "data" not in result.report_data:
+            return {}
+        data = result.report_data["data"]
+        values: Dict[str, float] = {}
+        for row in data:
+            client_name = row.get("name", row.get("client", ""))
+            # Extract country as the last word in the client name
+            parts = client_name.split()
+            if len(parts) >= 2:
+                country = parts[-1].upper()
+            else:
+                country = "UNKNOWN"
+            value = row.get("value__sum", row.get("value__sum__sum", 0))
+            try:
+                values[country] = values.get(country, 0.0) + float(value)
             except (ValueError, TypeError):
                 pass
         return values
@@ -665,8 +740,15 @@ def run_evaluation(
                     plan_raw = backend.complete(plan_prompt_text)
                     plan_duration = time.perf_counter() - plan_start
 
-                    result.raw_plan = plan_raw[:500] if plan_raw else ""
+                    # Preserve full raw output (no truncation)
+                    result.raw_plan = plan_raw if plan_raw else ""
                     result.timings["plan_seconds"] = round(plan_duration, 4)
+
+                    # Capture plan token counts
+                    plan_usage = backend.get_last_usage()
+                    result.token_counts["plan_prompt_tokens"] = plan_usage.get("prompt_tokens", 0)
+                    result.token_counts["plan_completion_tokens"] = plan_usage.get("completion_tokens", 0)
+                    result.token_counts["plan_total_tokens"] = plan_usage.get("total_tokens", 0)
 
                     # Parse plan
                     if is_toonn:
@@ -712,8 +794,19 @@ def run_evaluation(
                             answer_prompt_text = answer_prompt(
                                 question_text, reports_for_answer, plain_text=is_plain_text
                             )
+                        answer_start = time.perf_counter()
                         answer_raw = backend.complete(answer_prompt_text)
-                        result.raw_answer = answer_raw[:500]
+                        answer_duration = time.perf_counter() - answer_start
+
+                        # Preserve full raw output (no truncation)
+                        result.raw_answer = answer_raw if answer_raw else ""
+                        result.timings["answer_seconds"] = round(answer_duration, 4)
+
+                        # Capture answer token counts
+                        answer_usage = backend.get_last_usage()
+                        result.token_counts["answer_prompt_tokens"] = answer_usage.get("prompt_tokens", 0)
+                        result.token_counts["answer_completion_tokens"] = answer_usage.get("completion_tokens", 0)
+                        result.token_counts["answer_total_tokens"] = answer_usage.get("total_tokens", 0)
 
                         if is_toonn:
                             from .toonn import parse_toonn_answer

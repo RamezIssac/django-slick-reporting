@@ -42,6 +42,7 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
+from typing import Dict
 
 from django.utils.module_loading import import_string
 
@@ -170,7 +171,19 @@ class OpenAICompatibleBackend(LLMBackend):
         message = result["choices"][0].get("message", {})
         content = message.get("content") or ""
         logger.debug("LLM response status=%s\n%s", response.status, content)
+
+        # Extract token usage from response (OpenAI-compatible)
+        usage = result.get("usage", {})
+        self._last_usage = {
+            "prompt_tokens": usage.get("prompt_tokens", 0),
+            "completion_tokens": usage.get("completion_tokens", 0),
+            "total_tokens": usage.get("total_tokens", 0),
+        }
         return content
+
+    def get_last_usage(self) -> Dict[str, int]:
+        """Return token usage from the last complete() call."""
+        return dict(self._last_usage) if hasattr(self, "_last_usage") else {}
 
     def _messages_from_prompt(self, prompt: str):
         """

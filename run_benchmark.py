@@ -70,7 +70,7 @@ def main():
     elapsed = time.perf_counter() - start
 
     result["meta"]["elapsed_seconds"] = round(elapsed, 2)
-    result["meta"]["wall_clock_start"] = datetime.datetime.utcnow().isoformat() + "Z"
+    result["meta"]["wall_clock_start"] = datetime.datetime.now(datetime.UTC).isoformat() + "Z"
 
     # Build a human-readable comparison summary
     scores = result.get("scores", {})
@@ -89,6 +89,8 @@ def main():
         print(f"    Avg normalized plan:      {s.get('avg_normalized_plan_score', 0):.2f}")
         print(f"    Plan correctness stddev:  {s.get('plan_correctness_stddev', 0):.4f}")
         print(f"    Avg total latency (s):    {s.get('avg_total_latency_seconds', 0):.3f}")
+        print(f"    Avg plan tokens:          {s.get('avg_plan_tokens', 0):.0f}")
+        print(f"    Avg answer tokens:        {s.get('avg_answer_tokens', 0):.0f}")
 
     # Variability comparison
     print("\n" + "=" * 70)
@@ -100,12 +102,13 @@ def main():
         bar = "█" * int(sd * 20) + "░" * (20 - int(sd * 20))
         print(f"  {fmt:8s}: {sd:.4f}  [{bar}]")
 
-    # Save raw results
-    output_path = os.path.join(
-        os.path.dirname(__file__),
-        "demo_proj", "demo_app", "fixtures", f"benchmark_{datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+    # Save raw results to eval_evidence/ (not gitignored)
+    evidence_dir = os.path.join(
+        os.path.dirname(__file__), "eval_evidence"
     )
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    os.makedirs(evidence_dir, exist_ok=True)
+    timestamp = datetime.datetime.now(datetime.UTC).strftime('%Y%m%d_%H%M%S')
+    output_path = os.path.join(evidence_dir, f"benchmark_{timestamp}.json")
 
     # Convert EvaluationResult objects to dicts for serialization
     raw_results = result.get("results", {})
@@ -128,6 +131,8 @@ def main():
                 "answer": r.answer,
                 "timings": r.timings,
                 "scores": {k: (list(v) if isinstance(v, tuple) else v) for k, v in r.scores.items()},
+            "token_counts": r.token_counts,
+            "timings": r.timings,
             })
 
     result["results"] = serializable_results
