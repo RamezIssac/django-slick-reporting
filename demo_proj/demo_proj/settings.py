@@ -12,8 +12,24 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load deployment variables from the .env next to manage.py (the deploy flow
+# rewrites it there). By absolute path, not a CWD search: under a uWSGI vassal
+# the CWD isn't the manage.py directory, so a bare load_dotenv() would silently
+# find nothing. DJANGO_DOTENV_PATH overrides the location (used by the tests).
+#
+# override stays at dotenv's default (False) on purpose: the deployed .env fills
+# in vars the host didn't set (OPENROUTER_API_KEY & friends), while a var the
+# operator exported explicitly still wins. (Mirrored from
+# knowledge_consolidator_project/settings.py, which documents the opposite
+# choice - there a graceful reload must pick up a *changed* .env, so it passes
+# override=True.)
+# Must run before any os.getenv() below.
+load_dotenv(os.getenv("DJANGO_DOTENV_PATH", BASE_DIR / ".env"))
 
 
 # Quick-start development settings - unsuitable for production

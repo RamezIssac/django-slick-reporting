@@ -1,8 +1,13 @@
 import datetime
+import os
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.db import connection
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
 from . import helpers
@@ -140,4 +145,51 @@ class DemoSanityTests(TestCase):
             self.assertTrue(
                 any(v not in (0, "0", None) for v in crosstab_values),
                 f"All crosstab values are zero/empty for {row['name']} — group key lookup is broken",
+            )
+
+
+class DotenvSettingsTests(SimpleTestCase):
+    """demo_proj.settings picks up deployment vars from a .env next to manage.py.
+
+    The settings import runs in a fresh interpreter (like a spawned vassal) with
+    DJANGO_DOTENV_PATH pointing at a throwaway .env in a tmp dir. No real keys here.
+    """
+
+    PROBE_VAR = "SLICK_DEMO_DOTENV_PROBE"
+
+    def import_settings_probe(self, dotenv_path, extra_environ=None):
+        demo_dir = Path(__file__).resolve().parent.parent  # the manage.py directory
+        env = os.environ.copy()
+        env.pop(self.PROBE_VAR, None)
+        env["DJANGO_DOTENV_PATH"] = str(dotenv_path)
+        env.update(extra_environ or {})
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                f"import os; import demo_proj.settings; print(os.environ.get('{self.PROBE_VAR}', ''))",
+            ],
+            cwd=demo_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,  # asserted manually below, so stderr lands in the failure message
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return proc.stdout.strip()
+
+    def test_dotenv_value_is_loaded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env_file = Path(tmp) / ".env"
+            env_file.write_text(f"{self.PROBE_VAR}=from-dotenv-file\n")
+            self.assertEqual(self.import_settings_probe(env_file), "from-dotenv-file")
+
+    def test_operator_environment_wins_over_dotenv(self):
+        """A var the operator exported explicitly is not overridden by the deployed .env."""
+        with tempfile.TemporaryDirectory() as tmp:
+            env_file = Path(tmp) / ".env"
+            env_file.write_text(f"{self.PROBE_VAR}=from-dotenv-file\n")
+            self.assertEqual(
+                self.import_settings_probe(env_file, {self.PROBE_VAR: "from-operator-env"}),
+                "from-operator-env",
             )
