@@ -80,9 +80,15 @@ class ExecutorUnitTests(TestCase):
         self.assertEqual(kw_filters["product_id"], product.pk)
 
     def test_prepare_filters_resolves_through_relation_name(self):
+        # A lookup on the relation's *name field* is not a pk lookup: the
+        # value must be left as-is, otherwise ``client__name__in=[1]``
+        # compares the CharField against an integer and matches nothing.
         client = Client.objects.create(name="Acme")
         kw_filters = prepare_filters(SimpleSales, {"client__name__in": ["Acme"]})[1]
-        self.assertEqual(kw_filters["client__name__in"], [client.pk])
+        self.assertEqual(kw_filters["client__name__in"], ["Acme"])
+        # While a pk-targeting lookup on the same relation still resolves.
+        kw_filters = prepare_filters(SimpleSales, {"client__id__in": ["Acme"]})[1]
+        self.assertEqual(kw_filters["client__id__in"], [client.pk])
 
     def test_normalize_columns_bare_fk_group_by(self):
         # Bare-FK group_by re-points at the related model, so echo the relation
