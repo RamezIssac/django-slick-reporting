@@ -51,6 +51,7 @@ Guidance for OpenCode sessions in this repo. See `CLAUDE.md` for deeper architec
 - `develop` is the default/integration branch (`origin/HEAD -> origin/develop`); `master` is release-only
 - Releases are tag-triggered (`v*`) via `.github/workflows/release.yml`: runs tests, builds, publishes to PyPI, extracts changelog notes via `scripts/extract_changelog.py`, and auto-merges `master` back into `develop`
 - Per global user preference: never commit, push, branch, or open a PR unless explicitly asked
+- Per global user preference: always ask the user before running any `no-mistakes axi` command (starting runs, responding to gates) — never start or drive a validation pipeline unprompted
 
 ## Maintaining this file
 
