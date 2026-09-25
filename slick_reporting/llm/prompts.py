@@ -10,7 +10,22 @@ Both stages can work in JSON (default) or plain-text mode. Plain-text mode
 is controlled by SLICK_REPORTING_SETTINGS["LLM_PLAIN_TEXT_RESPONSE"].
 """
 
-import json
+from .toon_data import serialize_for_prompt
+
+#: One-line note describing the prompt-side data serialization to the model.
+#: Empty for "json" so default prompts stay byte-identical to previous behavior.
+_DATA_FORMAT_NOTES = {
+    "json": "",
+    "plain": (
+        "Note: the data below is plain text: 'key: value' lines, and uniform record "
+        "lists rendered as tables with ' | ' column separators.\n"
+    ),
+    "toon": (
+        "Note: the data below is TOON (Token-Oriented Object Notation): 'key: value' lines; "
+        "uniform record lists are tabular arrays written as 'key[N]{field1,field2}:' "
+        "followed by N rows of comma-separated values.\n"
+    ),
+}
 
 PLAN_SYSTEM_PROMPT = """You are a senior data analyst. Translate a business question into a JSON report configuration.
 
@@ -121,11 +136,11 @@ Rules:
 """
 
 
-def _catalog_to_text(catalog):
-    return json.dumps(catalog, indent=2, default=str)
+def _catalog_to_text(catalog, data_format="json"):
+    return serialize_for_prompt(catalog, data_format)
 
 
-def _report_data_to_text(reports_with_data):
+def _report_data_to_text(reports_with_data, data_format="json"):
     """Keep only the first 100 rows of each report so local LLMs stay fast."""
     output = []
     for report in reports_with_data:
@@ -135,26 +150,38 @@ def _report_data_to_text(reports_with_data):
             "data": (report.get("data") or [])[:100],
         }
         output.append(copy)
-    return json.dumps(output, indent=2, default=str)
+    return serialize_for_prompt(output, data_format)
 
 
-def plan_prompt(question, catalog, plain_text=False):
-    """Return the full prompt text for stage 1 (config generation)."""
+def plan_prompt(question, catalog, plain_text=False, data_format="json"):
+    """Return the full prompt text for stage 1 (config generation).
+
+    ``plain_text`` selects the response-side instructions (JSON vs plain-text
+    sections). ``data_format`` selects how the catalog is serialized inside
+    the prompt: "json" (default), "plain" or "toon".
+    """
     system = PLAN_PLAIN_TEXT_SYSTEM_PROMPT if plain_text else PLAN_SYSTEM_PROMPT
     instruction = "Return the plain-text configuration." if plain_text else "Return the JSON configuration."
+    note = _DATA_FORMAT_NOTES[data_format]
     return (
-        f"{system}\n\nAvailable catalog:\n{_catalog_to_text(catalog)}\n\n"
+        f"{system}\n\nAvailable catalog:\n{note}{_catalog_to_text(catalog, data_format=data_format)}\n\n"
         f"User question: {question}\n\n{instruction}"
     )
 
 
-def answer_prompt(question, reports_with_data, plain_text=False):
-    """Return the full prompt text for stage 2 (answer generation)."""
+def answer_prompt(question, reports_with_data, plain_text=False, data_format="json"):
+    """Return the full prompt text for stage 2 (answer generation).
+
+    ``plain_text`` selects the response-side instructions (JSON vs plain-text
+    sections). ``data_format`` selects how report data is serialized inside
+    the prompt: "json" (default), "plain" or "toon".
+    """
     system = ANSWER_PLAIN_TEXT_SYSTEM_PROMPT if plain_text else ANSWER_SYSTEM_PROMPT
     instruction = "Return the plain-text answer." if plain_text else "Return the JSON answer."
+    note = _DATA_FORMAT_NOTES[data_format]
     return (
         f"{system}\n\n"
         f"User question: {question}\n\n"
-        f"Reports used as proof:\n{_report_data_to_text(reports_with_data)}\n\n"
+        f"Reports used as proof:\n{note}{_report_data_to_text(reports_with_data, data_format=data_format)}\n\n"
         f"{instruction}"
     )

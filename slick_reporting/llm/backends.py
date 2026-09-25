@@ -58,6 +58,19 @@ class LLMBackend(ABC):
         """Send ``prompt`` to the LLM and return the raw text response."""
         raise NotImplementedError
 
+    def get_last_usage(self) -> dict:
+        """Token usage reported by the provider for the last ``complete()`` call.
+
+        Returns a dict with ``prompt_tokens`` / ``completion_tokens`` /
+        ``total_tokens`` keys, or an empty dict when the provider does not
+        report usage (or no call has been made yet).
+        """
+        return {}
+
+    def get_last_model(self):
+        """Model identifier the provider reports for the last ``complete()`` call, if any."""
+        return None
+
 
 class EchoBackend(LLMBackend):
     """A backend useful for tests: returns exactly what was sent as the prompt."""
@@ -169,8 +182,25 @@ class OpenAICompatibleBackend(LLMBackend):
 
         message = result["choices"][0].get("message", {})
         content = message.get("content") or ""
+        # Preserve the provider's token accounting and served-model identity
+        # so evaluations can compare prompt sizes across prompt formats.
+        usage = result.get("usage") or {}
+        self._last_usage = {
+            "prompt_tokens": usage.get("prompt_tokens", 0),
+            "completion_tokens": usage.get("completion_tokens", 0),
+            "total_tokens": usage.get("total_tokens", 0),
+        }
+        self._last_model = result.get("model")
         logger.debug("LLM response status=%s\n%s", response.status, content)
         return content
+
+    def get_last_usage(self) -> dict:
+        """Token usage reported by the provider for the last ``complete()`` call."""
+        return dict(getattr(self, "_last_usage", None) or {})
+
+    def get_last_model(self):
+        """Model identifier the provider reports for the last ``complete()`` call."""
+        return getattr(self, "_last_model", None)
 
     def _messages_from_prompt(self, prompt: str):
         """
