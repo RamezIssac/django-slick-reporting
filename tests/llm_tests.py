@@ -5,7 +5,6 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.urls import path, include
 
-from slick_reporting.generator import ReportGenerator
 from slick_reporting.llm.backends import (
     OPENROUTER_DEFAULT_MODEL,
     EchoBackend,
@@ -23,9 +22,7 @@ from slick_reporting.llm.executor import (
     run_llm_report_config,
 )
 from slick_reporting.llm.introspection import build_reporting_catalog, resolve_aggregation_method
-from slick_reporting.llm.prompts import answer_prompt, plan_prompt
-from slick_reporting.llm.views import AskLLMView
-from tests.tests import BaseTestData
+from tests.tests import BaseTestData, year
 from tests.models import Client, Product, SimpleSales
 
 
@@ -80,9 +77,20 @@ class ExecutorUnitTests(TestCase):
         self.assertEqual(kw_filters["product_id"], product.pk)
 
     def test_prepare_filters_resolves_through_relation_name(self):
-        client = Client.objects.create(name="Acme")
+        # A filter on a concrete field of a relation (client__name) compares
+        # against the field value itself; the label must NOT be resolved to a
+        # pk, or the ORM would match name against an integer id.
+        Client.objects.create(name="Acme")
         kw_filters = prepare_filters(SimpleSales, {"client__name__in": ["Acme"]})[1]
-        self.assertEqual(kw_filters["client__name__in"], [client.pk])
+        self.assertEqual(kw_filters["client__name__in"], ["Acme"])
+
+    def test_prepare_filters_bare_relation_still_resolves(self):
+        product = Product.objects.create(name="Widget Z", slug="widget-z", category="small", notes="n")
+        kw_filters = prepare_filters(SimpleSales, {"product__name": "Widget Z", "product_id__in": ["Widget Z"]})[1]
+        # Concrete-field filter keeps the string ...
+        self.assertEqual(kw_filters["product__name"], "Widget Z")
+        # ... while the relation-id filter resolves the label to the pk.
+        self.assertEqual(kw_filters["product_id__in"], [product.pk])
 
     def test_normalize_columns_bare_fk_group_by(self):
         # Bare-FK group_by re-points at the related model, so echo the relation
@@ -136,7 +144,9 @@ FILTERS: product_id__in=Product 1,Product 2
 """
         plan = parse_llm_plain_text_plan(text)
         self.assertEqual(plan["report"]["time_series_pattern"], "monthly")
-        self.assertEqual(plan["report"]["time_series_columns"], [{"method": "Sum", "field": "value", "name": "value__sum"}])
+        self.assertEqual(
+            plan["report"]["time_series_columns"], [{"method": "Sum", "field": "value", "name": "value__sum"}]
+        )
         self.assertEqual(plan["report"]["filters"], {"product_id__in": ["Product 1", "Product 2"]})
 
     def test_parse_plain_text_answer(self):
@@ -154,15 +164,15 @@ PROOF_KEY_NUMBERS: Total: 100; Count: 5
         self.assertEqual(answer["proofs"][0]["key_numbers"], {"Total": 100, "Count": 5})
 
 
-class ReportConfigExecutionTests(BaseTestData):
+class ReportConfigExecutionTests(BaseTestData, TestCase):
     databases = "__all__"
 
     def test_run_llm_report_config_group_by(self):
         config = {
             "report_model": "tests.SimpleSales",
             "date_field": "doc_date",
-            "start_date": "{year}-01-01".format(year=self.year),
-            "end_date": "{year}-04-01".format(year=self.year),
+            "start_date": "{year}-01-01".format(year=year),
+            "end_date": "{year}-04-01".format(year=year),
             "group_by": "product",
             "columns": [
                 "name",
@@ -179,8 +189,8 @@ class ReportConfigExecutionTests(BaseTestData):
         config = {
             "report_model": "tests.SimpleSales",
             "date_field": "doc_date",
-            "start_date": "{year}-01-01".format(year=self.year),
-            "end_date": "{year}-04-01".format(year=self.year),
+            "start_date": "{year}-01-01".format(year=year),
+            "end_date": "{year}-04-01".format(year=year),
             "group_by": "client",
             "columns": ["name"],
             "time_series_pattern": "monthly",
@@ -189,6 +199,42 @@ class ReportConfigExecutionTests(BaseTestData):
         response = run_llm_report_config(config)
         self.assertTrue(response["data"])
         self.assertTrue(response["metadata"]["time_series_column_names"])
+
+    def test_run_llm_report_config_explicit_nulls(self):
+        # LLMs emit explicit nulls for unused keys (observed on gemma-4-12b);
+        # none of them may break the executor.
+        config = {
+            "report_model": "tests.SimpleSales",
+            "date_field": None,
+            "start_date": None,
+            "end_date": None,
+            "group_by": "client__name",
+            "columns": ["client__name", {"method": "Sum", "field": "value", "name": "value__sum"}],
+            "time_series_pattern": None,
+            "time_series_columns": None,
+            "crosstab_columns": None,
+            "filters": {},
+        }
+        response = run_llm_report_config(config)
+        self.assertTrue(response["data"])
+
+    def test_run_llm_report_config_fk_path_group_by_and_column(self):
+        # FK-path group_by with the path echoed as a column (the eval's
+        # "country-total" scenario): data stays on the report model.
+        config = {
+            "report_model": "tests.SimpleSales",
+            "date_field": "doc_date",
+            "start_date": "{year}-01-01".format(year=year),
+            "end_date": "{year}-04-01".format(year=year),
+            "group_by": "client__name",
+            "columns": [
+                "client__name",
+                {"method": "Sum", "field": "value", "name": "value__sum"},
+            ],
+        }
+        response = run_llm_report_config(config)
+        names = [row["client__name"] for row in response["data"]]
+        self.assertIn(self.client1.name, names)
 
 
 class _FakeHTTPResponse:
@@ -339,15 +385,16 @@ class BackendTests(TestCase):
         self.assertEqual(backend.model, "some/model:free")
 
 
-class AskLLMViewTests(BaseTestData):
+@override_settings(ROOT_URLCONF="tests.llm_tests")
+class AskLLMViewTests(BaseTestData, TestCase):
     databases = "__all__"
-    urls = "tests.llm_tests"
 
     def setUp(self):
         super().setUp()
         self.url = "/dashboard/ask/"
         self.user.is_superuser = True
         self.user.save()
+        self.client.force_login(self.user)
 
     def _mock_backend_response(self, plan_json, answer_json):
         class FakeBackend:
@@ -374,8 +421,8 @@ class AskLLMViewTests(BaseTestData):
             "report": {
                 "report_model": "tests.SimpleSales",
                 "date_field": "doc_date",
-                "start_date": "{year}-01-01".format(year=self.year),
-                "end_date": "{year}-04-01".format(year=self.year),
+                "start_date": "{year}-01-01".format(year=year),
+                "end_date": "{year}-04-01".format(year=year),
                 "group_by": "product",
                 "columns": [
                     "name",
@@ -423,17 +470,18 @@ urlpatterns = [
 ]
 
 
-class AskLLMViewOpenRouterTests(BaseTestData):
+@override_settings(ROOT_URLCONF="tests.llm_tests")
+class AskLLMViewOpenRouterTests(BaseTestData, TestCase):
     """End-to-end ask flow through the OpenRouter backend with HTTP mocked out."""
 
     databases = "__all__"
-    urls = "tests.llm_tests"
 
     def setUp(self):
         super().setUp()
         self.url = "/dashboard/ask/"
         self.user.is_superuser = True
         self.user.save()
+        self.client.force_login(self.user)
 
     def test_ask_endpoint_with_openrouter_backend(self):
         plan = {
@@ -441,8 +489,8 @@ class AskLLMViewOpenRouterTests(BaseTestData):
             "report": {
                 "report_model": "tests.SimpleSales",
                 "date_field": "doc_date",
-                "start_date": "{year}-01-01".format(year=self.year),
-                "end_date": "{year}-04-01".format(year=self.year),
+                "start_date": "{year}-01-01".format(year=year),
+                "end_date": "{year}-04-01".format(year=year),
                 "group_by": "product",
                 "columns": [
                     "name",

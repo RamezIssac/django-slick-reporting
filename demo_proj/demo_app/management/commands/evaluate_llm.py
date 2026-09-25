@@ -23,6 +23,7 @@ The resulting JSON report contains per-question timings, the generated report
 config, the final answer, and pass/fail checks.
 """
 
+import datetime
 import json
 import logging
 import os
@@ -36,7 +37,7 @@ from django.test import RequestFactory
 from django.utils.module_loading import import_string
 
 from slick_reporting.app_settings import SLICK_REPORTING_SETTINGS
-from slick_reporting.llm.executor import parse_llm_json, parse_llm_plain_text_plan
+from slick_reporting.llm.executor import parse_llm_json, parse_llm_plain_text_plan, run_llm_report_config
 from slick_reporting.llm.introspection import build_reporting_catalog
 from slick_reporting.llm.prompts import plan_prompt
 from slick_reporting.llm.views import AskLLMView
@@ -184,6 +185,17 @@ class Command(BaseCommand):
                 "Can also be set via SLICK_REPORTING_SETTINGS['LLM_PLAIN_TEXT_RESPONSE']."
             ),
         )
+        parser.add_argument(
+            "--regrade-from",
+            type=str,
+            default=None,
+            help=(
+                "Offline mode: load a previous evaluation report JSON, re-execute each captured "
+                "report_config through the executor, re-run the checks from --questions-file, "
+                "and write an updated report. No LLM calls are made, so answers and timings are "
+                "kept from the original run; use it to verify executor fixes for free."
+            ),
+        )
 
     def handle(self, *args, **options):
         # Ensure Django settings are available when the command is invoked
@@ -192,6 +204,11 @@ class Command(BaseCommand):
         _configure_logging(options["verbosity"])
 
         questions = self._load_questions(options["questions_file"])
+
+        if options["regrade_from"]:
+            self._regrade_artifact(options["regrade_from"], questions, options["output"])
+            return
+
         if options["only"]:
             allowed = {q.strip() for q in options["only"].split(",")}
             questions = [q for q in questions if q.get("id") in allowed]
@@ -366,9 +383,7 @@ class Command(BaseCommand):
 
         # Stage 1: planning. We call the backend directly so we can capture
         # prompt length and timing without also running the report.
-        plain_text = bool(
-            options.get("plain_text") or SLICK_REPORTING_SETTINGS.get("LLM_PLAIN_TEXT_RESPONSE")
-        )
+        plain_text = bool(options.get("plain_text") or SLICK_REPORTING_SETTINGS.get("LLM_PLAIN_TEXT_RESPONSE"))
         catalog = build_reporting_catalog(extra_models=None)
         plan_prompt_text = plan_prompt(qtext, catalog, plain_text=plain_text)
         if options["print_prompts"]:
@@ -500,6 +515,77 @@ class Command(BaseCommand):
             )
 
         return outcomes
+
+    def _regrade_artifact(self, artifact_path, questions, output):
+        """
+        Offline re-grading of a previous evaluation report.
+
+        Re-executes every captured ``report_config`` through
+        ``run_llm_report_config`` and re-runs the question checks, without
+        making any LLM calls. Answers, raw plans, and timings are kept from
+        the original run, so ``answer_contains`` is re-graded against the
+        captured answer text and the end-to-end rate only counts results that
+        already had an answer. Use this to verify executor fixes against old
+        artifacts for free; a live re-run is still needed to regenerate
+        answers that never happened.
+        """
+        path = Path(artifact_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Artifact not found: {path}")
+
+        artifact = json.loads(path.read_text())
+        checks_by_id = {q.get("id"): q.get("checks", {}) for q in questions}
+
+        for run in artifact.get("runs", []):
+            results = run.get("results", [])
+            config_label = f"{run.get('config_name')} (regrade)"
+            for result in results:
+                self._regrade_result(result, checks_by_id.get(result.get("id"), {}))
+                self._print_progress(result, config_label)
+            run["scores"] = self._score_results(results)
+
+        meta = artifact.setdefault("meta", {})
+        meta["regraded_from"] = str(path)
+        meta["regraded_at"] = datetime.datetime.now().isoformat(timespec="seconds")
+
+        report_json = json.dumps(artifact, indent=2, default=str)
+        self.stdout.write("\n" + report_json)
+
+        if output:
+            out_path = Path(output)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(report_json)
+            self.stdout.write(self.style.SUCCESS(f"Wrote regraded report to {out_path}"))
+
+    def _regrade_result(self, result, checks):
+        """Re-execute one captured report_config and refresh its state in place."""
+        report_config = result.get("report_config")
+        if not report_config:
+            # Plan-stage failure; an executor fix cannot change that.
+            return
+
+        rerun = {"ok": True, "error": None, "row_count": 0}
+        response = None
+        try:
+            response = run_llm_report_config(report_config)
+            rerun["row_count"] = len(response.get("data", []))
+        except Exception as exc:  # noqa: BLE001 - report any executor failure as the outcome
+            rerun["ok"] = False
+            rerun["error"] = str(exc)
+
+        result["executor_rerun"] = rerun
+        if rerun["ok"]:
+            result["error"] = None
+            result["report_data"] = {
+                "row_count": rerun["row_count"],
+                "columns": response.get("columns", []),
+            }
+        else:
+            result["error"] = rerun["error"]
+
+        answer = result.get("answer") or {}
+        pseudo_response = {"answer": answer.get("answer", "")}
+        result["checks"] = self._run_checks(report_config, pseudo_response, checks)
 
     def _score_results(self, results):
         if not results:

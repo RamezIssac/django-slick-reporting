@@ -77,6 +77,10 @@ def _resolve_labels_to_ids(report_model, field_name, values):
         return values
 
     target_model = _target_model_for_kwarg(report_model, field_name)
+    if target_model is None:
+        # Key traverses into a concrete field (product__name); the ORM
+        # compares against the field value, keep the labels as-is.
+        return values
 
     result = []
     for val in values:
@@ -136,6 +140,11 @@ def _target_model_for_kwarg(report_model, key):
     Return the model whose primary key should be used when resolving label
     values for ``key``.  For FK filters like product__in or product_id__in
     we need the Product model, not SalesTransaction.
+
+    Returns ``None`` when the key traverses into a concrete field on the
+    related model (``product__name``): the ORM compares those against the
+    field value itself, so string labels must be left untouched, not resolved
+    to a pk.
     """
     suffixes = ("__in", "__exact", "__iexact", "__isnull")
     base_field = key
@@ -164,7 +173,8 @@ def _target_model_for_kwarg(report_model, key):
             if isinstance(field, ForeignKey):
                 rel_model = field.related_model
             else:
-                return rel_model
+                # Traversed into a concrete field; no label resolution.
+                return None
         return rel_model
     except Exception:
         return report_model
@@ -186,9 +196,10 @@ def prepare_filters(report_model, filters):
             value = _resolve_labels_to_ids(report_model, key, value)
         elif isinstance(value, str):
             target_model = _target_model_for_kwarg(report_model, key)
-            resolved = _resolve_single_label_to_id(target_model, value)
-            if resolved is not None:
-                value = resolved
+            if target_model is not None:
+                resolved = _resolve_single_label_to_id(target_model, value)
+                if resolved is not None:
+                    value = resolved
         kw_filters[key] = value
     return q_filters, kw_filters
 
@@ -238,10 +249,12 @@ def run_llm_report_config(config):
         raise ValueError(f"Could not resolve report_model {config['report_model']!r}")
 
     group_by = config.get("group_by") or None
-    columns = _normalize_llm_columns(config.get("columns", []), group_by)
+    # ``or []`` (not a .get default) because LLMs emit explicit nulls for
+    # keys they don't use, and None is not iterable.
+    columns = _normalize_llm_columns(config.get("columns") or [], group_by)
     columns = [_build_computation_field(c) for c in columns]
-    time_series_columns = [_build_computation_field(c) for c in config.get("time_series_columns", [])]
-    crosstab_columns = [_build_computation_field(c) for c in config.get("crosstab_columns", [])]
+    time_series_columns = [_build_computation_field(c) for c in config.get("time_series_columns") or []]
+    crosstab_columns = [_build_computation_field(c) for c in config.get("crosstab_columns") or []]
 
     q_filters, kw_filters = prepare_filters(report_model, config.get("filters"))
 
