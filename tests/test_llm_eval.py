@@ -643,6 +643,48 @@ class ScriptedBackend:
         )
 
 
+class ExecutorFilterRegressionTests(TestCase):
+    """Regression tests for filter resolution bugs the evaluation surfaced:
+    ``product__name="Product 1"`` must stay a name lookup (not be resolved to
+    a pk), and a single-value ``__in`` filter must reach the ORM as a list."""
+
+    @classmethod
+    def setUpTestData(cls):
+        create_fixture_data()
+
+    def test_name_lookup_is_not_resolved_to_pk(self):
+        from slick_reporting.llm.executor import prepare_filters
+        from tests.models import SimpleSales
+
+        _q, kw = prepare_filters(SimpleSales, {"product__name": "Product 1"})
+        self.assertEqual(kw, {"product__name": "Product 1"})
+
+    def test_pk_lookups_still_resolve(self):
+        from slick_reporting.llm.executor import prepare_filters
+        from tests.models import Product, SimpleSales
+
+        product_id = Product.objects.get(name="Product 1").pk
+        _q, kw = prepare_filters(SimpleSales, {"product_id__in": ["Product 1"]})
+        self.assertEqual(kw, {"product_id__in": [product_id]})
+        _q, kw = prepare_filters(SimpleSales, {"product": "Product 1"})
+        self.assertEqual(kw, {"product": product_id})
+
+    def test_single_value_in_lookup_becomes_list(self):
+        from slick_reporting.llm.executor import prepare_filters
+        from tests.models import SimpleSales
+
+        _q, kw = prepare_filters(SimpleSales, {"product__name__in": "Product 1"})
+        self.assertEqual(kw, {"product__name__in": ["Product 1"]})
+
+    def test_report_with_name_filter_returns_fixture_rows(self):
+        """The audited benchmark failure: a legitimate ``product__name`` plan
+        must return the Product 1 rows, not an empty report."""
+        cfg = dict(PERFECT_CONFIGS["product1_sales_q1"], filters={"product__name": "Product 1"})
+        payload = run_llm_report_config(cfg)
+        self.assertEqual(len(payload["data"]), 1)
+        self.assertEqual(float(payload["data"][0]["value__sum"]), 5000.0)
+
+
 class RunEvaluationEndToEndTests(TestCase):
     """run_evaluation end to end with a scripted backend: structure, token
     capture, paired repetitions, and failure persistence."""
