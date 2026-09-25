@@ -64,6 +64,7 @@ class Client(models.Model):
 
     name = models.CharField(max_length=200, verbose_name=_("Name"), unique=True)
     email = models.EmailField(blank=True)
+    country = models.CharField(max_length=100, verbose_name=_("Country"), default="", blank=True)
     notes = models.TextField()
     contact = models.ForeignKey(Contact, on_delete=models.CASCADE, null=True)
     sex = models.CharField(max_length=10, choices=SexChoices.choices, default="OTHER")

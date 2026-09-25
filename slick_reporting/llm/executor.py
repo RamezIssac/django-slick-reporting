@@ -189,6 +189,10 @@ def prepare_filters(report_model, filters):
             resolved = _resolve_single_label_to_id(target_model, value)
             if resolved is not None:
                 value = resolved
+        # ``__in`` lookups need an iterable even for a single value (plain-text
+        # plans parse "product_id__in=Product 1" to a single scalar).
+        if key.endswith("__in") and not isinstance(value, (list, tuple)):
+            value = [value]
         kw_filters[key] = value
     return q_filters, kw_filters
 
