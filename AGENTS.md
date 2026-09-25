@@ -28,6 +28,8 @@ Guidance for OpenCode sessions in this repo. See `CLAUDE.md` for deeper architec
 - Code lives in `slick_reporting/llm/` (backends, executor, prompts, views); docs in `docs/source/topics/llm_assistant.rst`
 - Configure via `SLICK_REPORTING_SETTINGS["LLM_BACKEND"]` + `["LLM_BACKEND_OPTIONS"]`; `OpenRouterBackend` (key from `OPENROUTER_API_KEY` env, free-tier default model) and `OpenAICompatibleBackend` (covers local llama.cpp via `base_url`) are built in
 - Benchmark end-to-end with `demo_proj/manage.py evaluate_llm --questions-file demo_proj/demo_app/fixtures/llm_eval_questions.json [--model <id>] [--plain-text]`
+- The data-format evaluation (JSON vs plain vs TOON prompt serialization) lives in `slick_reporting/llm/evaluator.py` + `slick_reporting/llm/toon_data.py`; run it with `python run_benchmark.py` (needs `toon-format==0.9.0b1` for the TOON arm, a local OpenAI-compatible endpoint at `192.168.178.100:8080`, writes evidence JSON to `eval_evidence/`). Its tests are `tests/test_llm_eval.py`; the fixture seeds `tests` app models (`Client` has a real `country` field for the US-vs-EG question).
+- Executor label-to-id resolution (`prepare_filters`) only applies to pk-targeting lookups (`product`, `product_id`, `product__id__in`); a lookup on a relation's concrete field (`product__name`) keeps its string value — resolving it to a pk silently empties the report.
 
 ## Architecture
 
