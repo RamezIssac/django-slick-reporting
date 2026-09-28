@@ -1023,14 +1023,63 @@ class ReportGenerator(ReportGeneratorAPI, object):
             )
         return data
 
+    @staticmethod
+    def rows_to_columns(data, columns):
+        """
+        Convert row-oriented report data (a list of dicts, one dict per row) into the columnar
+        structure used in the JSON response: a dict mapping each column name to a list holding
+        one value per row.
+
+        :param data: list of dicts as returned by ``get_report_data()``
+        :param columns: list of column definition dicts as returned by ``get_columns_data()``
+        :return: dict mapping column name -> list of values, one per row
+        """
+        names = [col["name"] for col in columns]
+        seen = set(names)
+        for row in data:
+            for key in row:
+                if key not in seen:
+                    # keep keys added by format_row hooks that are not in the columns definition
+                    seen.add(key)
+                    names.append(key)
+        columnar = {name: [None] * len(data) for name in names}
+        for index, row in enumerate(data):
+            for key, value in row.items():
+                columnar[key][index] = value
+        return columnar
+
+    @staticmethod
+    def columns_to_rows(columnar_data, column_names=None):
+        """
+        Inverse of ``rows_to_columns``: rebuild the row-oriented list of dicts from the columnar
+        structure. Used by exports (CSV / print) that consume the full response.
+
+        :param columnar_data: dict mapping column name -> list of values, one per row
+        :param column_names: order of the columns in the returned rows; defaults to all keys
+        :return: list of dicts, one per row
+        """
+        column_names = list(column_names) if column_names is not None else list(columnar_data.keys())
+        if not column_names:
+            return []
+        first_values = columnar_data.get(column_names[0]) or []
+        rows = []
+        for i in range(len(first_values)):
+            row = {}
+            for name in column_names:
+                values = columnar_data.get(name)
+                row[name] = values[i] if values is not None and i < len(values) else None
+            rows.append(row)
+        return rows
+
     def get_full_response(
         self, data=None, report_slug=None, chart_settings=None, default_chart_title=None, default_chart_engine=None
     ):
         data = data or self.get_report_data()
+        columns_data = self.get_columns_data()
         data = {
             "report_slug": report_slug or self.__class__.__name__,
-            "data": data,
-            "columns": self.get_columns_data(),
+            "data": self.rows_to_columns(data, columns_data),
+            "columns": columns_data,
             "metadata": self.get_metadata(),
             "chart_settings": self.get_chart_settings(
                 chart_settings, default_chart_title=default_chart_title, chart_engine=default_chart_engine

@@ -64,6 +64,65 @@
         return total_container;
     }
 
+    function calculateTotalOnColumnArray(data, columns) {
+        // Compute totals on columnar data (one values array per column)
+        // example :
+        // calculateTotalOnColumnArray ({value1: [500, 200], value2: [70, 15]}, ['value1'])
+        // return {'value1': 700}
+
+        let total_container = {};
+        for (let i = 0; i < columns.length; i++) {
+            let values = data[columns[i]] || [];
+            total_container[columns[i]] = 0;
+            for (let r = 0; r < values.length; r++) {
+                let val = values[r];
+                if (val === '-') val = 0;
+
+                else if (typeof (val) == 'string') {
+                    try {
+                        val = val.replace(/,/g, '');
+                    } catch (err) {
+                        console.log(err, val, typeof (val));
+                    }
+                }
+                total_container[columns[i]] += parseFloat(val);
+            }
+        }
+        return total_container;
+    }
+
+    function getReportRowCount(response) {
+        // The number of rows in a columnar report response: the length of any column values array
+        let data = response.data || {};
+        if (response.columns && response.columns.length > 0) {
+            let values = data[response.columns[0].name];
+            return values ? values.length : 0;
+        }
+        let keys = Object.keys(data);
+        if (keys.length > 0 && data[keys[0]]) {
+            return data[keys[0]].length;
+        }
+        return 0;
+    }
+
+    function dataToRows(response) {
+        // Convert the columnar response data ({colName: [value per row, ...]})
+        // into an array of row objects ([{colName: value, ...}, ...])
+        let data = response.data || {};
+        let keys = Object.keys(data);
+        let rowCount = getReportRowCount(response);
+        let rows = [];
+        for (let r = 0; r < rowCount; r++) {
+            let row = {};
+            for (let k = 0; k < keys.length; k++) {
+                let values = data[keys[k]];
+                row[keys[k]] = values ? values[r] : undefined;
+            }
+            rows.push(row);
+        }
+        return rows;
+    }
+
     function get_xpath($element, forceTree) {
         if ($element.length === 0) {
             return null;
@@ -97,6 +156,9 @@
     $.slick_reporting = {
         'getObjFromArray': getObjFromArray,
         'calculateTotalOnObjectArray': calculateTotalOnObjectArray,
+        'calculateTotalOnColumnArray': calculateTotalOnColumnArray,
+        'getReportRowCount': getReportRowCount,
+        'dataToRows': dataToRows,
         "executeFunctionByName": executeFunctionByName,
         "get_xpath": get_xpath,
         defaults: {

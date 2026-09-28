@@ -41,6 +41,17 @@ SUPER_LOGIN = dict(username="superlogin", password="password")
 year = now().year
 
 
+def columnar_to_rows(response_data):
+    """
+    Convert the columnar ``data`` section of a report response
+    (a dict mapping column name -> list of values, one per row)
+    back to a list of row dicts.
+    """
+    names = list(response_data.keys())
+    row_count = len(response_data[names[0]]) if names else 0
+    return [{name: response_data[name][i] for name in names} for i in range(row_count)]
+
+
 class BaseTestData:
     databases = "__all__"
 
@@ -484,7 +495,7 @@ class TestView(BaseTestData, TestCase):
             time_series_columns=["__total__", "__balance__"],
         )
         self.assertTrue(view_report_data)
-        self.assertEqual(view_report_data, report_generator.get_report_data())
+        self.assertEqual(columnar_to_rows(view_report_data), report_generator.get_report_data())
 
     def test_qs_only(self):
         response = self.client.get(
@@ -502,7 +513,7 @@ class TestView(BaseTestData, TestCase):
             time_series_columns=["__total__", "__balance__"],
         )
         self.assertTrue(view_report_data)
-        self.assertEqual(view_report_data, report_generator.get_report_data())
+        self.assertEqual(columnar_to_rows(view_report_data), report_generator.get_report_data())
 
     def test_view_filter(self):
         report_generator = ReportGenerator(
@@ -525,7 +536,7 @@ class TestView(BaseTestData, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(len(data), 2)
         view_report_data = response.json()
-        self.assertEqual(view_report_data["data"], data)
+        self.assertEqual(columnar_to_rows(view_report_data["data"]), data)
 
     def test_view_filter_to_field_set(self):
         report_generator = ReportGenerator(
@@ -547,7 +558,7 @@ class TestView(BaseTestData, TestCase):
 
         view_report_data = response.json()
 
-        self.assertEqual(view_report_data["data"], data)
+        self.assertEqual(columnar_to_rows(view_report_data["data"]), data)
 
     def test_ajax(self):
         report_generator = ReportGenerator(
@@ -562,7 +573,7 @@ class TestView(BaseTestData, TestCase):
         response = self.client.get(reverse("report1"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
         self.assertEqual(response.status_code, 200)
         view_report_data = response.json()
-        self.assertEqual(view_report_data["data"], data)
+        self.assertEqual(columnar_to_rows(view_report_data["data"]), data)
 
     def test_crosstab_report_view(self):
         from .report_generators import ProductClientSalesMatrix
@@ -584,7 +595,7 @@ class TestView(BaseTestData, TestCase):
         )
         self.assertEqual(response.status_code, 200)
         view_report_data = response.json()
-        self.assertEqual(view_report_data["data"], data)
+        self.assertEqual(columnar_to_rows(view_report_data["data"]), data)
 
     def test_crosstab_report_view_clumns_on_fly(self):
         data = ProductClientSalesMatrix2(
@@ -602,7 +613,7 @@ class TestView(BaseTestData, TestCase):
         )
         self.assertEqual(response.status_code, 200)
         view_report_data = response.json()
-        self.assertEqual(view_report_data["data"], data, view_report_data)
+        self.assertEqual(columnar_to_rows(view_report_data["data"]), data, view_report_data)
 
     def test_crosstab_report_view_to_field_set(self):
         from .report_generators import ProductClientSalesMatrixToFieldSet
@@ -624,7 +635,7 @@ class TestView(BaseTestData, TestCase):
         )
         self.assertEqual(response.status_code, 200)
         view_report_data = response.json()
-        self.assertEqual(view_report_data["data"], data)
+        self.assertEqual(columnar_to_rows(view_report_data["data"]), data)
 
     def test_crosstab_report_view_clumns_on_fly_to_field_set(self):
         data = ProductClientSalesMatrixwSimpleSales2(
@@ -642,7 +653,7 @@ class TestView(BaseTestData, TestCase):
         )
         self.assertEqual(response.status_code, 200)
         view_report_data = response.json()
-        self.assertEqual(view_report_data["data"], data, view_report_data["data"])
+        self.assertEqual(columnar_to_rows(view_report_data["data"]), data, view_report_data["data"])
 
     def test_chart_settings(self):
         response = self.client.get(
@@ -657,6 +668,61 @@ class TestView(BaseTestData, TestCase):
         data = response.json()
         self.assertTrue(data["chart_settings"][0]["id"] != "")
         self.assertTrue(data["chart_settings"][0]["title"], "awesome report title")
+
+    def test_response_data_is_columnar(self):
+        # The ajax response carries the data in a columnar shape:
+        # one array of values per column instead of one object per row
+        response = self.client.get(reverse("report1"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        data = payload["data"]
+        self.assertIsInstance(data, dict)
+        column_names = [col["name"] for col in payload["columns"]]
+        self.assertEqual(list(data.keys()), column_names)
+        row_count = len(data[column_names[0]])
+        self.assertGreater(row_count, 0)
+        for name in column_names:
+            self.assertEqual(len(data[name]), row_count, name)
+
+    def test_list_report_view_response_is_columnar(self):
+        response = self.client.get(reverse("list-report"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        data = payload["data"]
+        self.assertIsInstance(data, dict)
+        column_names = [col["name"] for col in payload["columns"]]
+        self.assertEqual(list(data.keys()), column_names)
+        row_count = SimpleSales.objects.count()
+        self.assertGreater(row_count, 0)
+        for name in column_names:
+            self.assertEqual(len(data[name]), row_count, name)
+
+    def test_csv_export(self):
+        ajax_response = self.client.get(reverse("report1"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        payload = ajax_response.json()
+        rows = columnar_to_rows(payload["data"])
+        column_names = [col["name"] for col in payload["columns"]]
+
+        response = self.client.get(reverse("report1"), data={"_export": "csv"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv")
+        content = b"".join(response.streaming_content).decode()
+        lines = content.strip().splitlines()
+        self.assertEqual(len(lines), len(rows) + 1)  # header row + one line per report row
+        for col in payload["columns"]:
+            self.assertIn(str(col["verbose_name"]), lines[0])
+        for line, row in zip(lines[1:], rows):
+            self.assertIn(str(row[column_names[0]]), line)
+
+    def test_print_export(self):
+        ajax_response = self.client.get(reverse("report1"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        rows = columnar_to_rows(ajax_response.json()["data"])
+
+        response = self.client.get(reverse("report1"), data={"_export": "print"})
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        for row in rows:
+            self.assertIn(str(row["name"]), content)
 
     @skip
     def test_error_on_missing_date_field(self):

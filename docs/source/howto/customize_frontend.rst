@@ -8,6 +8,14 @@ The ajax response structure
 
 Understanding how the response is structured is imperative in order to customize how the report is displayed on the front end
 
+.. note::
+
+    **Breaking change**: The ``data`` section of the response is now **columnar**:
+    a dictionary mapping each column name to a list holding one value per row,
+    instead of a list of row objects where every row repeats every column key.
+    If you consume the JSON response directly, update your code accordingly.
+    The number of rows is the length of any of the column value lists.
+
 Let's have a look
 
 .. code-block:: python
@@ -17,24 +25,16 @@ Let's have a look
     response = {
         # the report slug, defaults to the class name all lower
         "report_slug": "",
-        # a list of objects representing the actual results of the report
-        "data": [
-            {
-                "name": "Product 1",
-                "quantity__sum": "1774",
-                "value__sum": "8758",
-                "field_x": "value_x",
-            },
-            {
-                "name": "Product 2",
-                "quantity__sum": "1878",
-                "value__sum": "3000",
-                "field_x": "value_x",
-            },
-            # etc .....
-        ],
+        # a dictionary mapping each column name to a list of its values, one per row.
+        # ie: len(response["data"]["name"]) == the number of rows in the report
+        "data": {
+            "name": ["Product 1", "Product 2"],
+            "quantity__sum": ["1774", "1878"],
+            "value__sum": ["8758", "3000"],
+            "field_x": ["value_x", "value_x"],
+        },
         # A list explaining the columns/keys in the data results.
-        # ie: len(response.columns) == len(response.data[i].keys())
+        # ie: list(response["data"].keys()) == [col["name"] for col in response["columns"]]
         # It contains needed information about verbose name , if summable and hints about the data type.
         "columns": [
             {
@@ -108,9 +108,9 @@ Let's have a look
     # Ajax response or `report_results` template context variable.
     response = {
         "report_slug": "",  # the report slug, defaults to the class name all lower
-        "data": [],  # a list of objects representing the actual results of the report
+        "data": {},  # a dictionary mapping each column name to a list of its values, one per row (columnar)
         "columns": [],  # A list explaining the columns/keys in the data results.
-        # ie: len(response.columns) == len(response.data[i].keys())
+        # ie: list(response["data"].keys()) == [col["name"] for col in response["columns"]]
         # A List of objects. each object contain field needed information like verbose name , if summable and hints about the data type.
         "metadata": {},  # Contains information about the report as whole if it's time series or a a crosstab
         # And what's the actual and verbose names of the time series or crosstab specific columns.
