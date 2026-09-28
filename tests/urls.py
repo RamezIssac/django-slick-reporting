@@ -36,4 +36,7 @@ urlpatterns = [
     path(
         "queryset-only/", views.MonthlyProductSalesWQS.as_view(), name="queryset-only"
     ),
+    path(
+        "list-report/", views.SimpleSalesListReport.as_view(), name="list-report"
+    ),
 ]
