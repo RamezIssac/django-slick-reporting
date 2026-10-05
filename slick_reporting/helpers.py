@@ -12,7 +12,7 @@ def get_calculation_annotation(calculation_field, calculation_method):
     @return: the annotation ex value__sum
     """
 
-    return "__".join([calculation_field.lower(), calculation_method.name.lower()])
+    return f"{calculation_field.lower()}__{calculation_method.name.lower()}"
 
 
 def get_foreign_keys(model):

@@ -8,23 +8,23 @@ from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import Q
 from django.forms import modelform_factory
-from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
 from .app_settings import SLICK_REPORTING_SETTINGS, get_access_function
 from .forms import (
-    report_form_factory,
-    get_crispy_helper,
-    default_formfield_callback,
     OrderByForm,
+    default_formfield_callback,
+    get_crispy_helper,
+    report_form_factory,
 )
 from .generator import (
-    ReportGenerator,
-    ListViewReportGenerator,
-    ReportGeneratorAPI,
     Chart,  # noqa # needed for easier importing in other apps
+    ListViewReportGenerator,
+    ReportGenerator,
+    ReportGeneratorAPI,
 )
 
 
@@ -36,13 +36,13 @@ def dictsort(value, arg, desc=False):
     return sorted(value, key=lambda x: x[arg], reverse=desc)
 
 
-class ExportToCSV(object):
+class ExportToCSV:
     def get_filename(self):
         return self.report_title
 
     def get_response(self):
         response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = "attachment; filename={filename}.csv".format(filename=self.get_filename())
+        response["Content-Disposition"] = f"attachment; filename={self.get_filename()}.csv"
 
         writer = csv.writer(response)
         for rows in self.get_rows():
@@ -78,9 +78,7 @@ class ExportToStreamingCSV(ExportToCSV):
         return StreamingHttpResponse(
             (writer.writerow(row) for row in self.get_rows()),
             content_type="text/csv",
-            headers={
-                "Content-Disposition": 'attachment; filename="{filename}.csv"'.format(filename=self.get_filename())
-            },
+            headers={"Content-Disposition": f'attachment; filename="{self.get_filename()}.csv"'},
         )
 
 
@@ -325,13 +323,14 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
                     "files": self.request.FILES,
                 }
             )
-        elif self.request.method in ("GET", "PUT"):
-            if self.request.GET or self.request.headers.get("x-requested-with") == "XMLHttpRequest":
-                kwargs.update(
-                    {
-                        "data": self.request.GET,
-                    }
-                )
+        elif self.request.method in ("GET", "PUT") and (
+            self.request.GET or self.request.headers.get("x-requested-with") == "XMLHttpRequest"
+        ):
+            kwargs.update(
+                {
+                    "data": self.request.GET,
+                }
+            )
         return kwargs
 
     def get_crosstab_ids(self):

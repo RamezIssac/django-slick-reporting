@@ -6,7 +6,7 @@ from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
 from . import app_settings
-from .helpers import get_foreign_keys, get_field_from_query_text
+from .helpers import get_field_from_query_text, get_foreign_keys
 
 TIME_SERIES_CHOICES = (
     ("monthly", _("Monthly")),
@@ -30,7 +30,7 @@ def get_crispy_helper(
     add_date_range=True,
 ):
     from crispy_forms.helper import FormHelper
-    from crispy_forms.layout import Column, Layout, Div, Row, Field
+    from crispy_forms.layout import Column, Div, Field, Layout, Row
 
     foreign_keys_map = foreign_keys_map or []
     helper = FormHelper()
@@ -169,11 +169,11 @@ class SlickReportForm(BaseReportForm):
             if fk_keys:
                 fk_keys = fk_keys.items()
             for key, field in fk_keys:
-                if key in self.cleaned_data and not key == self.crosstab_key_name:
+                if key in self.cleaned_data and key != self.crosstab_key_name:
                     val = self.cleaned_data[key]
                     if val:
                         val = [x for x in val.values_list("pk", flat=True)]
-                        _values["%s__in" % key] = val
+                        _values[f"{key}__in"] = val
             return None, _values
 
     @cached_property

@@ -1,19 +1,24 @@
+import datetime
+
 from django.conf import settings
 from django.urls import get_callable
 from django.utils.functional import lazy
 from django.utils.translation import gettext_lazy as _
 
-import datetime
+
+def _get_naive_local_now():
+    """Current local date and time as a naive datetime, matching the project's naive (USE_TZ=False) semantics."""
+    return datetime.datetime.now(tz=datetime.timezone.utc).astimezone().replace(tzinfo=None)
 
 
 def get_first_of_this_year():
-    d = datetime.datetime.today()
-    return datetime.datetime(d.year, 1, 1, 0, 0)
+    d = _get_naive_local_now()
+    return d.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
 def get_end_of_this_year():
-    d = datetime.datetime.today()
-    return datetime.datetime(d.year + 1, 1, 1, 0, 0)
+    d = _get_naive_local_now()
+    return d.replace(year=d.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
 def get_start_date():
@@ -23,7 +28,7 @@ def get_start_date():
 
 def get_end_date():
     end_date = getattr(settings, "SLICK_REPORTING_DEFAULT_END_DATE", False)
-    return end_date or datetime.datetime.today()
+    return end_date or _get_naive_local_now()
 
 
 SLICK_REPORTING_DEFAULT_START_DATE = lazy(get_start_date, datetime.datetime)()
