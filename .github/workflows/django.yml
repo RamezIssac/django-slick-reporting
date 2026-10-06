@@ -29,7 +29,7 @@ jobs:
 
       - name: Lint (ruff)
         run: |
-          pip install ruff
+          pip install "ruff==0.16.9"
           ruff check --line-length 120 slick_reporting/
 
       - name: Run tests

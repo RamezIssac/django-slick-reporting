@@ -3,14 +3,14 @@ import logging
 from dataclasses import dataclass
 from inspect import isclass
 
-from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
-from django.db.models import Q, ForeignKey
+from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured
+from django.db.models import ForeignKey, Q
 
+from . import app_settings
 from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import ComputationField
 from .helpers import get_field_from_query_text
 from .registry import field_registry
-from . import app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +32,16 @@ class Chart:
     AREA = "area"
 
     def to_dict(self):
-        return dict(
-            title=self.title,
-            type=self.type,
-            data_source=self.data_source,
-            title_source=self.title_source,
-            plot_total=self.plot_total,
-            engine=self.engine,
-            entryPoint=self.entryPoint,
-            stacking=self.stacking,
-        )
+        return {
+            "title": self.title,
+            "type": self.type,
+            "data_source": self.data_source,
+            "title_source": self.title_source,
+            "plot_total": self.plot_total,
+            "engine": self.engine,
+            "entryPoint": self.entryPoint,
+            "stacking": self.stacking,
+        }
 
 
 class ReportGeneratorAPI:
@@ -151,7 +151,7 @@ class ReportGeneratorAPI:
     In this mode, crosstab_columns should be a list of DB column name strings (not ComputationField classes)."""
 
 
-class ReportGenerator(ReportGeneratorAPI, object):
+class ReportGenerator(ReportGeneratorAPI):
     """
     The main class responsible generating the report and managing the flow
     """
@@ -220,8 +220,8 @@ class ReportGenerator(ReportGeneratorAPI, object):
         :param limit_records:
         """
         from .app_settings import (
-            SLICK_REPORTING_DEFAULT_START_DATE,
             SLICK_REPORTING_DEFAULT_END_DATE,
+            SLICK_REPORTING_DEFAULT_START_DATE,
         )
 
         super().__init__()
@@ -579,9 +579,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     group_data = self._precomputed_crosstab_data.get(group_by_val, {})
                     data[name] = group_data.get(crosstab_val, {}).get(crosstab_col, 0)
 
-                elif col_data.get("source", "") == "attribute_field":
-                    data[name] = col_data["ref"](obj, data)
-                elif col_data.get("source", "") == "container_class_attribute_field":
+                elif col_data.get("source", "") in ("attribute_field", "container_class_attribute_field"):
                     data[name] = col_data["ref"](obj, data)
 
                 elif (
@@ -631,7 +629,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
     @staticmethod
     def check_columns(
-        cls,
+        caller,
         columns,
         group_by,
         report_model,
@@ -649,16 +647,17 @@ class ReportGenerator(ReportGeneratorAPI, object):
         """
 
         group_by_model = None
-        if group_by_custom_querysets:
-            if "__index__" not in columns:
-                columns.insert(0, "__index__")
+        if group_by_custom_querysets and "__index__" not in columns:
+            columns.insert(0, "__index__")
 
         if group_by:
             try:
-                group_by_field = [x for x in report_model._meta.get_fields() if x.name == group_by.split("__")[0]][0]
-            except IndexError:
+                group_by_field = next(
+                    x for x in report_model._meta.get_fields() if x.name == group_by.split("__")[0]
+                )
+            except StopIteration:
                 raise ImproperlyConfigured(
-                    f"ReportView {cls}: Could not find the group_by field: `{group_by}` in "
+                    f"ReportView {caller}: Could not find the group_by field: `{group_by}` in "
                     f"report_model: `{report_model}`"
                 )
             if group_by_field.is_relation:
@@ -681,7 +680,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             is_container_class_attribute = False
 
             if isinstance(col, str):
-                attribute_field = getattr(cls, col, None)
+                attribute_field = getattr(caller, col, None)
                 if attribute_field is None:
                     is_container_class_attribute = True
                     attribute_field = getattr(container_class, col, None)
@@ -718,7 +717,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     # group by custom queryset special case: which is the index
                     col_data = {
                         "name": col,
-                        "verbose_name": cls.group_by_custom_querysets_column_verbose_name,
+                        "verbose_name": caller.group_by_custom_querysets_column_verbose_name,
                         "source": "database",
                         "ref": "",
                         "type": "text",
@@ -744,7 +743,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
                     if not field:
                         raise FieldDoesNotExist(
-                            f'Field "{col}" not found either as an attribute to the generator class {cls}, '
+                            f'Field "{col}" not found either as an attribute to the generator class {caller}, '
                             f'{f"Container class {container_class}," if container_class else ""}'
                             f'or a computation field, or a database column for the model "{model_to_use}"'
                         )

@@ -1,4 +1,4 @@
-from django.db import models, connections, OperationalError, ProgrammingError
+from django.db import OperationalError, ProgrammingError, connections, models
 
 _model_cache = {}
 
@@ -136,16 +136,13 @@ def get_dynamic_model(table_name, database="default", schema=None):
         field.db_column = col_info.name
         fields[col_info.name] = field
 
-    if not has_pk:
-        # Table has no PK — add a synthetic one on the first column
-        if table_description:
-            first_col = table_description[0].name
-            result = connection.introspection.get_field_type(
-                table_description[0].type_code, table_description[0]
-            )
-            ft = result[0] if isinstance(result, tuple) else result
-            fields[first_col] = _make_field(ft, table_description[0], is_pk=True)
-            fields[first_col].db_column = first_col
+    # Table has no PK — add a synthetic one on the first column
+    if not has_pk and table_description:
+        first_col = table_description[0].name
+        result = connection.introspection.get_field_type(table_description[0].type_code, table_description[0])
+        ft = result[0] if isinstance(result, tuple) else result
+        fields[first_col] = _make_field(ft, table_description[0], is_pk=True)
+        fields[first_col].db_column = first_col
 
     # Build a valid Python class name from the table name
     name_parts = table_name.replace(".", "_").split("_")
