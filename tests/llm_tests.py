@@ -22,7 +22,7 @@ from slick_reporting.llm.executor import (
     run_llm_report_config,
 )
 from slick_reporting.llm.introspection import build_reporting_catalog, resolve_aggregation_method
-from tests.tests import BaseTestData, year
+from tests.tests import BaseTestData, columnar_to_rows, year
 from tests.models import Client, Product, SimpleSales
 
 
@@ -182,7 +182,7 @@ class ReportConfigExecutionTests(BaseTestData, TestCase):
         }
         response = run_llm_report_config(config)
         self.assertEqual(response["report_slug"], "llm_report")
-        names = [row["name"] for row in response["data"]]
+        names = [row["name"] for row in columnar_to_rows(response["data"])]
         self.assertIn("Product 1", names)
 
     def test_run_llm_report_config_time_series(self):
@@ -233,7 +233,7 @@ class ReportConfigExecutionTests(BaseTestData, TestCase):
             ],
         }
         response = run_llm_report_config(config)
-        names = [row["client__name"] for row in response["data"]]
+        names = [row["client__name"] for row in columnar_to_rows(response["data"])]
         self.assertIn(self.client1.name, names)
 
 

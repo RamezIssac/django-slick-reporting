@@ -16,6 +16,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
 from ..app_settings import SLICK_REPORTING_SETTINGS, get_access_function
+from ..generator import ReportGenerator
 from .backends import get_llm_backend
 from .executor import (
     parse_llm_json,
@@ -118,10 +119,12 @@ class AskLLMView(View):
             )
 
         # Stage 3: ask the LLM to answer with proofs.
+        # The prompt reads row-oriented dicts; the JSON response stays columnar
+        # so the front end can render it with ``$.slick_reporting.loadReport``.
         reports_for_answer = [
             {
                 "config": report_config,
-                "data": report_data["data"],
+                "data": ReportGenerator.columns_to_rows(report_data["data"]),
                 "columns": report_data["columns"],
             }
         ]
