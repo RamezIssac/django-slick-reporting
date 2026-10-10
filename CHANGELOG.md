@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Breaking Changes
+
+- **Columnar JSON report response** — the AJAX/JSON report response now delivers ``data`` in a columnar
+  shape: a dictionary mapping each column name to a list of values (one per row), instead of a list of
+  row objects repeating every column key. Applies to all report types (group-by, time-series, crosstab
+  and list reports) and makes the payload more compact. ``columns``, ``metadata`` and ``chart_settings``
+  are unchanged, as are the row-oriented Python APIs (``get_report_data()``, ``format_row()``,
+  ``filter_results()``). The bundled front end (table rendering and the Highcharts / Chart.js engines)
+  was updated to match. If you consume the JSON response directly (custom JS or custom export actions),
+  update your code; ``ReportGenerator.columns_to_rows(data, column_names)`` rebuilds the row-oriented
+  list of dictionaries.
+
 ## [1.4.0] - 2026-05-01
 
 ### New Features

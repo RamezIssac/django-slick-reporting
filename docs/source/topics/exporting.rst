@@ -53,3 +53,10 @@ Example to add a pdf export option:
 
 The export function should accept the report_data json response and return the response you want.
 
+.. note::
+
+    **Breaking change**: ``report_data["data"]`` is now **columnar**: a dictionary mapping each column
+    name to a list holding one value per row, instead of a list of row objects.
+    Use ``ReportGenerator.columns_to_rows(report_data["data"], [col["name"] for col in report_data["columns"]])``
+    to rebuild the row-oriented list of dictionaries.
+
