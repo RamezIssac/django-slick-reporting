@@ -143,8 +143,7 @@ def plan_prompt(question, catalog, plain_text=False):
     system = PLAN_PLAIN_TEXT_SYSTEM_PROMPT if plain_text else PLAN_SYSTEM_PROMPT
     instruction = "Return the plain-text configuration." if plain_text else "Return the JSON configuration."
     return (
-        f"{system}\n\nAvailable catalog:\n{_catalog_to_text(catalog)}\n\n"
-        f"User question: {question}\n\n{instruction}"
+        f"{system}\n\nAvailable catalog:\n{_catalog_to_text(catalog)}\n\n" f"User question: {question}\n\n{instruction}"
     )
 
 

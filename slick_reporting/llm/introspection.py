@@ -9,14 +9,12 @@ The catalog includes:
 * common aggregation methods exposed by django.db.models
 """
 
-import datetime
-
 from django.apps import apps
 from django.db import models
 from django.db.models import Avg, Count, Max, Min, Sum
 from django.utils.module_loading import import_string
 
-from ..app_settings import SLICK_REPORTING_SETTINGS
+from ..app_settings import SLICK_REPORTING_SETTINGS, _get_naive_local_now
 from ..registry import field_registry
 
 NUMBER_FIELD_TYPES = {
@@ -188,7 +186,7 @@ def build_reporting_catalog(extra_models=None):
         "computation_fields": _computation_fields_catalog(),
         "aggregation_methods": _aggregation_methods_catalog(),
         "time_series_patterns": TIME_SERIES_PATTERNS,
-        "today_iso": datetime.datetime.now().isoformat(),
+        "today_iso": _get_naive_local_now().isoformat(),
     }
 
 

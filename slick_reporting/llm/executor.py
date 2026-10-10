@@ -20,12 +20,12 @@ from ..generator import ReportGenerator
 from .introspection import resolve_aggregation_method
 
 __all__ = [
-    "run_llm_report_config",
-    "prepare_filters",
-    "parse_llm_json",
-    "parse_llm_plain_text_plan",
-    "parse_llm_plain_text_answer",
     "clean_json_output",
+    "parse_llm_json",
+    "parse_llm_plain_text_answer",
+    "parse_llm_plain_text_plan",
+    "prepare_filters",
+    "run_llm_report_config",
 ]
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,8 @@ def _parse_date(value):
         value = value.strip()
         if "T" in value:
             return datetime.datetime.fromisoformat(value)
-        return datetime.datetime.strptime(value, "%Y-%m-%d")
+        # Naive on purpose: the project runs with naive datetimes (USE_TZ=False semantics).
+        return datetime.datetime.strptime(value, "%Y-%m-%d")  # noqa: DTZ007
     raise ValueError(f"Cannot parse date {value!r}")
 
 
@@ -114,7 +115,8 @@ def _resolve_single_label_to_id(model, val):
             match = model.objects.filter(**{f"{candidate}__iexact": str(val)}).first()
             if match:
                 return match.pk
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 - label lookup is best-effort; a bad field never breaks the flow
+            logger.debug("Label resolution for %r on %s.%s failed: %s", val, model.__name__, candidate, exc)
             continue
     return None
 
@@ -176,7 +178,8 @@ def _target_model_for_kwarg(report_model, key):
                 # Traversed into a concrete field; no label resolution.
                 return None
         return rel_model
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 - unresolvable paths fall back to the report model
+        logger.debug("Could not resolve target model for %s on %s: %s", relation_path, report_model.__name__, exc)
         return report_model
 
 
@@ -186,7 +189,7 @@ def prepare_filters(report_model, filters):
     kw_filters = {}
     filters = filters or {}
     if not isinstance(filters, dict):
-        raise ValueError("filters must be a dict of Django ORM kwargs filters")
+        raise TypeError("filters must be a dict of Django ORM kwargs filters")
 
     for key, value in filters.items():
         if key.lower().startswith("q_"):

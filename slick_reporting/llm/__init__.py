@@ -3,7 +3,7 @@ from .executor import run_llm_report_config
 from .introspection import build_reporting_catalog
 
 __all__ = [
+    "build_reporting_catalog",
     "get_llm_backend",
     "run_llm_report_config",
-    "build_reporting_catalog",
 ]

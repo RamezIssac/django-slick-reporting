@@ -9,11 +9,12 @@ Dashboard API endpoints for the natural-language reporting assistant.
 import json
 import logging
 import time
+from typing import ClassVar
 
 from django.http import JsonResponse
+from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
 from ..app_settings import SLICK_REPORTING_SETTINGS, get_access_function
 from ..generator import ReportGenerator
@@ -43,7 +44,7 @@ class AskLLMView(View):
     supported by the report data that was generated.
     """
 
-    http_method_names = ["post", "head", "options"]
+    http_method_names: ClassVar[list[str]] = ["post", "head", "options"]
 
     def post(self, request, *args, **kwargs):
         started_at = time.perf_counter()
@@ -80,11 +81,7 @@ class AskLLMView(View):
 
         plan_response_text = backend.complete(plan_prompt_text)
         logger.debug("Plan response text: %s", plan_response_text)
-        plan = (
-            parse_llm_plain_text_plan(plan_response_text)
-            if plain_text
-            else parse_llm_json(plan_response_text)
-        )
+        plan = parse_llm_plain_text_plan(plan_response_text) if plain_text else parse_llm_json(plan_response_text)
         if plan is None:
             return JsonResponse(
                 {
