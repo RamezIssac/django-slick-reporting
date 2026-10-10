@@ -15,7 +15,20 @@
         }
     }
 
+    function displayDateWindow(data, $elem) {
+        let dateWindow = (data.metadata || {}).date_window;
+        if (!dateWindow || !dateWindow.label) return;
+        // Prefer an explicit placeholder (eg. in the card header); otherwise create one atop the widget.
+        let $target = $elem.closest('.card').find('[data-report-date-window]');
+        if ($target.length === 0) {
+            $target = $('<div class="text-secondary small mb-2" data-report-date-window></div>');
+            $elem.prepend($target);
+        }
+        $target.text(dateWindow.label);
+    }
+
     function loadComponents(data, $elem) {
+        displayDateWindow(data, $elem);
         let chartElem = $elem.find('[data-report-chart]');
         let chart_id = $elem.attr('data-chart-id');
         let display_chart_selector = $elem.attr('data-display-chart-selector');
@@ -50,6 +63,13 @@
         }
     }
 
+
+    function loadReport($elem, url, data) {
+        // Render an already-fetched report response into a widget element.
+        if (url) $elem.attr('data-report-url', url);
+        $.slick_reporting.cache[data['report_slug']] = jQuery.extend(true, {}, data);
+        loadComponents(data, $elem);
+    }
 
     function refreshReportWidget($elem, extra_params) {
         let successFunctionName = $elem.attr('data-success-callback');
@@ -176,6 +196,8 @@
         displayChart: displayChart,
         createChartsUIfromResponse: createChartsUIfromResponse,
         successCallback: loadComponents,
+        displayDateWindow: displayDateWindow,
 
     }
+    $.slick_reporting.loadReport = loadReport;
 })(jQuery);

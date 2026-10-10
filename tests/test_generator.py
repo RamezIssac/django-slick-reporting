@@ -452,3 +452,73 @@ class TestListViewGenerator(BaseTestData, TestCase):
         self.assertEqual(len(data), SimpleSales.objects.count())
         self.assertEqual(data[0]["product__name"], "Product 1")
         self.assertEqual(data[0]["client__name"], "Client 1")
+
+
+class TestDateWindow(TestCase):
+    def test_start_and_end_dates(self):
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            date_field="doc_date",
+            group_by="client",
+            columns=["name", "__total__"],
+            start_date=datetime(2020, 1, 1),
+            end_date=datetime(2020, 12, 31),
+        )
+        date_window = report.get_date_window()
+        self.assertEqual(date_window["start"].isoformat(), "2020-01-01")
+        self.assertEqual(date_window["end"].isoformat(), "2020-12-31")
+        self.assertEqual(date_window["label"], "From 2020-01-01 to 2020-12-31")
+
+    def test_end_date_only(self):
+        # open-ended (financial style) report: no start date
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            date_field="doc_date",
+            group_by="client",
+            columns=["name", "__total__"],
+            end_date=datetime(2020, 12, 31),
+        )
+        date_window = report.get_date_window()
+        self.assertIsNone(date_window["start"])
+        self.assertEqual(date_window["end"].isoformat(), "2020-12-31")
+        self.assertEqual(date_window["label"], "As of 2020-12-31")
+
+    def test_no_dates_requested_falls_back_to_default_window(self):
+        # when no dates are requested (eg. a bare widget load), the report
+        # falls back to the default window, which is what should be displayed
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            date_field="doc_date",
+            group_by="client",
+            columns=["name", "__total__"],
+        )
+        date_window = report.get_date_window()
+        self.assertEqual(date_window["start"], report.start_date.date())
+        self.assertEqual(date_window["end"], report.end_date.date())
+        self.assertTrue(date_window["label"].startswith("From "))
+
+    def test_no_date_field_is_all_time(self):
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            group_by="client",
+            columns=["name", "__total__"],
+        )
+        date_window = report.get_date_window()
+        self.assertIsNone(date_window["start"])
+        self.assertIsNone(date_window["end"])
+        self.assertEqual(date_window["label"], "All time")
+
+    def test_date_window_in_full_response_metadata(self):
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            date_field="doc_date",
+            group_by="client",
+            columns=["name", "__total__"],
+            start_date=datetime(2020, 1, 1),
+            end_date=datetime(2020, 12, 31),
+        )
+        response = report.get_full_response()
+        self.assertEqual(
+            response["metadata"]["date_window"]["label"],
+            "From 2020-01-01 to 2020-12-31",
+        )

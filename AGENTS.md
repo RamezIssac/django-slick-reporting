@@ -63,6 +63,21 @@ Columns in `columns` list can be: model field names (str), traversing field name
 
 Tests live in `tests/` with settings in `tests/settings.py` (SQLite, no migrations). Test models (`Product`, `Client`, `SimpleSales`, etc.) are defined in `tests/models.py`. `BaseTestData` in `tests/tests.py` creates fixture data across multiple dates for time-series testing.
 
+- LLM assistant tests live in `tests/llm_tests.py`; `tests/test_llm.py` re-exports them because the default `test*.py` discovery pattern does not match `llm_tests.py` — extend `llm_tests.py`, keep the shim.
+- `demo_proj/` is a separate runnable demo app with its own tests: `cd demo_proj && python manage.py test demo_app`. Its settings load `<demo_proj>/.env` via python-dotenv (`override=False`, so exported env vars win; `DJANGO_DOTENV_PATH` overrides the location).
+- View tests (e.g. `tests.tests.TestView`) can 302-redirect when run standalone because `DEBUG=False` makes the default `REPORT_VIEW_ACCESS_FUNCTION` demand a superuser; validate with the full `python runtests.py`, not single-test runs.
+
+## LLM assistant
+
+- Code lives in `slick_reporting/llm/` (backends, executor, prompts, views); docs in `docs/source/topics/llm_assistant.rst`.
+- Configure via `SLICK_REPORTING_SETTINGS["LLM_BACKEND"]` + `["LLM_BACKEND_OPTIONS"]`; `OpenRouterBackend` (key from `OPENROUTER_API_KEY` env, free-tier default model) and `OpenAICompatibleBackend` (covers local llama.cpp via `base_url`) are built in; auto-detected from the environment when unset.
+- Benchmark end-to-end with `demo_proj/manage.py evaluate_llm --questions-file demo_proj/demo_app/fixtures/llm_eval_questions.json [--model <id>] [--plain-text]`.
+
+## Branches / release
+
+- `develop` is the default/integration branch (`origin/HEAD -> origin/develop`); `master` is release-only.
+- Releases are tag-triggered (`v*`) via `.github/workflows/release.yml`: tests, build, PyPI publish, changelog extraction via `scripts/extract_changelog.py`, GitHub release, then merge `master` back into `develop`.
+
 ## Code style
 
 - Black + Ruff, line length 120
@@ -70,10 +85,7 @@ Tests live in `tests/` with settings in `tests/settings.py` (SQLite, no migratio
 
 ## Gotchas
 
-- CI lint step runs **unpinned latest ruff** (`pip install ruff && ruff check --line-length 120 slick_reporting/`).
-  As of 2026-09, current ruff flags ~51 **pre-existing** errors on `develop` (version drift — the last green run
-  used an older ruff), so any push shows a red lint step even with a clean diff. When evaluating a PR, compare
-  ruff output against `origin/develop` rather than expecting zero errors.
+- CI lints only `slick_reporting/` (not `tests/` or `demo_proj/`), with ruff **pinned** (`pip install "ruff==0.16.9"` in `.github/workflows/django.yml`). Keep the pin in sync when bumping ruff locally; the drift history (51 pre-existing errors from an unpinned ruff) was cleared in #122.
 - The JSON/AJAX report response is **columnar**: `data` maps each column name to a list of values (one per row),
   not a list of row objects. `ReportGenerator.rows_to_columns()` / `columns_to_rows()` convert between shapes;
   docs: `docs/source/howto/customize_frontend.rst`.

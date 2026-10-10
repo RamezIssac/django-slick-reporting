@@ -12,8 +12,24 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load deployment variables from the .env next to manage.py (the deploy flow
+# rewrites it there). By absolute path, not a CWD search: under a uWSGI vassal
+# the CWD isn't the manage.py directory, so a bare load_dotenv() would silently
+# find nothing. DJANGO_DOTENV_PATH overrides the location (used by the tests).
+#
+# override stays at dotenv's default (False) on purpose: the deployed .env fills
+# in vars the host didn't set (OPENROUTER_API_KEY & friends), while a var the
+# operator exported explicitly still wins. (Mirrored from
+# knowledge_consolidator_project/settings.py, which documents the opposite
+# choice - there a graceful reload must pick up a *changed* .env, so it passes
+# override=True.)
+# Must run before any os.getenv() below.
+load_dotenv(os.getenv("DJANGO_DOTENV_PATH", BASE_DIR / ".env"))
 
 
 # Quick-start development settings - unsuitable for production
@@ -133,6 +149,30 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 
 SLICK_REPORTING_DEFAULT_CHARTS_ENGINE = "highcharts"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "debug": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "debug",
+        },
+    },
+    "loggers": {
+        "slick_reporting": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}
+
 SLICK_REPORTING_SETTINGS = {
     "CHARTS": {
         "apexcharts": {
@@ -141,6 +181,31 @@ SLICK_REPORTING_SETTINGS = {
             "css": {"all": ("https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.css",)},
         },
     },
+    # "Ask the data" assistant, powered by OpenRouter (https://openrouter.ai)
+    # using a free-tier model. Put your key in the OPENROUTER_API_KEY env var
+    # (never in this file). Override the model via SLICK_REPORTING_LLM_MODEL;
+    # browse free models at https://openrouter.ai/models?q=free
+    # nex-agi/nex-n2.5-mini:free verified best on the demo evaluation set
+    # (2026-09); google/gemma-4-31b-it:free is an alternative but its free
+    # pool is often rate-limited upstream.
+    "LLM_BACKEND": "slick_reporting.llm.backends.OpenRouterBackend",
+    "LLM_BACKEND_OPTIONS": {
+        "model": os.getenv("SLICK_REPORTING_LLM_MODEL", "nex-agi/nex-n2.5-mini:free"),
+        "temperature": 0.2,
+        # Free-tier models may be briefly rate-limited upstream; give them time.
+        "timeout": 300,
+    },
+    # Alternative: a local llama.cpp OpenAI-compatible server. No key needed:
+    # "LLM_BACKEND": "slick_reporting.llm.backends.OpenAICompatibleBackend",
+    # "LLM_BACKEND_OPTIONS": {
+    #     "base_url": "http://192.168.178.100:8080/v1",
+    #     "api_key": "not-needed",
+    #     "model": "local",
+    #     "temperature": 0.2,
+    #     # llama.cpp reasoning controls:
+    #     # "enable_thinking": False,
+    #     # "reasoning_budget": 0,
+    # },
 }
 
 STATIC_ROOT = os.getenv("STATIC_ROOT", BASE_DIR / "collected_static")
