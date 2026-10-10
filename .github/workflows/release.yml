@@ -54,11 +54,15 @@ jobs:
           files: dist/*
 
       - name: Notify demo server
+        # Advisory only: the demo redeploy must not fail an otherwise successful
+        # release (v1.4.0 went red here / in the merge-back while PyPI and the
+        # GitHub release were already published).
+        continue-on-error: true
         env:
           DEMO_WEBHOOK_URL: ${{ secrets.DEMO_WEBHOOK_URL }}
           DEMO_WEBHOOK_SECRET: ${{ secrets.DEMO_WEBHOOK_SECRET }}
         run: |
-          curl -fsS -X POST "$DEMO_WEBHOOK_URL" \
+          curl -fsS --max-time 30 -X POST "$DEMO_WEBHOOK_URL" \
                -H "Authorization: Bearer $DEMO_WEBHOOK_SECRET" \
                -H "Content-Type: application/json" \
                -d '{"version": "${{ steps.changelog.outputs.tag }}"}'
@@ -67,6 +71,8 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout develop
-          git merge master --no-edit
+          # The checkout only has remote-tracking refs: no local `master` exists,
+          # so `git merge master` fails with "not something we can merge".
+          git checkout -B develop origin/develop
+          git merge origin/master --no-edit
           git push origin develop
