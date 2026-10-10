@@ -74,7 +74,7 @@ path("product-sales/", ProductSales.as_view()),
 </td>
 <td width="50%" valign="top">
 
-<img src="docs/source/topics/_static/srr-shape-groupby.png" alt="Product sales report grouped by product" width="100%">
+<img src="https://raw.githubusercontent.com/ra-systems/django-slick-reporting/develop/docs/source/topics/_static/srr-shape-groupby.png" alt="Product sales report grouped by product" width="100%">
 
 Filter form, chart, sortable table and CSV export — all generated from the class.
 
@@ -117,7 +117,7 @@ class ClientSales(ReportView):
 </td>
 <td width="50%" valign="top">
 
-<img src="docs/source/topics/_static/srr-shape-groupby-client.png" alt="Same report regrouped by client" width="100%">
+<img src="https://raw.githubusercontent.com/ra-systems/django-slick-reporting/develop/docs/source/topics/_static/srr-shape-groupby-client.png" alt="Same report regrouped by client" width="100%">
 
 Same class, new grouping — a completely different report.
 
@@ -161,7 +161,7 @@ class MonthlyProductSales(ReportView):
 </td>
 <td width="50%" valign="top">
 
-<img src="docs/source/topics/_static/srr-shape-timeseries.png" alt="Monthly time-series report" width="100%">
+<img src="https://raw.githubusercontent.com/ra-systems/django-slick-reporting/develop/docs/source/topics/_static/srr-shape-timeseries.png" alt="Monthly time-series report" width="100%">
 
 One column per month, computed per period.
 
@@ -204,7 +204,7 @@ class ProductSalesCrosstab(ReportView):
 </td>
 <td width="50%" valign="top">
 
-<img src="docs/source/topics/_static/srr-shape-crosstab.png" alt="Crosstab matrix report" width="100%">
+<img src="https://raw.githubusercontent.com/ra-systems/django-slick-reporting/develop/docs/source/topics/_static/srr-shape-crosstab.png" alt="Crosstab matrix report" width="100%">
 
 Products as rows, clients as columns, totals at the intersections.
 
@@ -261,7 +261,7 @@ See the [live dashboard example](https://django-slick-reporting.com/dashboard/).
 New: let your users ask questions in plain English and get an answer **backed by a live report**, with proofs.
 The assistant plans a report configuration, runs it through the same reporting engine, and answers with the numbers — you can inspect the generated report and the raw response right on the dashboard.
 
-<img src="docs/source/topics/_static/srr-ask-the-data.png" alt="Ask the data: a plain-English question answered with a live report and proofs" width="100%">
+<img src="https://raw.githubusercontent.com/ra-systems/django-slick-reporting/develop/docs/source/topics/_static/srr-ask-the-data.png" alt="Ask the data: a plain-English question answered with a live report and proofs" width="100%">
 
 Works with OpenRouter (free models included), any OpenAI-compatible endpoint, or a local llama.cpp server. [Docs](https://django-slick-reporting.readthedocs.io/en/latest/topics/llm_assistant.html) · [Try it live](https://django-slick-reporting.com/dashboard/)
 
@@ -323,6 +323,12 @@ python manage.py migrate
 python manage.py create_entries   # generates demo data
 python manage.py runserver
 ```
+
+To try the **Ask the data** assistant, put an [OpenRouter](https://openrouter.ai) key in the
+`OPENROUTER_API_KEY` environment variable (a `demo_proj/.env` file works too). The demo defaults to the
+free-tier model `nex-agi/nex-n2.5-mini:free`; switch models with the `SLICK_REPORTING_LLM_MODEL`
+environment variable — e.g. `SLICK_REPORTING_LLM_MODEL=google/gemma-4-31b-it:free python manage.py runserver`.
+Browse free models at [openrouter.ai/models](https://openrouter.ai/models?q=free).
 
 ## Documentation
 
