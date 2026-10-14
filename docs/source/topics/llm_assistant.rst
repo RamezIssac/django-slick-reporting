@@ -231,6 +231,12 @@ Point to it with::
         "LLM_BACKEND_OPTIONS": {},
     }
 
+A backend may additionally implement ``get_last_usage()`` and
+``get_last_model()`` (``LLMBackend`` provides defaults returning an empty
+dict and ``None``); the development-only evaluation tooling uses them to
+record per-call token usage and the served model name. The required contract
+is still just ``complete()``.
+
 The included ``OpenAICompatibleBackend`` works with any provider exposing the
 OpenAI chat-completions JSON schema; ``OpenRouterBackend`` is a preconfigured
 subclass for OpenRouter.
