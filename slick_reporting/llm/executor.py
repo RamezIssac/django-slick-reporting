@@ -176,7 +176,7 @@ def _target_model_for_kwarg(report_model, key):
                 return None
         return rel_model
     except Exception as exc:  # noqa: BLE001 - unresolvable paths fall back to the report model
-        logger.debug("Could not resolve target model for %s on %s: %s", relation_path, report_model.__name__, exc)
+        logger.debug("Could not resolve target model for %s on %s: %s", key, report_model.__name__, exc)
         return report_model
 
 

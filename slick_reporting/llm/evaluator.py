@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..generator import ReportGenerator
 from .executor import run_llm_report_config
 from .introspection import build_reporting_catalog
 from .toon_data import DATA_FORMATS, normalize_jsonable
@@ -614,7 +615,10 @@ def _num_eq(actual: Optional[float], expected: float) -> bool:
 def _rows(result: EvaluationResult) -> List[Dict[str, Any]]:
     if not result.report_data or not isinstance(result.report_data, dict):
         return []
-    return [row for row in (result.report_data.get("data") or []) if isinstance(row, dict)]
+    data = result.report_data.get("data") or []
+    if isinstance(data, dict):
+        return ReportGenerator.columns_to_rows(data)
+    return [row for row in data if isinstance(row, dict)]
 
 
 def _extract_aggregate(result: EvaluationResult, field_name: str) -> Optional[float]:
@@ -1039,7 +1043,7 @@ def _run_single_question(
             reports_for_answer = [
                 {
                     "config": result.report_config,
-                    "data": result.report_data.get("data", []),
+                    "data": ReportGenerator.columns_to_rows(result.report_data.get("data") or {}),
                     "columns": result.report_data.get("columns", []),
                 }
             ]

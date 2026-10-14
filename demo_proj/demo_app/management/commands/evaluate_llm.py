@@ -37,6 +37,7 @@ from django.test import RequestFactory
 from django.utils.module_loading import import_string
 
 from slick_reporting.app_settings import SLICK_REPORTING_SETTINGS
+from slick_reporting.generator import ReportGenerator
 from slick_reporting.llm.executor import parse_llm_json, parse_llm_plain_text_plan, run_llm_report_config
 from slick_reporting.llm.introspection import build_reporting_catalog
 from slick_reporting.llm.prompts import plan_prompt
@@ -446,7 +447,7 @@ class Command(BaseCommand):
             "proofs": data.get("proofs", []),
         }
         result["report_data"] = {
-            "row_count": len(data.get("report_data", {}).get("data", [])),
+            "row_count": len(ReportGenerator.columns_to_rows(data.get("report_data", {}).get("data") or {})),
             "columns": data.get("report_data", {}).get("columns", []),
         }
         result["checks"] = self._run_checks(report_config, data, question.get("checks", {}))
@@ -568,7 +569,7 @@ class Command(BaseCommand):
         response = None
         try:
             response = run_llm_report_config(report_config)
-            rerun["row_count"] = len(response.get("data", []))
+            rerun["row_count"] = len(ReportGenerator.columns_to_rows(response.get("data") or {}))
         except Exception as exc:  # noqa: BLE001 - report any executor failure as the outcome
             rerun["ok"] = False
             rerun["error"] = str(exc)

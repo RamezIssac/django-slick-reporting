@@ -572,7 +572,7 @@ class ScorerRealPayloadTests(TestCase):
         """group_by client__country rows carry a client__country label."""
         result = self._executed("product2_us_vs_eg_q1")
         self.assertEqual(
-            {row["client__country"] for row in result.report_data["data"]},
+            set(result.report_data["data"]["client__country"]),
             {"US", "EG"},
         )
         passed, detail = EvaluationScorer.score_result_values(result)
@@ -581,8 +581,7 @@ class ScorerRealPayloadTests(TestCase):
     def test_monthly_question_real_time_series_keys(self):
         """Real value__sumTS<date> keys must score (audit 8a)."""
         result = self._executed("product1_monthly_q1")
-        row = result.report_data["data"][0]
-        ts_keys = [k for k in row if "TS" in k]
+        ts_keys = [k for k in result.report_data["data"] if "TS" in k]
         self.assertTrue(any(k.startswith("value__sumTS") for k in ts_keys), ts_keys)
         passed, detail = EvaluationScorer.score_result_values(result)
         self.assertTrue(passed, detail)
@@ -598,15 +597,15 @@ class ScorerRealPayloadTests(TestCase):
     def test_mutated_payload_fails(self):
         """A wrong number in the report data must fail value scoring."""
         result = self._executed("product1_sales_q1")
-        result.report_data["data"][0]["value__sum"] = "999999"
+        result.report_data["data"]["value__sum"][0] = "999999"
         passed, detail = EvaluationScorer.score_result_values(result)
         self.assertFalse(passed, detail)
 
     def test_mutated_monthly_fails(self):
         result = self._executed("product1_monthly_q1")
-        row = result.report_data["data"][0]
-        ts_key = next(k for k in row if k.startswith("value__sumTS"))
-        row[ts_key] = "1"
+        data = result.report_data["data"]
+        ts_key = next(k for k in data if k.startswith("value__sumTS"))
+        data[ts_key][0] = "1"
         passed, detail = EvaluationScorer.score_result_values(result)
         self.assertFalse(passed, detail)
 
@@ -773,13 +772,25 @@ class ExecutorFilterRegressionTests(TestCase):
         _q, kw = prepare_filters(SimpleSales, {"product__name__in": "Product 1"})
         self.assertEqual(kw, {"product__name__in": ["Product 1"]})
 
+    def test_unresolvable_pk_filter_falls_back_without_raising(self):
+        """A hallucinated pk-shaped filter whose stem is not a field must
+        degrade gracefully: target-model resolution fails, falls back to the
+        report model, and the value is left untouched instead of raising."""
+        from slick_reporting.llm.executor import prepare_filters
+        from tests.models import SimpleSales
+
+        _q, kw = prepare_filters(SimpleSales, {"vendor_id": "Acme"})
+        self.assertEqual(kw, {"vendor_id": "Acme"})
+        _q, kw = prepare_filters(SimpleSales, {"client__bogus_id__in": ["x"]})
+        self.assertEqual(kw, {"client__bogus_id__in": ["x"]})
+
     def test_report_with_name_filter_returns_fixture_rows(self):
         """The audited benchmark failure: a legitimate ``product__name`` plan
         must return the Product 1 rows, not an empty report."""
         cfg = dict(PERFECT_CONFIGS["product1_sales_q1"], filters={"product__name": "Product 1"})
         payload = run_llm_report_config(cfg)
-        self.assertEqual(len(payload["data"]), 1)
-        self.assertEqual(float(payload["data"][0]["value__sum"]), 5000.0)
+        self.assertEqual(payload["data"]["name"], ["Product 1"])
+        self.assertEqual(float(payload["data"]["value__sum"][0]), 5000.0)
 
 
 class RunEvaluationEndToEndTests(TestCase):
