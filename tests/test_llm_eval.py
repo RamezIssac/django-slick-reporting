@@ -422,7 +422,9 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
         swapped_before_total = self._answer(
             "product2_us_vs_eg_q1", "The US and EG sold $1,500 and $1,250, for a total of $2,750."
         )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_before_total)[0])
+        passed, detail = EvaluationScorer.score_answer_correctness(swapped_before_total)
+        self.assertFalse(passed)
+        self.assertEqual(json.loads(detail), {"country_US": False, "country_EG": False})
 
         missing = self._answer(
             "product2_us_vs_eg_q1",
@@ -500,6 +502,18 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
 
         wrong_leader = self._answer("top_client_product1_q1", "Beta EG led with $1,750 while Alpha US had $2,750.")
         self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_leader)[0])
+
+        for swapped in (
+            "Alpha US and Beta EG sold $1,750 and $2,750 respectively, a gap of $1,000.",
+            "Alpha US and Beta EG sold $1,750 and $2,750, for a total of $4,500.",
+        ):
+            passed, detail = EvaluationScorer.score_answer_correctness(self._answer("top_client_product1_q1", swapped))
+            self.assertFalse(passed, f"{swapped} -> {detail}")
+
+        reverse_order = self._answer(
+            "top_client_product1_q1", "Alpha US and Beta EG sold $2,750 and $1,750, for a total of $4,500."
+        )
+        self.assertTrue(EvaluationScorer.score_answer_correctness(reverse_order)[0])
 
         value_from_proofs = self._answer(
             "top_client_product1_q1",
