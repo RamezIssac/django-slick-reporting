@@ -83,6 +83,10 @@ def _model_to_catalog(model):
     for field in model._meta.get_fields():
         if _field_is_reverse_relation(field):
             continue
+        if not hasattr(field, "get_internal_type"):
+            # Virtual private fields (e.g. GenericForeignKey) are not concrete
+            # queryable fields and lack get_internal_type() on older Django.
+            continue
         info = {
             "name": field.name,
             "type": field.get_internal_type(),

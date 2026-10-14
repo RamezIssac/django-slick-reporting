@@ -103,11 +103,13 @@ def _resolve_single_label_to_id(model, val):
     if isinstance(val, str) and val.isdigit():
         return int(val)
 
+    # Virtual private fields (e.g. GenericForeignKey) are never label
+    # candidates and lack get_internal_type() on older Django.
     candidate_fields = [
         f.name
         for f in model._meta.get_fields()
         if f.name in {"name", "title", "slug", "reference", "code"}
-        or f.get_internal_type() in {"CharField", "TextField"}
+        or (hasattr(f, "get_internal_type") and f.get_internal_type() in {"CharField", "TextField"})
     ]
 
     for candidate in candidate_fields:
