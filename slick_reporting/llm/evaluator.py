@@ -32,6 +32,9 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, ClassVar
 
+from django.conf import settings
+from django.utils import timezone
+
 from ..generator import ReportGenerator
 from .executor import run_llm_report_config
 from .introspection import build_reporting_catalog
@@ -252,7 +255,11 @@ def create_fixture_data() -> None:
             notes="Evaluation fixture client",
         )
     for entry in DETERMINISTIC_FIXTURE:
-        doc_date = datetime.datetime.strptime(entry.date, "%Y-%m-%d").replace(tzinfo=datetime.timezone.utc)
+        # Aware only when the project uses timezones: with USE_TZ=False
+        # (the default on Django 4.2) SQLite rejects aware datetimes.
+        doc_date = datetime.datetime.strptime(entry.date, "%Y-%m-%d")  # noqa: DTZ007 - naive unless USE_TZ
+        if settings.USE_TZ:
+            doc_date = timezone.make_aware(doc_date, datetime.timezone.utc)
         SimpleSales.objects.create(
             slug=entry.number,
             doc_date=doc_date,
