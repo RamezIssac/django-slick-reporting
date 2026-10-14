@@ -212,6 +212,18 @@ class DataSerializationTests(SimpleTestCase):
         self.assertEqual(decoded, self.SAMPLE)
 
     @unittest.skipUnless(HAS_TOON, "toon-format package not installed")
+    def test_toon_answer_payload_round_trip(self):
+        """The answer-stage reports list (first field a nested object) decodes back to the report."""
+        reports = [
+            {
+                "config": {"report_model": "tests.SimpleSales", "filters": {"product__name": "Product 2"}},
+                "columns": [{"name": "client__country", "verbose_name": "Country"}],
+                "data": [{"client__country": "US", "value__sum": 1250.0}, {"client__country": "EG", "value__sum": 1500.0}],
+            }
+        ]
+        self.assertEqual(toon_format.decode(serialize_for_prompt(reports, "toon")), reports)
+
+    @unittest.skipUnless(HAS_TOON, "toon-format package not installed")
     def test_toon_is_more_compact_than_json(self):
         """The comparison's premise: TOON costs fewer characters (proxy for tokens)."""
         data = {"rows": [{"name": f"Client {i}", "country": "US", "value__sum": 1000.0 + i} for i in range(20)]}

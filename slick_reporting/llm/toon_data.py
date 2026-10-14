@@ -30,9 +30,9 @@ __all__ = [
 #: Prompt-side data serialization formats that can be compared.
 DATA_FORMATS = ("json", "plain", "toon")
 
-#: Minimum toon-format release with a working encoder (0.1.0 cannot encode).
+#: toon-format release that encodes list-item objects per the current TOON spec.
 TOON_PACKAGE = "toon-format"
-TOON_PACKAGE_PIN = "toon-format==0.9.0b1"
+TOON_PACKAGE_PIN = "toon-format==1.1.0"
 
 
 def normalize_jsonable(obj):
@@ -66,7 +66,7 @@ def dumps_toon(obj):
     Serialize to TOON (Token-Oriented Object Notation).
 
     Requires the official ``toon-format`` package (``pip install
-    toon-format==0.9.0b1``); a clear error is raised when it is missing.
+    toon-format==1.1.0``); a clear error is raised when it is missing.
     """
     try:
         import toon_format

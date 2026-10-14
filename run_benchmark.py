@@ -3,7 +3,7 @@
 Deterministic benchmark: JSON vs plain-text vs TOON data serialization in
 the prompts of the LLM reporting assistant.
 
-    pip install "toon-format==0.9.0b1"   # needed for the TOON arm only
+    pip install "toon-format==1.1.0"   # needed for the TOON arm only
     python run_benchmark.py
 
 Runs the 5 fixture questions x 3 data formats x 3 paired repetitions
