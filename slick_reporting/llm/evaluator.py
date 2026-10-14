@@ -452,7 +452,9 @@ class EvaluationScorer:
             top = expected["expected_top_client"]
             client_values = expected["expected_client_values"]
             labels = {c: [c.lower(), c.split()[0].lower()] for c in client_values}
-            scores["top_client"] = _labels_paired(labels, {top: client_values[top]}, answer_text, {}, "")[top]
+            mentions = _label_hits(labels, answer_text.lower())
+            paired = _labels_paired(labels, {top: client_values[top]}, answer_text, key_numbers, "")[top]
+            scores["top_client"] = bool(mentions) and mentions[0][2] == top and paired
 
         if not scores:
             return False, "no scoring criteria matched"
@@ -751,36 +753,102 @@ def _number_stated(expected: float, answer_text: str, key_numbers: Dict[str, flo
     return any(abs(c - float(expected)) < TOLERANCE for c in candidates)
 
 
-_CLAUSE_SPLIT_RE = re.compile(r"[\n;]|\.\s+|,\s+|\s+(?:and|while|whereas|than|compared (?:to|with)|versus|vs\.?)\s+")
+_SENTENCE_SPLIT_RE = re.compile(r"[\n;]|\.\s+(?=[A-Z])")
+#: Quarter, product and year numbers are part of the question, not answer values.
+_NOISE_RE = re.compile(r"\bq[1-4]\b|\bproduct\s+\d+\b|(?<![$\d,.])\b(?:19|20)\d{2}\b(?![,.]?\d)")
+
+
+def _label_hits(labels: Dict[str, List[str]], text: str) -> List[Tuple[int, int, str]]:
+    """Non-overlapping ``(start, end, key)`` label mentions in lowercased ``text``, longest alias first."""
+    hits = sorted(
+        (m.start(), -m.end(), key)
+        for key, aliases in labels.items()
+        for alias in aliases
+        for m in re.finditer(rf"(?<!\w){re.escape(alias)}(?!\w)", text)
+    )
+    kept: List[Tuple[int, int, str]] = []
+    for start, neg_end, key in hits:
+        if not kept or start >= kept[-1][1]:
+            kept.append((start, -neg_end, key))
+    return kept
+
+
+def _token_runs(labels: Dict[str, List[str]], sentence: str) -> List[list]:
+    """Maximal runs ``[kind, start, end, items]`` of label mentions ("L") or numbers ("N")."""
+    tokens = [("L", start, end, key) for start, end, key in _label_hits(labels, sentence)]
+    taken = [m.span() for m in _NOISE_RE.finditer(sentence)] + [(t[1], t[2]) for t in tokens]
+    for m in _NUMBER_RE.finditer(sentence):
+        value = _coerce_float(m.group(0))
+        if value is not None and not any(s < m.end() and m.start() < e for s, e in taken):
+            tokens.append(("N", m.start(), m.end(), value))
+    runs: List[list] = []
+    for kind, start, end, item in sorted(tokens, key=lambda t: t[1]):
+        if runs and runs[-1][0] == kind:
+            runs[-1][2] = end
+            if kind == "N" or item != runs[-1][3][-1]:
+                runs[-1][3].append(item)
+        else:
+            runs.append([kind, start, end, [item]])
+    return runs
+
+
+def _pair_runs(runs: List[list]) -> List[Tuple[List[str], List[float]]]:
+    """
+    Pair adjacent label and number runs, leaving out at most one run and picking
+    the pairing with the smallest text gaps.  A left-out label run takes the
+    surplus numbers of a neighbouring run that has more numbers than labels.
+    """
+    n = len(runs)
+    skips: List[Optional[int]] = [None] if n % 2 == 0 else list(range(n - 1, -1, -2))
+
+    def pairs_for(skip):
+        order = [i for i in range(n) if i != skip]
+        return [(order[k], order[k + 1]) for k in range(0, len(order), 2)]
+
+    skip = min(skips, key=lambda s: sum(runs[j][1] - runs[i][2] for i, j in pairs_for(s)))
+    entries = {}
+    for i, j in pairs_for(skip):
+        label_idx, number_idx = (i, j) if runs[i][0] == "L" else (j, i)
+        entries[number_idx] = [runs[label_idx][3], list(runs[number_idx][3])]
+    if skip is not None and runs[skip][0] == "L":
+        for neighbour in (skip - 1, skip + 1):
+            entry = entries.get(neighbour)
+            if entry and len(entry[1]) > len(entry[0]):
+                keep = len(entry[0])
+                if neighbour < skip:
+                    entry[1], surplus = entry[1][:keep], entry[1][keep:]
+                else:
+                    surplus, entry[1] = entry[1][:-keep], entry[1][-keep:]
+                entries[skip] = [runs[skip][3], surplus]
+                break
+    return list(entries.values())
 
 
 def _bind_numbers_to_labels(labels: Dict[str, List[str]], text: str) -> Dict[str, List[float]]:
     """
-    Bind every number in ``text`` to exactly one label: the nearest label in
-    its clause (ties go to the preceding one), else the last label of an
-    earlier clause.  Numbers before the first label stay unbound.
+    Bind the numbers of each sentence to its labels via ``_pair_runs``: one label takes
+    every number, one number goes to every label, otherwise they pair positionally.
+    A sentence without labels binds its numbers to the last label seen.
     """
     bound: Dict[str, List[float]] = {key: [] for key in labels}
     current = None
-    for clause in _CLAUSE_SPLIT_RE.split(text.lower()):
-        hits = [
-            (m.start(), m.end(), key)
-            for key, aliases in labels.items()
-            for alias in aliases
-            for m in re.finditer(rf"\b{re.escape(alias)}\b", clause)
-        ]
-        for number in _NUMBER_RE.finditer(clause):
-            owner = current
-            if hits:
-                owner = min(
-                    hits,
-                    key=lambda h: (max(number.start() - h[1], h[0] - number.end(), 0), h[0] > number.start()),
-                )[2]
-            value = _coerce_float(number.group(0))
-            if owner is not None and value is not None:
-                bound[owner].append(value)
-        if hits:
-            current = max(hits)[2]
+    for sentence in _SENTENCE_SPLIT_RE.split(text):
+        runs = _token_runs(labels, sentence.lower())
+        label_runs = [run for run in runs if run[0] == "L"]
+        if not label_runs:
+            if current is not None:
+                bound[current].extend(value for run in runs for value in run[3])
+            continue
+        for keys, numbers in _pair_runs(runs):
+            if len(keys) == 1:
+                bound[keys[0]].extend(numbers)
+            elif len(numbers) == 1:
+                for key in keys:
+                    bound[key].extend(numbers)
+            else:
+                for key, value in zip(keys, numbers):
+                    bound[key].append(value)
+        current = label_runs[-1][3][-1]
     return bound
 
 

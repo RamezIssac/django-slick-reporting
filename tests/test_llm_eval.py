@@ -394,6 +394,21 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
         )
         self.assertTrue(EvaluationScorer.score_answer_correctness(value_before_label)[0])
 
+        for phrasing in (
+            "EG outsold the US: $1,500 vs. $1,250.",
+            "In Q1 2026, the US and EG recorded $1,250 and $1,500 respectively.",
+            "Product 2 sales in the U.S. reached $1,250 while Egypt reached $1,500.",
+            "Product 2 sales totaled $2,750 in Q1 2026, with the US at $1,250 and EG at $1,500.",
+            "Product 2 sold $1,250 in the US and $1,500 in EG, for a total of $2,750.",
+        ):
+            passed, detail = EvaluationScorer.score_answer_correctness(self._answer("product2_us_vs_eg_q1", phrasing))
+            self.assertTrue(passed, f"{phrasing} -> {detail}")
+
+        swapped_respectively = self._answer(
+            "product2_us_vs_eg_q1", "In Q1 2026, the US and EG recorded $1,500 and $1,250 respectively."
+        )
+        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_respectively)[0])
+
         missing = self._answer(
             "product2_us_vs_eg_q1",
             "Product 2 sold better in EG than in the US in Q1 2026.",
@@ -423,6 +438,18 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
         )
         self.assertFalse(EvaluationScorer.score_answer_correctness(shifted_same_sentence)[0])
 
+        for phrasing in (
+            "Sales were $1,750 in both January and February, and $1,500 in March.",
+            "January and February each recorded $1,750, while March had $1,500.",
+        ):
+            passed, detail = EvaluationScorer.score_answer_correctness(self._answer("product1_monthly_q1", phrasing))
+            self.assertTrue(passed, f"{phrasing} -> {detail}")
+
+        shared_wrong = self._answer(
+            "product1_monthly_q1", "January and February each recorded $1,500, while March had $1,750."
+        )
+        self.assertFalse(EvaluationScorer.score_answer_correctness(shared_wrong)[0])
+
     def test_top_client_label_and_value(self):
         good = self._answer(
             "top_client_product1_q1", "Alpha US bought the most of Product 1 in Q1 2026, with $2,750 in sales."
@@ -448,6 +475,16 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
             {"Alpha US": 2750, "Beta EG": 1750, "Gamma DE": 500},
         )
         self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_subject_full_proofs)[0])
+
+        wrong_leader = self._answer("top_client_product1_q1", "Beta EG led with $1,750 while Alpha US had $2,750.")
+        self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_leader)[0])
+
+        value_from_proofs = self._answer(
+            "top_client_product1_q1",
+            "Alpha US was the top client for Product 1 in Q1 2026.",
+            {"Alpha US": 2750, "Beta EG": 1750},
+        )
+        self.assertTrue(EvaluationScorer.score_answer_correctness(value_from_proofs)[0])
 
     def test_no_answer_fails(self):
         result = make_result("product1_sales_q1", answer=None)
