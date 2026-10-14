@@ -453,7 +453,7 @@ class EvaluationScorer:
             client_values = expected["expected_client_values"]
             labels = {c: [c.lower(), c.split()[0].lower()] for c in client_values}
             mentions = _label_hits(labels, answer_text.lower())
-            paired = _labels_paired(labels, {top: client_values[top]}, answer_text, key_numbers, "")[top]
+            paired = _labels_paired(labels, client_values, answer_text, key_numbers, "")[top]
             scores["top_client"] = bool(mentions) and mentions[0][2] == top and paired
 
         if not scores:
@@ -830,12 +830,12 @@ def _bind_numbers_to_labels(
     """
     Bind the numbers of each sentence to its labels via ``_pair_runs``: one label takes
     every number, one number goes to every label, otherwise the labels pair positionally
-    with the contiguous number window matching the most ``expected`` values (earliest on ties).
+    with the first contiguous number window matching every ``expected`` value, else the earliest window.
     A sentence without labels binds its numbers to the last label seen.
     """
 
-    def window_hits(keys, window):
-        return sum(
+    def window_matches(keys, window):
+        return all(
             key in expected and abs(value - float(expected[key])) < TOLERANCE for key, value in zip(keys, window)
         )
 
@@ -856,7 +856,8 @@ def _bind_numbers_to_labels(
                     bound[key].extend(numbers)
             else:
                 windows = [numbers[w : w + len(keys)] for w in range(max(1, len(numbers) - len(keys) + 1))]
-                for key, value in zip(keys, max(windows, key=lambda window: window_hits(keys, window))):
+                full = [window for window in windows if window_matches(keys, window)]
+                for key, value in zip(keys, (full or windows)[0]):
                     bound[key].append(value)
         current = label_runs[-1][3][-1]
     return bound
