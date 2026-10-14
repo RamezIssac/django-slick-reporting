@@ -33,7 +33,7 @@
   "scores": {
     "json": {
       "total_calls": 15,
-      "plan_success_rate": 0.87,
+      "plan_correctness_rate": 0.87,
       "parse_success_rate": 1.0,
       "report_execution_rate": 1.0,
       "exact_value_match_rate": 1.0,
@@ -54,7 +54,7 @@
     },
     "plain": {
       "total_calls": 15,
-      "plan_success_rate": 0.6,
+      "plan_correctness_rate": 0.6,
       "parse_success_rate": 1.0,
       "report_execution_rate": 0.93,
       "exact_value_match_rate": 0.93,
@@ -84,7 +84,7 @@
     },
     "toon": {
       "total_calls": 15,
-      "plan_success_rate": 0.8,
+      "plan_correctness_rate": 0.8,
       "parse_success_rate": 0.93,
       "report_execution_rate": 0.93,
       "exact_value_match_rate": 0.93,

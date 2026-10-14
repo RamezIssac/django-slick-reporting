@@ -40,6 +40,7 @@ from slick_reporting.llm.evaluator import (  # noqa: E402
     create_fixture_data,
     run_evaluation,
 )
+from slick_reporting.llm.toon_data import TOON_PACKAGE, TOON_PACKAGE_PIN  # noqa: E402
 
 FORMATS = ["json", "plain", "toon"]
 REPETITIONS = 3
@@ -68,7 +69,30 @@ def prepare_database():
     print(f"Seeded hermetic fixture database: {db_path}")
 
 
+def check_toon_version():
+    """Fail fast unless the pinned, spec-valid toon-format release is installed.
+
+    Other releases encode list-item objects off-spec (silently invalid TOON
+    answer payloads), and a missing package turns every TOON call into an
+    'Evaluation error' with a wrong headline token metric -- both only surface
+    after the full run without this check.
+    """
+    expected = TOON_PACKAGE_PIN.split("==", 1)[1]
+    try:
+        installed = importlib.metadata.version(TOON_PACKAGE)
+    except importlib.metadata.PackageNotFoundError:
+        installed = None
+    if installed != expected:
+        sys.exit(
+            f"ERROR: the TOON arm requires the pinned spec-valid release '{TOON_PACKAGE_PIN}' "
+            f"(installed: {installed or 'not installed'}). Install it with: pip install {TOON_PACKAGE_PIN}"
+        )
+
+
 def main():
+    if "toon" in FORMATS:
+        check_toon_version()
+
     served = query_served_models()
     backend = OpenAICompatibleBackend(
         api_url=ENDPOINT,
@@ -112,7 +136,7 @@ def main():
     for fmt in FORMATS:
         s = scores.get(fmt, {})
         print(f"\n  [{fmt.upper()}]")
-        print(f"    Plan success rate:        {s.get('plan_success_rate', 0) * 100:.0f}%")
+        print(f"    Plan correctness rate:    {s.get('plan_correctness_rate', 0) * 100:.0f}%")
         print(f"    Parse success rate:       {s.get('parse_success_rate', 0) * 100:.0f}%")
         print(f"    Report execution rate:    {s.get('report_execution_rate', 0) * 100:.0f}%")
         print(f"    Exact value match rate:   {s.get('exact_value_match_rate', 0) * 100:.0f}%")

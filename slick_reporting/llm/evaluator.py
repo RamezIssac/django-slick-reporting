@@ -471,10 +471,6 @@ class EvaluationScorer:
         def rate(key):
             return round(sum(1 for r in results if r.scores.get(key, (False, ""))[0]) / total, 2)
 
-        def avg(fn):
-            values = [fn(r) for r in results]
-            return round(sum(values) / len(values), 3) if values else 0
-
         def avg_present(key):
             # Average over calls that actually happened: a failed plan call
             # means no answer call was made, and zero-padding would undercount.
@@ -497,7 +493,7 @@ class EvaluationScorer:
 
         return {
             "total_calls": total,
-            "plan_success_rate": rate("plan_correctness"),
+            "plan_correctness_rate": rate("plan_correctness"),
             "parse_success_rate": rate("parse_success"),
             "report_execution_rate": rate("report_execution"),
             "exact_value_match_rate": rate("result_values"),

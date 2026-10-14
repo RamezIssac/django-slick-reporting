@@ -837,6 +837,8 @@ class RunEvaluationEndToEndTests(TestCase):
         # aggregates carry the headline token metrics and failure list
         for fmt in formats:
             s = result["scores"][fmt]
+            self.assertEqual(s["plan_correctness_rate"], 1.0)
+            self.assertNotIn("plan_success_rate", s)
             self.assertEqual(s["parse_success_rate"], 1.0)
             self.assertEqual(s["plan_calls_made"], 4)
             self.assertEqual(s["answer_calls_made"], 4)
