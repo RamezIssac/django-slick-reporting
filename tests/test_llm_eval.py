@@ -218,7 +218,10 @@ class DataSerializationTests(SimpleTestCase):
             {
                 "config": {"report_model": "tests.SimpleSales", "filters": {"product__name": "Product 2"}},
                 "columns": [{"name": "client__country", "verbose_name": "Country"}],
-                "data": [{"client__country": "US", "value__sum": 1250.0}, {"client__country": "EG", "value__sum": 1500.0}],
+                "data": [
+                    {"client__country": "US", "value__sum": 1250.0},
+                    {"client__country": "EG", "value__sum": 1500.0},
+                ],
             }
         ]
         self.assertEqual(toon_format.decode(serialize_for_prompt(reports, "toon")), reports)
