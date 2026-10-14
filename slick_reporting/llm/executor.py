@@ -77,10 +77,6 @@ def _resolve_labels_to_ids(report_model, field_name, values):
         return values
 
     target_model = _target_model_for_kwarg(report_model, field_name)
-    if target_model is None:
-        # Key traverses into a concrete field (product__name); the ORM
-        # compares against the field value, keep the labels as-is.
-        return values
 
     result = []
     for val in values:
@@ -140,11 +136,6 @@ def _target_model_for_kwarg(report_model, key):
     Return the model whose primary key should be used when resolving label
     values for ``key``.  For FK filters like product__in or product_id__in
     we need the Product model, not SalesTransaction.
-
-    Returns ``None`` when the key traverses into a concrete field on the
-    related model (``product__name``): the ORM compares those against the
-    field value itself, so string labels must be left untouched, not resolved
-    to a pk.
     """
     suffixes = ("__in", "__exact", "__iexact", "__isnull")
     base_field = key
@@ -153,58 +144,30 @@ def _target_model_for_kwarg(report_model, key):
             base_field = base_field[: -len(suffix)]
             break
 
-    parts = base_field.split("__")
-    if parts[-1] in ("id", "pk"):
-        # "client__id" -> walk to "client"; plain "id" walks nowhere.
-        parts = parts[:-1]
-    elif "__" not in base_field and base_field.endswith("_id") and base_field != "id":
-        # "product_id" -> walk to "product".
-        parts = [base_field[:-3]]
+    relation_path = None
+    if base_field.endswith("_id") and base_field != "id":
+        relation_path = base_field[:-3]
+    elif "__" not in base_field and base_field != "id":
+        # A bare relation name like "product"
+        relation_path = base_field
+    elif "__" in base_field:
+        relation_path = base_field
+    else:
+        return report_model
 
     try:
         from django.db.models import ForeignKey
 
         rel_model = report_model
-        for part in parts:
+        for part in relation_path.split("__"):
             field = rel_model._meta.get_field(part)
             if isinstance(field, ForeignKey):
                 rel_model = field.related_model
             else:
-                # Traversed into a concrete field; no label resolution.
-                return None
+                return rel_model
         return rel_model
     except Exception:
         return report_model
-
-
-def _is_pk_lookup(report_model, key):
-    """
-    Whether filter values for ``key`` refer to a related model's primary key
-    (``product``, ``product_id``, ``product__id__in``, ...).
-
-    Only then does it make sense to resolve a human-readable label to a pk;
-    for lookups that traverse to a concrete field (``product__name``) the
-    value must be left untouched.
-    """
-    base = key
-    for suffix in ("__in", "__exact", "__iexact", "__isnull"):
-        if base.endswith(suffix):
-            base = base[: -len(suffix)]
-            break
-    if base == "id" or base.endswith("_id"):
-        return True
-    parts = base.split("__")
-    if parts[-1] in ("id", "pk"):
-        return True
-    try:
-        model = report_model
-        field = None
-        for part in parts:
-            field = model._meta.get_field(part)
-            model = getattr(field, "related_model", None) or model
-        return bool(field is not None and field.is_relation)
-    except Exception:
-        return False
 
 
 def prepare_filters(report_model, filters):
@@ -219,19 +182,13 @@ def prepare_filters(report_model, filters):
         if key.lower().startswith("q_"):
             # Allow advanced configs to pass raw Q objects; not encouraged for LLM.
             continue
-        if _is_pk_lookup(report_model, key):
-            if isinstance(value, list):
-                value = _resolve_labels_to_ids(report_model, key, value)
-            elif isinstance(value, str):
-                target_model = _target_model_for_kwarg(report_model, key)
-                if target_model is not None:
-                    resolved = _resolve_single_label_to_id(target_model, value)
-                    if resolved is not None:
-                        value = resolved
-        # ``__in`` lookups need an iterable even for a single value (plain-text
-        # plans parse "product_id__in=Product 1" to a single scalar).
-        if key.endswith("__in") and not isinstance(value, (list, tuple)):
-            value = [value]
+        if isinstance(value, list):
+            value = _resolve_labels_to_ids(report_model, key, value)
+        elif isinstance(value, str):
+            target_model = _target_model_for_kwarg(report_model, key)
+            resolved = _resolve_single_label_to_id(target_model, value)
+            if resolved is not None:
+                value = resolved
         kw_filters[key] = value
     return q_filters, kw_filters
 
@@ -281,12 +238,10 @@ def run_llm_report_config(config):
         raise ValueError(f"Could not resolve report_model {config['report_model']!r}")
 
     group_by = config.get("group_by") or None
-    # ``or []`` (not a .get default) because LLMs emit explicit nulls for
-    # keys they don't use, and None is not iterable.
-    columns = _normalize_llm_columns(config.get("columns") or [], group_by)
+    columns = _normalize_llm_columns(config.get("columns", []), group_by)
     columns = [_build_computation_field(c) for c in columns]
-    time_series_columns = [_build_computation_field(c) for c in config.get("time_series_columns") or []]
-    crosstab_columns = [_build_computation_field(c) for c in config.get("crosstab_columns") or []]
+    time_series_columns = [_build_computation_field(c) for c in config.get("time_series_columns", [])]
+    crosstab_columns = [_build_computation_field(c) for c in config.get("crosstab_columns", [])]
 
     q_filters, kw_filters = prepare_filters(report_model, config.get("filters"))
 

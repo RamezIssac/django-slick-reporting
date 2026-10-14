@@ -56,21 +56,12 @@ def get_field_from_query_text(path, model):
     return field
 
 
-def user_test_function(report_view, request=None):
+def user_test_function(report_view):
     """
     A default test function return True on DEBUG, otherwise return the user.is_superuser
-    :param report_view: the report view being accessed, or None for non-view contexts
-    :param request: optional request object (used by the LLM assistant endpoint)
+    :param report_view:
     :return:
     """
-    # In test mode without an actual request, allow access.
-    if request is None and report_view is not None:
-        request = getattr(report_view, "request", None)
-
-    if request is None:
-        return settings.DEBUG
-
-    user = getattr(request, "user", None)
     if not settings.DEBUG:
-        return bool(user and getattr(user, "is_superuser", False))
+        return report_view.request.user.is_superuser
     return True

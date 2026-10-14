@@ -79,7 +79,11 @@ class AskLLMView(View):
 
         plan_response_text = backend.complete(plan_prompt_text)
         logger.debug("Plan response text: %s", plan_response_text)
-        plan = parse_llm_plain_text_plan(plan_response_text) if plain_text else parse_llm_json(plan_response_text)
+        plan = (
+            parse_llm_plain_text_plan(plan_response_text)
+            if plain_text
+            else parse_llm_json(plan_response_text)
+        )
         if plan is None:
             return JsonResponse(
                 {

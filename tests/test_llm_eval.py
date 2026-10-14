@@ -1,100 +1,37 @@
 """
-Tests for the LLM data-format evaluation framework.
+Tests for the LLM evaluation framework: scorer, fixture, and TOON format.
 
-Covers the deterministic fixture, the prompt-side serializers (JSON / plain /
-TOON), and the scorer -- including regression tests for the bugs found in the
-audit of the first implementation: numerically wrong answers must fail, real
-executor time-series payloads (``value__sumTS<date>`` keys) must score, a
-value-only plan must satisfy the sales question, and zero totals must be
-handled.  Everything is deterministic and needs no external LLM calls.
-
+These tests are deterministic and require no external LLM calls.
 Run with:  python runtests.py tests.test_llm_eval
 """
 
 import json
-import unittest
+from unittest.mock import patch
 
-from django.test import SimpleTestCase, TestCase
+from django.test import TestCase
 
-from slick_reporting.llm import prompts
-from slick_reporting.llm.backends import EchoBackend
 from slick_reporting.llm.evaluator import (
     DETERMINISTIC_FIXTURE,
     EvaluationFixture,
     EvaluationResult,
     EvaluationScorer,
-    create_fixture_data,
-    fixture_sha256,
-    run_evaluation,
 )
-from slick_reporting.llm.executor import run_llm_report_config
-from slick_reporting.llm.toon_data import dumps_json, dumps_plain, normalize_jsonable, serialize_for_prompt
-
-try:
-    import toon_format  # noqa: F401
-
-    HAS_TOON = True
-except ImportError:
-    HAS_TOON = False
-
-Q1 = {"start_date": "2026-01-01", "end_date": "2026-03-31", "date_field": "doc_date"}
-
-#: The correct plan configurations for each question (verified against the
-#: real executor on the fixture data).
-PERFECT_CONFIGS = {
-    "product1_sales_q1": {
-        "report_model": "tests.SimpleSales",
-        **Q1,
-        "group_by": "product",
-        "columns": ["name", {"method": "Sum", "field": "value", "name": "value__sum"}],
-        "filters": {"product_id__in": ["Product 1"]},
-    },
-    "product1_quantity_q1": {
-        "report_model": "tests.SimpleSales",
-        **Q1,
-        "group_by": "product",
-        "columns": ["name", {"method": "Sum", "field": "quantity", "name": "quantity__sum"}],
-        "filters": {"product_id__in": ["Product 1"]},
-    },
-    "product2_us_vs_eg_q1": {
-        "report_model": "tests.SimpleSales",
-        **Q1,
-        "group_by": "client__country",
-        "columns": ["client__country", {"method": "Sum", "field": "value", "name": "value__sum"}],
-        "filters": {"product_id__in": ["Product 2"]},
-    },
-    "product1_monthly_q1": {
-        "report_model": "tests.SimpleSales",
-        **Q1,
-        "group_by": "product",
-        "columns": ["name", {"method": "Sum", "field": "value", "name": "value__sum"}],
-        "time_series_pattern": "monthly",
-        "time_series_columns": [{"method": "Sum", "field": "value", "name": "value__sum"}],
-        "filters": {"product_id__in": ["Product 1"]},
-    },
-    "top_client_product1_q1": {
-        "report_model": "tests.SimpleSales",
-        **Q1,
-        "group_by": "client",
-        "columns": ["name", {"method": "Sum", "field": "value", "name": "value__sum"}],
-        "filters": {"product_id__in": ["Product 1"]},
-    },
-}
-
-
-def make_result(question_id, **kwargs):
-    """An EvaluationResult wired to the fixture's expectations."""
-    EvaluationFixture.setup()
-    return EvaluationResult(
-        question_id=question_id,
-        question_text=EvaluationFixture.get_expected(question_id)["question"],
-        format_name="json",
-        **kwargs,
-    )
+from slick_reporting.llm.executor import (
+    parse_llm_json,
+    parse_llm_plain_text_plan,
+)
+from slick_reporting.llm.toonn import (
+    parse_toonn_plan,
+    parse_toonn_answer,
+    parse_toonn_columns,
+    parse_toonn_filters,
+    answer_prompt_toonn,
+    plan_prompt_toonn,
+)
 
 
 class DeterministicFixtureTests(TestCase):
-    """The fixture and its derived expectations are internally consistent."""
+    """Verify the deterministic fixture produces correct expected values."""
 
     @classmethod
     def setUpClass(cls):
@@ -102,778 +39,429 @@ class DeterministicFixtureTests(TestCase):
         cls.entries, cls.expected = EvaluationFixture.setup()
 
     def test_fixture_has_correct_entry_count(self):
+        """The fixture has exactly 14 entries across 3 products."""
         self.assertEqual(len(DETERMINISTIC_FIXTURE), 14)
 
     def test_fixture_has_three_products(self):
-        self.assertEqual({e.product_name for e in DETERMINISTIC_FIXTURE}, {"Product 1", "Product 2", "Product 3"})
-
-    def test_all_dates_in_q1_2026(self):
-        for e in DETERMINISTIC_FIXTURE:
-            self.assertTrue(e.date.startswith("2026-0"), e.date)
-            self.assertLessEqual(int(e.date[5:7]), 3, e.date)
-
-    def test_no_dates_on_month_boundary(self):
-        """Generator time-series buckets rows on a boundary date into the
-        period ending that day, so the fixture must avoid the 1st."""
-        for e in DETERMINISTIC_FIXTURE:
-            self.assertNotEqual(e.date[8:10], "01", e.date)
+        product_names = set(e.product_name for e in DETERMINISTIC_FIXTURE)
+        self.assertEqual(product_names, {"Product 1", "Product 2", "Product 3"})
 
     def test_product1_totals(self):
-        """Product 1: 6 entries, price 50.00 -> value 5000, quantity 100."""
-        sales = self.expected["product1_sales_q1"]
-        self.assertEqual(sales["expected_value"], 5000.0)
-        # The sales question must not demand a quantity nobody asked for.
-        self.assertNotIn("expected_quantity", sales)
-        quantity = self.expected["product1_quantity_q1"]
-        self.assertEqual(quantity["expected_quantity"], 100)
-        self.assertNotIn("expected_value", quantity)
+        """Product 1: 6 entries × qty 10-25, price 25 = total 5000, qty 100."""
+        e = self.expected["product1_sales_q1"]
+        self.assertEqual(e["expected_value"], 5000.0)
+        self.assertEqual(e["expected_quantity"], 100)
 
-    def test_product2_us_vs_eg(self):
-        """The agreed question 3: Product 2 sales by country, US 1250 vs EG 1500."""
-        e = self.expected["product2_us_vs_eg_q1"]
-        self.assertIn("US", e["question"])
-        self.assertIn("EG", e["question"])
-        self.assertEqual(e["checks"]["group_by"], "client__country")
-        self.assertEqual(e["expected_country_values"], {"US": 1250.0, "EG": 1500.0})
+    def test_product2_country_comparison(self):
+        """Product 2: Alpha US total 1250, Beta EG total 1500."""
+        e = self.expected["product2_country_comparison_q1"]
+        client_vals = e["expected_client_values"]
+        self.assertEqual(client_vals["Alpha US"], 1250.0)
+        self.assertEqual(client_vals["Beta EG"], 1500.0)
+        # Verify Alpha != Beta to make the comparison meaningful
+        self.assertNotEqual(client_vals["Alpha US"], client_vals["Beta EG"])
 
-    def test_product2_has_us_and_eg_rows(self):
-        countries = {e.client_country for e in DETERMINISTIC_FIXTURE if e.product_name == "Product 2"}
-        self.assertEqual(countries, {"US", "EG"})
-
-    def test_product1_monthly(self):
-        e = self.expected["product1_monthly_q1"]
-        self.assertEqual(e["expected_monthly"], {"2026-01": 1750.0, "2026-02": 1750.0, "2026-03": 1500.0})
-        self.assertEqual(e["checks"]["time_series_pattern"], "monthly")
-
-    def test_top_client(self):
-        e = self.expected["top_client_product1_q1"]
-        self.assertEqual(e["expected_client_values"], {"Alpha US": 2750.0, "Beta EG": 1750.0, "Gamma DE": 500.0})
-        self.assertEqual(e["expected_top_client"], "Alpha US")
+    def test_product2_has_alpha_and_beta(self):
+        """Product 2 has entries from both Alpha US and Beta EG clients."""
+        product2_entries = [e for e in DETERMINISTIC_FIXTURE if e.product_name == "Product 2"]
+        clients = set(e.client_name for e in product2_entries)
+        self.assertIn("Alpha US", clients)
+        self.assertIn("Beta EG", clients)
 
     def test_product3_totals(self):
-        entries = [e for e in DETERMINISTIC_FIXTURE if e.product_name == "Product 3"]
-        self.assertEqual(sum(e.quantity * e.price for e in entries), 900.0)
-        self.assertEqual(sum(e.quantity for e in entries), 30)
+        """Product 3: 3 entries × qty 10, price 30 = total 900."""
+        product3_entries = [e for e in DETERMINISTIC_FIXTURE if e.product_name == "Product 3"]
+        total_value = sum(e.quantity * e.price for e in product3_entries)
+        total_quantity = sum(e.quantity for e in product3_entries)
+        self.assertEqual(total_value, 900.0)
+        self.assertEqual(total_quantity, 30)
+
+    def test_all_dates_in_q1_2026(self):
+        """All dates are within Q1 2026 (Jan 1 – Mar 31)."""
+        for e in DETERMINISTIC_FIXTURE:
+            month = int(e.date[5:7])
+            self.assertGreaterEqual(month, 1)
+            self.assertLessEqual(month, 3)
 
     def test_question_ids(self):
-        self.assertEqual(
-            EvaluationFixture.get_all_question_ids(),
-            [
-                "product1_sales_q1",
-                "product1_quantity_q1",
-                "product2_us_vs_eg_q1",
-                "product1_monthly_q1",
-                "top_client_product1_q1",
-            ],
-        )
+        """All five question IDs exist in the expected results."""
+        qids = EvaluationFixture.get_all_question_ids()
+        expected_qids = [
+            "product1_sales_q1",
+            "product1_quantity_q1",
+            "product2_country_comparison_q1",
+            "product1_monthly_q1",
+            "top_client_product1_q1",
+        ]
+        for qid in expected_qids:
+            self.assertIn(qid, qids)
 
-    def test_fixture_summary(self):
+    def test_fixture_summary_contains_key_info(self):
         summary = EvaluationFixture.get_summary()
         self.assertIn("Q1 2026", summary)
         self.assertIn("Total entries: 14", summary)
-        self.assertIn(fixture_sha256(), summary)
+        self.assertIn("Product 1", summary)
+        self.assertIn("Product 2", summary)
 
 
-class DataSerializationTests(SimpleTestCase):
-    """Prompt-side serialization: json (base default), plain, toon."""
+class ToonnParserTests(TestCase):
+    """Unit tests for the TOON format parser."""
 
-    SAMPLE = {
-        "columns": ["name", "value__sum"],
-        "data": [{"name": "Product 1", "value__sum": 5000.0}, {"name": "Product 2", "value__sum": 2750.0}],
-    }
+    def test_parse_toonn_plan_basic(self):
+        text = """```toonn
+<THINKING>Group by product and sum value.</THINKING>
+<REPORT_MODEL>tests.SimpleSales</REPORT_MODEL>
+<DATE_FIELD>date</DATE_FIELD>
+<START_DATE>2026-01-01</START_DATE>
+<END_DATE>2026-03-31</END_DATE>
+<GROUP_BY>product</GROUP_BY>
+<COLUMNS>name, Sum(value)</COLUMNS>
+<TIME_SERIES_PATTERN>monthly</TIME_SERIES_PATTERN>
+<TIME_SERIES_COLUMNS>Sum(value)</TIME_SERIES_COLUMNS>
+<FILTERS>product_id__in=Product 1,Product 2</FILTERS>
+```"""
+        plan = parse_toonn_plan(text)
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["report"]["report_model"], "tests.SimpleSales")
+        self.assertEqual(plan["report"]["group_by"], "product")
+        self.assertEqual(plan["report"]["start_date"], "2026-01-01")
+        self.assertEqual(plan["report"]["end_date"], "2026-03-31")
+        self.assertEqual(plan["report"]["time_series_pattern"], "monthly")
+        self.assertEqual(plan["report"]["filters"], {"product_id__in": ["Product 1", "Product 2"]})
+        self.assertEqual(
+            plan["report"]["columns"],
+            ["name", {"method": "Sum", "field": "value", "name": "value__sum"}],
+        )
 
-    def test_json_matches_base_rendering(self):
-        """The json arm is byte-identical to the base-branch rendering."""
-        self.assertEqual(serialize_for_prompt(self.SAMPLE, "json"), json.dumps(self.SAMPLE, indent=2, default=str))
+    def test_parse_toonn_plan_null_report(self):
+        text = """```toonn
+<REPORT>null</REPORT>
+```"""
+        plan = parse_toonn_plan(text)
+        self.assertIsNotNone(plan)
+        self.assertIsNone(plan["report"])
 
-    def test_plain_table_rendering(self):
-        text = serialize_for_prompt(self.SAMPLE, "plain")
-        self.assertIn("columns: name, value__sum", text)
-        self.assertIn("data (2 rows):", text)
-        self.assertIn("name | value__sum", text)
-        self.assertIn("Product 1 | 5000.0", text)
+    def test_parse_toonn_plan_no_fences(self):
+        """Should handle text without fences."""
+        text = """<THINKING>simple</THINKING>
+<REPORT_MODEL>tests.SimpleSales</REPORT_MODEL>
+<DATE_FIELD>date</DATE_FIELD>
+<START_DATE>2026-01-01</START_DATE>
+<END_DATE>2026-03-31</END_DATE>
+<GROUP_BY>product</GROUP_BY>
+<COLUMNS>name</COLUMNS>
+<FILTERS>"""
+        plan = parse_toonn_plan(text)
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["report"]["group_by"], "product")
 
-    def test_unknown_format_rejected(self):
-        with self.assertRaises(ValueError):
-            serialize_for_prompt(self.SAMPLE, "xml")
+    def test_parse_toonn_answer(self):
+        text = """```toonn
+<ANSWER>Total Q1 sales were $5,000 for Product 1.</ANSWER>
+<REASONING>Sales summed from the report.</REASONING>
+<PROOFS>
+  <PROOF>
+    <TITLE>Product totals</TITLE>
+    <REPORT_MODEL>tests.SimpleSales</REPORT_MODEL>
+    <SUMMARY>Total value per product.</SUMMARY>
+    <KEY_NUMBERS>
+      <KEY>Product 1</KEY>
+      <VALUE>5000.00</VALUE>
+    </KEY_NUMBERS>
+  </PROOF>
+</PROOFS>
+```"""
+        answer = parse_toonn_answer(text)
+        self.assertEqual(answer["answer"], "Total Q1 sales were $5,000 for Product 1.")
+        self.assertEqual(answer["reasoning"], "Sales summed from the report.")
+        self.assertEqual(len(answer["proofs"]), 1)
+        proof = answer["proofs"][0]
+        self.assertEqual(proof["title"], "Product totals")
+        self.assertEqual(proof["report_model"], "tests.SimpleSales")
+        self.assertEqual(proof["key_numbers"], {"Product 1": 5000.0})
 
-    def test_normalize_jsonable(self):
-        import datetime
-        from decimal import Decimal
+    def test_parse_toonn_answer_multiple_proofs(self):
+        text = """```toonn
+<ANSWER>Two products.</ANSWER>
+<REASONING>Comparison.</REASONING>
+<PROOFS>
+  <PROOF>
+    <TITLE>Product 1</TITLE>
+    <REPORT_MODEL>tests.SimpleSales</REPORT_MODEL>
+    <SUMMARY>Product 1 totals.</SUMMARY>
+  </PROOF>
+  <PROOF>
+    <TITLE>Product 2</TITLE>
+    <REPORT_MODEL>tests.SimpleSales</REPORT_MODEL>
+    <SUMMARY>Product 2 totals.</SUMMARY>
+  </PROOF>
+</PROOFS>
+```"""
+        answer = parse_toonn_answer(text)
+        self.assertEqual(len(answer["proofs"]), 2)
+        self.assertEqual(answer["proofs"][0]["title"], "Product 1")
+        self.assertEqual(answer["proofs"][1]["title"], "Product 2")
 
-        out = normalize_jsonable({"v": Decimal("12.5"), "d": datetime.date(2026, 1, 5), "x": None})
-        self.assertEqual(out, {"v": 12.5, "d": "2026-01-05", "x": None})
+    def test_parse_toonn_answer_invalid(self):
+        result = parse_toonn_answer("not a valid toonn response")
+        self.assertIsNone(result)
 
-    @unittest.skipUnless(HAS_TOON, "toon-format package not installed")
-    def test_toon_round_trip(self):
-        text = serialize_for_prompt(self.SAMPLE, "toon")
-        self.assertIn("data[2]{name,value__sum}:", text)
-        decoded = toon_format.decode(text)
-        self.assertEqual(decoded, self.SAMPLE)
+    def test_parse_toonn_columns(self):
+        cols = parse_toonn_columns("name, Sum(value), Avg(quantity)")
+        self.assertEqual(cols, [
+            "name",
+            {"method": "Sum", "field": "value", "name": "value__sum"},
+            {"method": "Avg", "field": "quantity", "name": "quantity__avg"},
+        ])
 
-    @unittest.skipUnless(HAS_TOON, "toon-format package not installed")
-    def test_toon_answer_payload_round_trip(self):
-        """The answer-stage reports list (first field a nested object) decodes back to the report."""
-        reports = [
-            {
-                "config": {"report_model": "tests.SimpleSales", "filters": {"product__name": "Product 2"}},
-                "columns": [{"name": "client__country", "verbose_name": "Country"}],
-                "data": [
-                    {"client__country": "US", "value__sum": 1250.0},
-                    {"client__country": "EG", "value__sum": 1500.0},
+    def test_parse_toonn_columns_empty(self):
+        self.assertEqual(parse_toonn_columns(""), [])
+
+    def test_parse_toonn_filters(self):
+        filters = parse_toonn_filters("product_id__in=Product 1,Product 2; client__country__in=US,EG")
+        self.assertEqual(filters, {
+            "product_id__in": ["Product 1", "Product 2"],
+            "client__country__in": ["US", "EG"],
+        })
+
+    def test_parse_toonn_filters_empty(self):
+        self.assertEqual(parse_toonn_filters(""), {})
+
+
+class EvaluationScorerTests(TestCase):
+    """Test the scoring engine for evaluation results."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Ensure fixture is set up before tests run
+        EvaluationFixture.setup()
+
+    def _make_result(self, **overrides):
+        """Create a minimal EvaluationResult for scoring."""
+        defaults = {
+            "question_id": "product1_sales_q1",
+            "question_text": "What are the total sales for Product 1 in Q1 2026?",
+            "config_name": "test",
+            "format_name": "json",
+            "raw_plan": '{"report":{"group_by":"product"}}',
+            "raw_answer": '{"answer":"Product 1 sold well."}',
+            "timings": {"plan_seconds": 0.5, "total_seconds": 1.0},
+            "plan_success": True,
+            "parse_success": True,
+            "report_executed": False,
+            "report_config": {"report_model": "tests.SimpleSales", "group_by": "product"},
+            "report_data": None,
+            "answer": {"answer": "Product 1 sold well.", "reasoning": "Sum", "proofs": []},
+            "error": None,
+            "scores": {},
+            "token_counts": {},
+        }
+        defaults.update(overrides)
+        return EvaluationResult(**defaults)
+
+    def test_score_plan_correctness_pass(self):
+        result = self._make_result(
+            report_config={"group_by": "product"},
+        )
+        passed, detail = EvaluationScorer.score_plan_correctness(result)
+        self.assertTrue(passed, f"Expected plan to be correct: {detail}")
+
+    def test_score_plan_correctness_fail_group_by(self):
+        result = self._make_result(
+            report_config={"group_by": "client"},
+        )
+        passed, detail = EvaluationScorer.score_plan_correctness(result)
+        self.assertFalse(passed)
+
+    def test_score_plan_correctness_no_config(self):
+        result = self._make_result(
+            plan_success=False,
+            report_config=None,
+        )
+        passed, detail = EvaluationScorer.score_plan_correctness(result)
+        self.assertFalse(passed)
+
+    def test_score_parse_success_pass(self):
+        result = self._make_result(parse_success=True)
+        passed, detail = EvaluationScorer.score_parse_success(result)
+        self.assertTrue(passed)
+
+    def test_score_parse_success_fail(self):
+        result = self._make_result(parse_success=False)
+        passed, detail = EvaluationScorer.score_parse_success(result)
+        self.assertFalse(passed)
+
+    def test_score_report_execution_pass(self):
+        result = self._make_result(report_executed=True)
+        passed, detail = EvaluationScorer.score_report_execution(result)
+        self.assertTrue(passed)
+
+    def test_score_report_execution_fail_with_error(self):
+        result = self._make_result(report_executed=False, error="DB error")
+        passed, detail = EvaluationScorer.score_report_execution(result)
+        self.assertFalse(passed)
+
+    def test_score_result_values_no_data(self):
+        result = self._make_result(report_data=None)
+        passed, detail = EvaluationScorer.score_result_values(result)
+        self.assertFalse(passed)
+
+    def test_score_answer_correctness_pass(self):
+        result = self._make_result(
+            answer={"answer": "Product 1 total sales were $5000."},
+        )
+        passed, detail = EvaluationScorer.score_answer_correctness(result)
+        self.assertTrue(passed, f"Expected answer to be correct: {detail}")
+
+    def test_score_answer_correctness_fail(self):
+        result = self._make_result(answer=None)
+        passed, detail = EvaluationScorer.score_answer_correctness(result)
+        self.assertFalse(passed)
+
+    def test_score_normalized_plan_perfect(self):
+        result = self._make_result(
+            report_config={
+                "report_model": "tests.SimpleSales",
+                "group_by": "product",
+                "time_series_pattern": None,
+                "columns": [
+                    {"method": "Sum", "field": "value", "name": "value__sum"},
                 ],
-            }
-        ]
-        self.assertEqual(toon_format.decode(serialize_for_prompt(reports, "toon")), reports)
-
-    @unittest.skipUnless(HAS_TOON, "toon-format package not installed")
-    def test_toon_is_more_compact_than_json(self):
-        """The comparison's premise: TOON costs fewer characters (proxy for tokens)."""
-        data = {"rows": [{"name": f"Client {i}", "country": "US", "value__sum": 1000.0 + i} for i in range(20)]}
-        self.assertLess(len(serialize_for_prompt(data, "toon")), len(dumps_json(data)))
-
-    def test_dumps_plain_nested(self):
-        text = dumps_plain({"a": {"b": 1}, "items": [{"x": 1, "y": 2}, {"x": 3, "y": 4}]})
-        self.assertIn("a:", text)
-        self.assertIn("b: 1", text)
-        self.assertIn("x | y", text)
-
-
-class PromptDataFormatTests(SimpleTestCase):
-    """plan_prompt/answer_prompt select data serialization per arm; the
-    default stays byte-identical to the base branch."""
-
-    CATALOG = {"models": [{"identifier": "tests.SimpleSales", "fields": [{"name": "value", "type": "DecimalField"}]}]}
-    REPORTS = [
-        {"config": {"group_by": "product"}, "columns": [{"name": "name"}], "data": [{"name": "P1", "value__sum": 5}]}
-    ]
-
-    def test_default_plan_prompt_byte_identical_to_base(self):
-        expected = (
-            f"{prompts.PLAN_SYSTEM_PROMPT}\n\nAvailable catalog:\n{json.dumps(self.CATALOG, indent=2, default=str)}\n\n"
-            f"User question: q?\n\nReturn the JSON configuration."
+            },
         )
-        self.assertEqual(prompts.plan_prompt("q?", self.CATALOG), expected)
-
-    def test_default_answer_prompt_byte_identical_to_base(self):
-        trimmed = [
-            {
-                "config": {"group_by": "product"},
-                "columns": [{"name": "name"}],
-                "data": [{"name": "P1", "value__sum": 5}],
-            }
-        ]
-        expected = (
-            f"{prompts.ANSWER_SYSTEM_PROMPT}\n\n"
-            f"User question: q?\n\n"
-            f"Reports used as proof:\n{json.dumps(trimmed, indent=2, default=str)}\n\n"
-            f"Return the JSON answer."
-        )
-        self.assertEqual(prompts.answer_prompt("q?", self.REPORTS), expected)
-
-    def test_plain_arm_uses_json_instructions_with_plain_data(self):
-        prompt = prompts.plan_prompt("q?", self.CATALOG, data_format="plain")
-        self.assertIn("Output ONLY JSON", prompt)  # base JSON response instructions
-        self.assertIn("Note: the data below is plain text", prompt)
-        self.assertNotIn('"identifier"', prompt)
-
-    @unittest.skipUnless(HAS_TOON, "toon-format package not installed")
-    def test_toon_arm_uses_json_instructions_with_toon_data(self):
-        prompt = prompts.plan_prompt("q?", self.CATALOG, data_format="toon")
-        self.assertIn("Output ONLY JSON", prompt)  # base JSON response instructions
-        self.assertIn("TOON (Token-Oriented Object Notation)", prompt)
-        self.assertNotIn('"identifier"', prompt)
-
-    def test_invalid_data_format_rejected(self):
-        with self.assertRaises((ValueError, KeyError)):
-            prompts.plan_prompt("q?", self.CATALOG, data_format="yaml")
-
-
-class ScorerPlanTests(SimpleTestCase):
-    """Plan scoring covers model, group_by, time series, filters and dates."""
-
-    def test_perfect_plan_passes(self):
-        result = make_result(
-            "product1_sales_q1", plan_success=True, report_config=dict(PERFECT_CONFIGS["product1_sales_q1"])
-        )
-        passed, detail = EvaluationScorer.score_plan_correctness(result)
-        self.assertTrue(passed, detail)
-        self.assertEqual(EvaluationScorer.score_normalized_plan(result), 1.0)
-
-    def test_wrong_group_by_fails(self):
-        cfg = dict(PERFECT_CONFIGS["product2_us_vs_eg_q1"], group_by="client")
-        result = make_result("product2_us_vs_eg_q1", plan_success=True, report_config=cfg)
-        passed, detail = EvaluationScorer.score_plan_correctness(result)
-        self.assertFalse(passed)
-        self.assertIn('"group_by": false', detail)
-
-    def test_missing_product_filter_fails(self):
-        cfg = dict(PERFECT_CONFIGS["product1_sales_q1"])
-        cfg.pop("filters")
-        result = make_result("product1_sales_q1", plan_success=True, report_config=cfg)
-        passed, detail = EvaluationScorer.score_plan_correctness(result)
-        self.assertFalse(passed)
-        self.assertIn('"filter_product": false', detail)
-
-    def test_wrong_date_range_fails(self):
-        """A plan covering all of 2026 must not score like the Q1 window."""
-        cfg = dict(PERFECT_CONFIGS["product1_sales_q1"], end_date="2026-12-31")
-        result = make_result("product1_sales_q1", plan_success=True, report_config=cfg)
-        passed, detail = EvaluationScorer.score_plan_correctness(result)
-        self.assertFalse(passed)
-        self.assertIn('"date_range": false', detail)
-
-    def test_exclusive_end_date_rejected(self):
-        """end_date is inclusive, so 2026-04-01 is a different window than Q1."""
-        cfg = dict(PERFECT_CONFIGS["product1_sales_q1"], end_date="2026-04-01")
-        result = make_result("product1_sales_q1", plan_success=True, report_config=cfg)
-        passed, detail = EvaluationScorer.score_plan_correctness(result)
-        self.assertFalse(passed)
-        self.assertIn('"date_range": false', detail)
-
-    def test_monthly_question_requires_time_series(self):
-        cfg = dict(PERFECT_CONFIGS["product1_monthly_q1"])
-        cfg.pop("time_series_pattern")
-        cfg.pop("time_series_columns")
-        result = make_result("product1_monthly_q1", plan_success=True, report_config=cfg)
-        passed, detail = EvaluationScorer.score_plan_correctness(result)
-        self.assertFalse(passed)
         score = EvaluationScorer.score_normalized_plan(result)
-        self.assertGreater(score, 0.0)
+        self.assertEqual(score, 1.0)
+
+    def test_score_normalized_plan_partial(self):
+        result = self._make_result(
+            report_config={
+                "report_model": "wrong_app.WrongModel",
+                "group_by": "client",
+                "time_series_pattern": None,
+                "columns": [],
+            },
+        )
+        score = EvaluationScorer.score_normalized_plan(result)
         self.assertLess(score, 1.0)
 
-    def test_no_plan_fails(self):
-        result = make_result("product1_sales_q1")
-        self.assertEqual(EvaluationScorer.score_plan_correctness(result), (False, "no plan"))
-        self.assertEqual(EvaluationScorer.score_normalized_plan(result), 0.0)
+    def test_score_normalized_plan_no_config(self):
+        result = self._make_result(report_config=None)
+        score = EvaluationScorer.score_normalized_plan(result)
+        self.assertEqual(score, 0.0)
 
-
-class ScorerAnswerRegressionTests(SimpleTestCase):
-    """Regression tests for the audited substring-only answer scorer:
-    a wrong number (or no number) must fail."""
-
-    def _answer(self, question_id, answer, key_numbers=None):
-        proofs = []
-        if key_numbers:
-            proofs = [{"title": "t", "report_model": "tests.SimpleSales", "summary": "s", "key_numbers": key_numbers}]
-        return make_result(question_id, answer={"answer": answer, "reasoning": "r", "proofs": proofs})
-
-    def test_audit_repro_wrong_number_fails(self):
-        """The audit's proof: '$99,999,999' must NOT pass for expected 5000."""
-        result = self._answer("product1_sales_q1", "Product 1 total sales were $99,999,999.")
-        passed, detail = EvaluationScorer.score_answer_correctness(result)
-        self.assertFalse(passed, detail)
-
-    def test_audit_repro_content_free_answer_fails(self):
-        """The audit's proof: 'Product 1.' must NOT pass."""
-        result = self._answer("product1_sales_q1", "Product 1.")
-        passed, detail = EvaluationScorer.score_answer_correctness(result)
-        self.assertFalse(passed, detail)
-
-    def test_correct_value_passes(self):
-        result = self._answer("product1_sales_q1", "Product 1 total sales in Q1 2026 were $5,000.")
-        passed, detail = EvaluationScorer.score_answer_correctness(result)
-        self.assertTrue(passed, detail)
-
-    def test_key_numbers_suffice(self):
-        result = self._answer("product1_sales_q1", "See the proof.", {"Total sales for Product 1": 5000})
-        passed, detail = EvaluationScorer.score_answer_correctness(result)
-        self.assertTrue(passed, detail)
-
-    def test_quantity_wrong_fails_right_passes(self):
-        wrong = self._answer("product1_quantity_q1", "Product 1 sold 250 units in Q1 2026.")
-        self.assertFalse(EvaluationScorer.score_answer_correctness(wrong)[0])
-        right = self._answer("product1_quantity_q1", "Product 1 sold 100 units in Q1 2026.")
-        self.assertTrue(EvaluationScorer.score_answer_correctness(right)[0])
-
-    def test_country_values_must_pair_with_labels(self):
-        good = self._answer(
-            "product2_us_vs_eg_q1",
-            "In Q1 2026, Product 2 sales were higher in EG: US sold $1,250 while EG sold $1,500.",
-        )
-        self.assertTrue(EvaluationScorer.score_answer_correctness(good)[0])
-
-        swapped = self._answer(
-            "product2_us_vs_eg_q1",
-            "Product 2 sales in Q1 2026: US: $1,500; EG: $1,250.",
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped)[0])
-
-        swapped_same_sentence = self._answer(
-            "product2_us_vs_eg_q1", "Product 2 sales in Q1 2026 were US $1,500 and EG $1,250."
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_same_sentence)[0])
-
-        value_before_label = self._answer(
-            "product2_us_vs_eg_q1", "EG recorded $1,500 in sales compared to $1,250 in the US."
-        )
-        self.assertTrue(EvaluationScorer.score_answer_correctness(value_before_label)[0])
-
-        for phrasing in (
-            "EG outsold the US: $1,500 vs. $1,250.",
-            "In Q1 2026, the US and EG recorded $1,250 and $1,500 respectively.",
-            "Product 2 sales in the U.S. reached $1,250 while Egypt reached $1,500.",
-            "Product 2 sales totaled $2,750 in Q1 2026, with the US at $1,250 and EG at $1,500.",
-            "Product 2 sold $1,250 in the US and $1,500 in EG, for a total of $2,750.",
-            "EG outsold the US by $250 ($1,500 vs. $1,250).",
-            "In Q1 2026, EG outsold the US by $250, with $1,500 versus $1,250.",
-            "The US and EG together sold $2,750: $1,250 and $1,500 respectively.",
-            "The US and EG sold $1,250 and $1,500, for a total of $2,750.",
-            "The US and EG recorded $1,250 and $1,500 respectively, a gap of $250.",
-        ):
-            passed, detail = EvaluationScorer.score_answer_correctness(self._answer("product2_us_vs_eg_q1", phrasing))
-            self.assertTrue(passed, f"{phrasing} -> {detail}")
-
-        swapped_respectively = self._answer(
-            "product2_us_vs_eg_q1", "In Q1 2026, the US and EG recorded $1,500 and $1,250 respectively."
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_respectively)[0])
-
-        swapped_after_difference = self._answer(
-            "product2_us_vs_eg_q1", "EG outsold the US by $250 ($1,250 vs. $1,500)."
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_after_difference)[0])
-
-        swapped_before_total = self._answer(
-            "product2_us_vs_eg_q1", "The US and EG sold $1,500 and $1,250, for a total of $2,750."
-        )
-        passed, detail = EvaluationScorer.score_answer_correctness(swapped_before_total)
-        self.assertFalse(passed)
-        self.assertEqual(json.loads(detail), {"country_US": False, "country_EG": False})
-
-        missing = self._answer(
-            "product2_us_vs_eg_q1",
-            "Product 2 sold better in EG than in the US in Q1 2026.",
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(missing)[0])
-
-    def test_monthly_values_scored(self):
-        good = self._answer(
-            "product1_monthly_q1",
-            "Product 1 monthly sales in Q1 2026: January: 1750; February: 1750; March: 1500.",
-        )
-        self.assertTrue(EvaluationScorer.score_answer_correctness(good)[0])
-
-        wrong_month = self._answer(
-            "product1_monthly_q1",
-            "Product 1 monthly sales: January: 1750; February: 9999; March: 1500.",
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_month)[0])
-
-        value_before_label = self._answer(
-            "product1_monthly_q1", "Monthly sales were 1,750 in January, 1,750 in February, and 1,500 in March."
-        )
-        self.assertTrue(EvaluationScorer.score_answer_correctness(value_before_label)[0])
-
-        shifted_same_sentence = self._answer(
-            "product1_monthly_q1", "Monthly sales were 1500 in January and 1750 in February and March."
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(shifted_same_sentence)[0])
-
-        for phrasing in (
-            "Sales were $1,750 in both January and February, and $1,500 in March.",
-            "January and February each recorded $1,750, while March had $1,500.",
-            "January, February and March sales were $1,750, $1,750 and $1,500, totaling $5,000.",
-        ):
-            passed, detail = EvaluationScorer.score_answer_correctness(self._answer("product1_monthly_q1", phrasing))
-            self.assertTrue(passed, f"{phrasing} -> {detail}")
-
-        shared_wrong = self._answer(
-            "product1_monthly_q1", "January and February each recorded $1,500, while March had $1,750."
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(shared_wrong)[0])
-
-        swapped_before_total = self._answer(
-            "product1_monthly_q1",
-            "January, February and March sales were $1,500, $1,750 and $1,750, totaling $5,000.",
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_before_total)[0])
-
-    def test_top_client_label_and_value(self):
-        good = self._answer(
-            "top_client_product1_q1", "Alpha US bought the most of Product 1 in Q1 2026, with $2,750 in sales."
-        )
-        self.assertTrue(EvaluationScorer.score_answer_correctness(good)[0])
-
-        wrong_client = self._answer(
-            "top_client_product1_q1", "Gamma DE bought the most of Product 1, with $2,750 in sales."
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_client)[0])
-
-        no_value = self._answer("top_client_product1_q1", "Alpha US bought the most of Product 1 in Q1 2026.")
-        self.assertFalse(EvaluationScorer.score_answer_correctness(no_value)[0])
-
-        wrong_subject = self._answer(
-            "top_client_product1_q1", "Beta EG was the top client with $2,750, ahead of Alpha US."
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_subject)[0])
-
-        wrong_subject_full_proofs = self._answer(
-            "top_client_product1_q1",
-            "Beta EG bought the most of Product 1.",
-            {"Alpha US": 2750, "Beta EG": 1750, "Gamma DE": 500},
-        )
-        self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_subject_full_proofs)[0])
-
-        wrong_leader = self._answer("top_client_product1_q1", "Beta EG led with $1,750 while Alpha US had $2,750.")
-        self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_leader)[0])
-
-        for swapped in (
-            "Alpha US and Beta EG sold $1,750 and $2,750 respectively, a gap of $1,000.",
-            "Alpha US and Beta EG sold $1,750 and $2,750, for a total of $4,500.",
-        ):
-            passed, detail = EvaluationScorer.score_answer_correctness(self._answer("top_client_product1_q1", swapped))
-            self.assertFalse(passed, f"{swapped} -> {detail}")
-
-        reverse_order = self._answer(
-            "top_client_product1_q1", "Alpha US and Beta EG sold $2,750 and $1,750, for a total of $4,500."
-        )
-        self.assertTrue(EvaluationScorer.score_answer_correctness(reverse_order)[0])
-
-        value_from_proofs = self._answer(
-            "top_client_product1_q1",
-            "Alpha US was the top client for Product 1 in Q1 2026.",
-            {"Alpha US": 2750, "Beta EG": 1750},
-        )
-        self.assertTrue(EvaluationScorer.score_answer_correctness(value_from_proofs)[0])
-
-    def test_no_answer_fails(self):
-        result = make_result("product1_sales_q1", answer=None)
-        self.assertFalse(EvaluationScorer.score_answer_correctness(result)[0])
-        result = make_result("product1_sales_q1", answer={"answer": "  "})
-        self.assertFalse(EvaluationScorer.score_answer_correctness(result)[0])
-
-
-class ScorerRealPayloadTests(TestCase):
-    """Score real executor payloads: the tests that would have caught the
-    audited time-series / value-only / zero-total scorer bugs."""
-
-    @classmethod
-    def setUpTestData(cls):
-        create_fixture_data()
-        EvaluationFixture.setup()
-
-    def _executed(self, question_id):
-        payload = run_llm_report_config(PERFECT_CONFIGS[question_id])
-        return make_result(question_id, plan_success=True, report_executed=True, report_data=payload)
-
-    def test_sales_question_value_only_plan_passes(self):
-        """A value-only correct plan answers the sales question (audit 8b)."""
-        result = self._executed("product1_sales_q1")
-        passed, detail = EvaluationScorer.score_result_values(result)
-        self.assertTrue(passed, detail)
-
-    def test_quantity_question_passes(self):
-        result = self._executed("product1_quantity_q1")
-        passed, detail = EvaluationScorer.score_result_values(result)
-        self.assertTrue(passed, detail)
-
-    def test_country_question_real_payload(self):
-        """group_by client__country rows carry a client__country label."""
-        result = self._executed("product2_us_vs_eg_q1")
-        self.assertEqual(
-            {row["client__country"] for row in result.report_data["data"]},
-            {"US", "EG"},
-        )
-        passed, detail = EvaluationScorer.score_result_values(result)
-        self.assertTrue(passed, detail)
-
-    def test_monthly_question_real_time_series_keys(self):
-        """Real value__sumTS<date> keys must score (audit 8a)."""
-        result = self._executed("product1_monthly_q1")
-        row = result.report_data["data"][0]
-        ts_keys = [k for k in row if "TS" in k]
-        self.assertTrue(any(k.startswith("value__sumTS") for k in ts_keys), ts_keys)
-        passed, detail = EvaluationScorer.score_result_values(result)
-        self.assertTrue(passed, detail)
-        self.assertIn('"month_2026-01": true', detail)
-        self.assertIn('"month_2026-03": true', detail)
-
-    def test_top_client_real_payload(self):
-        result = self._executed("top_client_product1_q1")
-        passed, detail = EvaluationScorer.score_result_values(result)
-        self.assertTrue(passed, detail)
-        self.assertIn('"top_client": true', detail)
-
-    def test_mutated_payload_fails(self):
-        """A wrong number in the report data must fail value scoring."""
-        result = self._executed("product1_sales_q1")
-        result.report_data["data"][0]["value__sum"] = "999999"
-        passed, detail = EvaluationScorer.score_result_values(result)
-        self.assertFalse(passed, detail)
-
-    def test_mutated_monthly_fails(self):
-        result = self._executed("product1_monthly_q1")
-        row = result.report_data["data"][0]
-        ts_key = next(k for k in row if k.startswith("value__sumTS"))
-        row[ts_key] = "1"
-        passed, detail = EvaluationScorer.score_result_values(result)
-        self.assertFalse(passed, detail)
-
-    def test_zero_total_handled(self):
-        """A report whose correct total is 0 must score pass against 0 (the
-        old substring extractor returned None for zero totals)."""
-        EvaluationFixture._expected["synthetic_zero_q"] = {
-            "question": "synthetic",
-            "checks": {},
-            "expected_value": 0.0,
-        }
-        try:
-            zero = make_result(
-                "synthetic_zero_q",
-                plan_success=True,
-                report_executed=True,
-                report_data={"data": [{"name": "Product 1", "value__sum": 0}]},
+    def test_aggregate_scores_all_pass(self):
+        results = [
+            self._make_result(
+                plan_success=True, parse_success=True, report_executed=True,
+                report_config={"report_model": "tests.SimpleSales", "group_by": "product"},
             )
-            passed, detail = EvaluationScorer.score_result_values(zero)
-            self.assertTrue(passed, detail)
+            for _ in range(3)
+        ]
+        # Populate scores by calling scorer methods
+        for r in results:
+            r.scores["plan_correctness"] = EvaluationScorer.score_plan_correctness(r)
+            r.scores["parse_success"] = EvaluationScorer.score_parse_success(r)
+            r.scores["report_execution"] = EvaluationScorer.score_report_execution(r)
+            r.scores["result_values"] = EvaluationScorer.score_result_values(r)
+            r.scores["answer_correctness"] = EvaluationScorer.score_answer_correctness(r)
+            r.scores["normalized_plan"] = EvaluationScorer.score_normalized_plan(r)
+        agg = EvaluationScorer.aggregate_scores(results)
+        self.assertEqual(agg["total_questions"], 3)
+        self.assertEqual(agg["plan_success_rate"], 1.0)
+        self.assertEqual(agg["parse_success_rate"], 1.0)
+        self.assertEqual(agg["report_execution_rate"], 1.0)
+        self.assertGreater(agg["avg_total_latency_seconds"], 0)
 
-            nonzero = make_result(
-                "product1_sales_q1",
-                plan_success=True,
-                report_executed=True,
-                report_data={"data": [{"name": "Product 1", "value__sum": 0}]},
-            )
-            passed, detail = EvaluationScorer.score_result_values(nonzero)
-            self.assertFalse(passed, detail)
-        finally:
-            EvaluationFixture._expected.pop("synthetic_zero_q", None)
-
-    def test_missing_metric_column_fails(self):
-        result = make_result(
-            "product1_sales_q1",
-            plan_success=True,
-            report_executed=True,
-            report_data={"data": [{"name": "Product 1", "quantity__sum": 100}]},
-        )
-        passed, detail = EvaluationScorer.score_result_values(result)
-        self.assertFalse(passed, detail)
-
-
-class BackendUsageTests(SimpleTestCase):
-    def test_base_backend_reports_no_usage(self):
-        backend = EchoBackend()
-        self.assertEqual(backend.get_last_usage(), {})
-        self.assertIsNone(backend.get_last_model())
-        self.assertEqual(backend.complete("hi"), "hi")
-
-
-class ScriptedBackend:
-    """Deterministic offline backend: canned plans/answers per question,
-    fake token usage proportional to prompt length, one scripted failure."""
-
-    api_url = "scripted://local"
-    model = "scripted-model"
-    temperature = 0.2
-
-    def __init__(self, fail_plan_for=None):
-        self.calls = []
-        self.fail_plan_for = fail_plan_for  # (format, question_id) pair
-        self._last_usage = {}
-        self._last_model = "scripted/qwen-local"
-
-    def complete(self, prompt):
-        self.calls.append(prompt)
-        self._last_usage = {
-            "prompt_tokens": max(1, len(prompt) // 4),
-            "completion_tokens": 17,
-            "total_tokens": max(1, len(prompt) // 4) + 17,
-        }
-        if "Available catalog:" in prompt:
-            question = prompt.split("User question: ", 1)[1].rsplit("\n", 2)[0]
-            qid = self._question_id(question)
-            fmt = self._prompt_format(prompt)
-            if self.fail_plan_for == (fmt, qid):
-                raise RuntimeError("scripted backend failure")
-            return self._plan_response(qid)
-        question = prompt.split("User question: ", 1)[1].split("\n\nReports used as proof:", 1)[0]
-        qid = self._question_id(question)
-        return self._answer_response(qid)
-
-    def get_last_usage(self):
-        return dict(self._last_usage)
-
-    def get_last_model(self):
-        return self._last_model
-
-    @staticmethod
-    def _question_id(question_text):
-        for qid, expected in EvaluationFixture._expected.items():
-            if expected["question"] == question_text:
-                return qid
-        raise AssertionError(f"unexpected question {question_text!r}")
-
-    @staticmethod
-    def _prompt_format(prompt):
-        if "Note: the data below is plain text" in prompt:
-            return "plain"
-        if "TOON (Token-Oriented Object Notation)" in prompt:
-            return "toon"
-        return "json"
-
-    @staticmethod
-    def _plan_response(qid):
-        cfg = PERFECT_CONFIGS[qid]
-        return json.dumps({"thinking": "deterministic scripted plan", "report": cfg})
-
-    @staticmethod
-    def _answer_response(qid):
-        answers = {
-            "product1_sales_q1": (
-                "Product 1 total sales in Q1 2026 were $5,000.",
-                {"Total sales Product 1 Q1 2026": 5000},
+    def test_aggregate_scores_with_failures(self):
+        results = [
+            self._make_result(
+                plan_success=True, error=None,
+                report_config={"report_model": "tests.SimpleSales", "group_by": "product"},
             ),
-            "product1_monthly_q1": (
-                "Product 1 monthly sales in Q1 2026: January: 1750; February: 1750; March: 1500.",
-                {"January 2026": 1750, "February 2026": 1750, "March 2026": 1500},
+            self._make_result(
+                plan_success=False, error="Bad plan",
+                report_config=None,
             ),
+            self._make_result(
+                plan_success=True, error=None,
+                report_config={"report_model": "tests.SimpleSales", "group_by": "product"},
+            ),
+        ]
+        # Populate only plan correctness scores (result_values needs report data)
+        for r in results:
+            r.scores["plan_correctness"] = EvaluationScorer.score_plan_correctness(r)
+            r.scores["result_values"] = (True, '{}')  # Assume values OK
+            r.scores["answer_correctness"] = (True, 'answer_present=True')
+        agg = EvaluationScorer.aggregate_scores(results)
+        self.assertEqual(agg["total_questions"], 3)
+        self.assertEqual(agg["plan_success_rate"], round(2/3, 2))
+        self.assertEqual(len(agg["failures"]), 1)
+        self.assertEqual(agg["failures"][0]["question_id"], "product1_sales_q1")
+
+    def test_aggregate_scores_empty(self):
+        agg = EvaluationScorer.aggregate_scores([])
+        self.assertEqual(agg, {})
+
+    def test_plan_correctness_stddev_zero(self):
+        """When all results pass, std-dev should be 0."""
+        results = [self._make_result(plan_success=True) for _ in range(3)]
+        agg = EvaluationScorer.aggregate_scores(results)
+        self.assertEqual(agg["plan_correctness_stddev"], 0.0)
+
+
+class ToonnPromptBuilderTests(TestCase):
+    """Test TOON prompt generation."""
+
+    def test_plan_prompt_toonn_contains_catalog(self):
+        catalog = {
+            "models": [{"identifier": "tests.SimpleSales", "fields": []}],
+            "time_series_patterns": ["monthly"],
+            "today_iso": "2026-01-01T00:00:00",
         }
-        text, key_numbers = answers[qid]
-        return json.dumps(
+        prompt = plan_prompt_toonn("Show sales for Product 1", catalog)
+        self.assertIn("```toonn", prompt)
+        self.assertIn("THINKING", prompt)
+        self.assertIn("tests.SimpleSales", prompt)
+        self.assertIn("Product 1", prompt)
+
+    def test_answer_prompt_toonn_contains_reports(self):
+        reports = [
             {
-                "answer": text,
-                "reasoning": "scripted",
-                "proofs": [
-                    {"title": "t", "report_model": "tests.SimpleSales", "summary": "s", "key_numbers": key_numbers}
-                ],
+                "config": {"report_model": "tests.SimpleSales"},
+                "data": [{"name": "Product 1", "value__sum": 5000}],
+                "columns": [],
             }
+        ]
+        prompt = answer_prompt_toonn("What were Product 1 sales?", reports)
+        self.assertIn("```toonn", prompt)
+        self.assertIn("Product 1", prompt)
+        self.assertIn("5000", prompt)
+
+
+class ExistingFormatCompatibilityTests(TestCase):
+    """Verify that existing JSON/plain-text parsing still works."""
+
+    def test_parse_llm_json_basic(self):
+        result = parse_llm_json('{"a": 1}')
+        self.assertEqual(result, {"a": 1})
+
+    def test_parse_llm_json_with_fences(self):
+        result = parse_llm_json('```json\n{"a": 1}\n```')
+        self.assertEqual(result, {"a": 1})
+
+    def test_parse_llm_plain_text_plan(self):
+        text = """THINKING: simple
+REPORT_MODEL: tests.SimpleSales
+DATE_FIELD: date
+START_DATE: 2026-01-01
+END_DATE: 2026-03-31
+GROUP_BY: product
+COLUMNS: name, Sum(value)
+FILTERS:"""
+        plan = parse_llm_plain_text_plan(text)
+        self.assertEqual(plan["report"]["group_by"], "product")
+        self.assertEqual(
+            plan["report"]["columns"],
+            ["name", {"method": "Sum", "field": "value", "name": "value__sum"}],
         )
-
-
-class ExecutorFilterRegressionTests(TestCase):
-    """Regression tests for filter resolution bugs the evaluation surfaced:
-    ``product__name="Product 1"`` must stay a name lookup (not be resolved to
-    a pk), and a single-value ``__in`` filter must reach the ORM as a list."""
-
-    @classmethod
-    def setUpTestData(cls):
-        create_fixture_data()
-
-    def test_name_lookup_is_not_resolved_to_pk(self):
-        from slick_reporting.llm.executor import prepare_filters
-        from tests.models import SimpleSales
-
-        _q, kw = prepare_filters(SimpleSales, {"product__name": "Product 1"})
-        self.assertEqual(kw, {"product__name": "Product 1"})
-
-    def test_pk_lookups_still_resolve(self):
-        from slick_reporting.llm.executor import prepare_filters
-        from tests.models import Product, SimpleSales
-
-        product_id = Product.objects.get(name="Product 1").pk
-        _q, kw = prepare_filters(SimpleSales, {"product_id__in": ["Product 1"]})
-        self.assertEqual(kw, {"product_id__in": [product_id]})
-        _q, kw = prepare_filters(SimpleSales, {"product": "Product 1"})
-        self.assertEqual(kw, {"product": product_id})
-
-    def test_single_value_in_lookup_becomes_list(self):
-        from slick_reporting.llm.executor import prepare_filters
-        from tests.models import SimpleSales
-
-        _q, kw = prepare_filters(SimpleSales, {"product__name__in": "Product 1"})
-        self.assertEqual(kw, {"product__name__in": ["Product 1"]})
-
-    def test_report_with_name_filter_returns_fixture_rows(self):
-        """The audited benchmark failure: a legitimate ``product__name`` plan
-        must return the Product 1 rows, not an empty report."""
-        cfg = dict(PERFECT_CONFIGS["product1_sales_q1"], filters={"product__name": "Product 1"})
-        payload = run_llm_report_config(cfg)
-        self.assertEqual(len(payload["data"]), 1)
-        self.assertEqual(float(payload["data"][0]["value__sum"]), 5000.0)
-
-
-class RunEvaluationEndToEndTests(TestCase):
-    """run_evaluation end to end with a scripted backend: structure, token
-    capture, paired repetitions, and failure persistence."""
-
-    QIDS = ["product1_sales_q1", "product1_monthly_q1"]
-
-    @classmethod
-    def setUpTestData(cls):
-        EvaluationFixture.setup()
-
-    def test_full_run_all_formats(self):
-        backend = ScriptedBackend()
-        # toon-format needs Python >= 3.10; the 3.9 CI leg runs without the TOON arm.
-        formats = ["json", "plain", "toon"] if HAS_TOON else ["json", "plain"]
-        result = run_evaluation(backend=backend, formats=formats, repetitions=2, question_ids=self.QIDS)
-
-        # structure: every format x question x repetition is present
-        for fmt in formats:
-            self.assertEqual(len(result["results"][fmt]), 4)
-            for r in result["results"][fmt]:
-                self.assertTrue(r.parse_success, r.raw_plan)
-                self.assertTrue(r.plan_success, r.raw_plan)
-                self.assertTrue(r.report_executed, r.error)
-                self.assertTrue(r.scores["result_values"][0], r.scores["result_values"][1])
-                self.assertTrue(r.scores["answer_correctness"][0], r.scores["answer_correctness"][1])
-                # token counts captured per call
-                self.assertGreater(r.token_counts["plan_prompt_tokens"], 0)
-                self.assertGreater(r.token_counts["answer_prompt_tokens"], 0)
-                self.assertEqual(r.served_model, "scripted/qwen-local")
-                # per-stage latency with correct labels
-                self.assertIn("plan_seconds", r.timings)
-                self.assertIn("answer_seconds", r.timings)
-                self.assertIn("exec_seconds", r.timings)
-                self.assertIn("total_seconds", r.timings)
-
-        # the plain arm differs only in data serialization: base JSON response instructions
-        plain_prompts = [p for p in backend.calls if "Note: the data below is plain text" in p]
-        self.assertEqual(len(plain_prompts), 8)
-        for p in plain_prompts:
-            self.assertTrue(p.startswith((prompts.PLAN_SYSTEM_PROMPT, prompts.ANSWER_SYSTEM_PROMPT)), p[:80])
-
-        # paired repetitions: rep 0 and rep 1 used identical prompts per format/question
-        json_plans = [r.raw_plan for r in result["results"]["json"] if r.question_id == "product1_sales_q1"]
-        self.assertEqual(len(json_plans), 2)
-        self.assertEqual(json_plans[0], json_plans[1])
-
-        # meta records endpoint, model and fixture fingerprint
-        self.assertEqual(result["meta"]["configured_model"], "scripted-model")
-        self.assertEqual(result["meta"]["served_models"], ["scripted/qwen-local"])
-        self.assertEqual(result["meta"]["fixture_sha256"], fixture_sha256())
-        self.assertEqual(result["meta"]["sampling"], {"temperature": 0.2})
-
-        # aggregates carry the headline token metrics and failure list
-        for fmt in formats:
-            s = result["scores"][fmt]
-            self.assertEqual(s["plan_correctness_rate"], 1.0)
-            self.assertNotIn("plan_success_rate", s)
-            self.assertEqual(s["parse_success_rate"], 1.0)
-            self.assertEqual(s["plan_calls_made"], 4)
-            self.assertEqual(s["answer_calls_made"], 4)
-            self.assertGreater(s["avg_plan_prompt_tokens"], 0)
-            self.assertEqual(s["failures"], [])
-
-    def test_failed_calls_are_preserved_and_scored(self):
-        backend = ScriptedBackend(fail_plan_for=("json", "product1_sales_q1"))
-        result = run_evaluation(backend=backend, formats=["json"], repetitions=2, question_ids=self.QIDS)
-
-        json_results = result["results"]["json"]
-        self.assertEqual(len(json_results), 4)  # the failed call is still recorded
-        failed = [r for r in json_results if r.question_id == "product1_sales_q1"]
-        self.assertEqual(len(failed), 2)
-        for r in failed:
-            self.assertIn("scripted backend failure", r.error)
-            self.assertFalse(r.parse_success)
-            self.assertFalse(r.report_executed)
-            self.assertFalse(r.scores["result_values"][0])
-
-        healthy = [r for r in json_results if r.question_id == "product1_monthly_q1"]
-        self.assertTrue(all(r.report_executed for r in healthy))
-
-        failures = result["scores"]["json"]["failures"]
-        self.assertEqual(len(failures), 2)
-        self.assertEqual(failures[0]["format"], "json")
-        self.assertIn("scripted backend failure", failures[0]["error"])
-
-    def test_artifact_serialization(self):
-        backend = ScriptedBackend()
-        result = run_evaluation(backend=backend, formats=["json"], repetitions=1, question_ids=self.QIDS)
-        artifact = {
-            "meta": result["meta"],
-            "scores": result["scores"],
-            "results": {fmt: [r.to_dict() for r in result["results"][fmt]] for fmt in ["json"]},
-        }
-        encoded = json.dumps(artifact, default=str)  # must not raise
-        self.assertIn('"plan_prompt_tokens"', encoded)

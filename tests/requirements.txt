@@ -1,5 +1,2 @@
 -r ../requirements.txt
 crispy-bootstrap4
-# TOON (Token-Oriented Object Notation) serializer for the llm data-format
-# evaluation. 0.9.0b1 writes a bare "-" for list items whose first field is an object.
-toon-format==1.1.0; python_version >= "3.10"

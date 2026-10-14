@@ -1,174 +1,167 @@
 #!/usr/bin/env python
 """
-Deterministic benchmark: JSON vs plain-text vs TOON data serialization in
-the prompts of the LLM reporting assistant.
+Run the deterministic LLM evaluation benchmark against the local Qwen model via Ollama.
 
-    pip install "toon-format==1.1.0"   # needed for the TOON arm only
+Usage:
     python run_benchmark.py
 
-Runs the 5 fixture questions x 3 data formats x 3 paired repetitions
-(identical sampling, one backend instance, rep -> format -> question order)
-against the local OpenAI-compatible endpoint
-(http://192.168.178.100:8080/v1/chat/completions), on a hermetic, freshly
-created SQLite database (see tests/eval_settings.py), and writes the full
-evidence artifact -- untruncated raw responses, per-call token counts,
-per-stage latencies, failures -- to eval_evidence/benchmark_<timestamp>.json.
+This runs all 5 fixture questions across 3 formats (json, plain, toonn) with
+3 repetitions each, preserving raw outputs and generating a comparison report.
 """
 
 import datetime
-import importlib.metadata
 import json
 import os
 import sys
 import time
-import urllib.request
 
-ENDPOINT = "http://192.168.178.100:8080/v1/chat/completions"
-
-os.environ["DJANGO_SETTINGS_MODULE"] = "tests.eval_settings"
-
-import django  # noqa: E402
-
+# Django setup
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.settings")
+import django
 django.setup()
 
-from django.conf import settings  # noqa: E402
-from django.core.management import call_command  # noqa: E402
-
-from slick_reporting.llm.backends import OpenAICompatibleBackend  # noqa: E402
-from slick_reporting.llm.evaluator import (  # noqa: E402
-    EvaluationFixture,
-    create_fixture_data,
-    run_evaluation,
-)
-from slick_reporting.llm.toon_data import TOON_PACKAGE, TOON_PACKAGE_PIN  # noqa: E402
-
-FORMATS = ["json", "plain", "toon"]
-REPETITIONS = 3
-
-
-def query_served_models():
-    """Return the model list the endpoint currently serves (for pinning)."""
-    url = ENDPOINT.rsplit("/chat/completions", 1)[0] + "/models"
-    try:
-        with urllib.request.urlopen(url, timeout=10) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-        return [m.get("id") or m.get("name") for m in payload.get("data") or payload.get("models") or []]
-    except Exception as exc:
-        print(f"WARNING: could not query served models from {url}: {exc}")
-        return []
-
-
-def prepare_database():
-    """Create a fresh, hermetic evaluation database."""
-    db_path = settings.DATABASES["default"]["NAME"]
-    if os.path.exists(db_path):
-        os.remove(db_path)
-        print(f"Removed stale evaluation database: {db_path}")
-    call_command("migrate", "--run-syncdb", verbosity=0)
-    create_fixture_data()
-    print(f"Seeded hermetic fixture database: {db_path}")
-
-
-def check_toon_version():
-    """Fail fast unless the pinned, spec-valid toon-format release is installed.
-
-    Other releases encode list-item objects off-spec (silently invalid TOON
-    answer payloads), and a missing package turns every TOON call into an
-    'Evaluation error' with a wrong headline token metric -- both only surface
-    after the full run without this check.
-    """
-    expected = TOON_PACKAGE_PIN.split("==", 1)[1]
-    try:
-        installed = importlib.metadata.version(TOON_PACKAGE)
-    except importlib.metadata.PackageNotFoundError:
-        installed = None
-    if installed != expected:
-        sys.exit(
-            f"ERROR: the TOON arm requires the pinned spec-valid release '{TOON_PACKAGE_PIN}' "
-            f"(installed: {installed or 'not installed'}). Install it with: pip install {TOON_PACKAGE_PIN}"
-        )
+from slick_reporting.llm.evaluator import run_evaluation, EvaluationFixture
 
 
 def main():
-    if "toon" in FORMATS:
-        check_toon_version()
+    # Configured local Qwen endpoint
+    backend_class = "slick_reporting.llm.backends.OpenAICompatibleBackend"
+    backend_options = {
+        "api_url": "http://192.168.178.100:8080/v1/chat/completions",
+        "model": "local",
+        "temperature": 0.2,
+        "timeout": 300,
+        "enable_thinking": False,
+        "reasoning_budget": 0,
+    }
 
-    served = query_served_models()
-    backend = OpenAICompatibleBackend(
-        api_url=ENDPOINT,
-        model=served[0] if served else "local",  # pinned to the served id; also recorded per response
-        temperature=0.2,
-        timeout=300,
-        enable_thinking=False,
-        reasoning_budget=0,
-    )
+    formats = ["json", "plain", "toonn"]
+    repetitions = 3
 
     print("=" * 70)
-    print("LLM PROMPT DATA-FORMAT COMPARISON BENCHMARK")
+    print("LLM FORMAT COMPARISON BENCHMARK")
     print("=" * 70)
-    print(f"Endpoint:    {ENDPOINT}")
-    print(f"Served:      {', '.join(served) or 'unknown'}")
-    print(f"Formats:     {', '.join(FORMATS)}")
-    print(f"Repetitions: {REPETITIONS} (paired, identical sampling)")
+    print(f"Backend: {backend_class}")
+    print(f"Model:   {backend_options['model']}")
+    print(f"Endpoint: {backend_options['api_url']}")
+    print(f"Formats: {', '.join(formats)}")
+    print(f"Repetitions: {repetitions}")
+    EvaluationFixture.setup()
+    print(f"Fixture: {len(EvaluationFixture.get_all_question_ids())} questions")
+    print("=" * 70)
+
+    EvaluationFixture.setup()
     print()
     print(EvaluationFixture.get_summary())
     print()
 
-    prepare_database()
+    
+    
+    
+    
 
-    started_at = datetime.datetime.now(datetime.timezone.utc)
     start = time.perf_counter()
-    result = run_evaluation(backend=backend, formats=FORMATS, repetitions=REPETITIONS)
+    result = run_evaluation(
+        backend_class=backend_class,
+        backend_options=backend_options,
+        formats=formats,
+        repetitions=repetitions,
+    )
     elapsed = time.perf_counter() - start
 
     result["meta"]["elapsed_seconds"] = round(elapsed, 2)
-    result["meta"]["wall_clock_start_utc"] = started_at.isoformat()
-    result["meta"]["served_models_endpoint"] = served
-    try:
-        result["meta"]["toon_format_version"] = importlib.metadata.version("toon-format")
-    except importlib.metadata.PackageNotFoundError:
-        result["meta"]["toon_format_version"] = None
+    result["meta"]["wall_clock_start"] = datetime.datetime.now(datetime.UTC).isoformat() + "Z"
 
+    # Build a human-readable comparison summary
     scores = result.get("scores", {})
     print("\n" + "=" * 70)
     print("AGGREGATED RESULTS BY FORMAT")
     print("=" * 70)
-    for fmt in FORMATS:
+
+    for fmt in formats:
         s = scores.get(fmt, {})
         print(f"\n  [{fmt.upper()}]")
-        print(f"    Plan correctness rate:    {s.get('plan_correctness_rate', 0) * 100:.0f}%")
-        print(f"    Parse success rate:       {s.get('parse_success_rate', 0) * 100:.0f}%")
-        print(f"    Report execution rate:    {s.get('report_execution_rate', 0) * 100:.0f}%")
-        print(f"    Exact value match rate:   {s.get('exact_value_match_rate', 0) * 100:.0f}%")
-        print(f"    Answer correctness rate:  {s.get('answer_correctness_rate', 0) * 100:.0f}%")
+        print(f"    Plan success rate:        {s.get('plan_success_rate', 0)*100:.0f}%")
+        print(f"    Parse success rate:       {s.get('parse_success_rate', 0)*100:.0f}%")
+        print(f"    Report execution rate:    {s.get('report_execution_rate', 0)*100:.0f}%")
+        print(f"    Exact value match rate:   {s.get('exact_value_match_rate', 0)*100:.0f}%")
+        print(f"    Answer correctness rate:  {s.get('answer_correctness_rate', 0)*100:.0f}%")
         print(f"    Avg normalized plan:      {s.get('avg_normalized_plan_score', 0):.2f}")
-        print(f"    Avg plan prompt tokens:   {s.get('avg_plan_prompt_tokens', 0):.0f}")
-        print(f"    Avg answer prompt tokens: {s.get('avg_answer_prompt_tokens', 0):.0f}")
-        print(f"    Avg total tokens/quest.:  {s.get('avg_total_tokens_per_question', 0):.0f}")
-        print(f"    Avg plan latency (s):     {s.get('avg_plan_latency_seconds', 0):.2f}")
-        print(f"    Avg answer latency (s):   {s.get('avg_answer_latency_seconds', 0):.2f}")
-        print(f"    Avg total latency (s):    {s.get('avg_total_latency_seconds', 0):.2f}")
+        print(f"    Plan correctness stddev:  {s.get('plan_correctness_stddev', 0):.4f}")
+        print(f"    Avg total latency (s):    {s.get('avg_total_latency_seconds', 0):.3f}")
+        print(f"    Avg plan tokens:          {s.get('avg_plan_tokens', 0):.0f}")
+        print(f"    Avg answer tokens:        {s.get('avg_answer_tokens', 0):.0f}")
 
-    evidence_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "eval_evidence")
+    # Variability comparison
+    print("\n" + "=" * 70)
+    print("VARIABILITY COMPARISON (across repetitions)")
+    print("=" * 70)
+    for fmt in formats:
+        s = scores.get(fmt, {})
+        sd = s.get("plan_correctness_stddev", 0)
+        bar = "█" * int(sd * 20) + "░" * (20 - int(sd * 20))
+        print(f"  {fmt:8s}: {sd:.4f}  [{bar}]")
+
+    # Save raw results to eval_evidence/ (not gitignored)
+    evidence_dir = os.path.join(
+        os.path.dirname(__file__), "eval_evidence"
+    )
     os.makedirs(evidence_dir, exist_ok=True)
-    timestamp = started_at.strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.datetime.now(datetime.UTC).strftime('%Y%m%d_%H%M%S')
     output_path = os.path.join(evidence_dir, f"benchmark_{timestamp}.json")
 
-    artifact = {
+    # Convert EvaluationResult objects to dicts for serialization
+    raw_results = result.get("results", {})
+    serializable_results = {}
+    for fmt, results_list in raw_results.items():
+        serializable_results[fmt] = []
+        for r in results_list:
+            serializable_results[fmt].append({
+                "question_id": r.question_id,
+                "question_text": r.question_text,
+                "format_name": r.format_name,
+                "plan_success": r.plan_success,
+                "parse_success": r.parse_success,
+                "report_executed": r.report_executed,
+                "error": r.error,
+                "raw_plan": r.raw_plan,
+                "raw_answer": r.raw_answer,
+                "report_config": r.report_config,
+                "report_data": r.report_data,
+                "answer": r.answer,
+                "timings": r.timings,
+                "scores": {k: (list(v) if isinstance(v, tuple) else v) for k, v in r.scores.items()},
+            "token_counts": r.token_counts,
+            "timings": r.timings,
+            })
+
+    result["results"] = serializable_results
+
+    with open(output_path, "w") as f:
+        json.dump(result, f, indent=2, default=str)
+    print(f"\n  Full results saved to: {output_path}")
+
+    # Save a compact summary
+    summary_path = output_path.replace(".json", "_summary.json")
+    summary = {
         "meta": result["meta"],
         "scores": scores,
-        "results": {fmt: [r.to_dict() for r in result["results"][fmt]] for fmt in FORMATS},
+        "variability": {
+            fmt: scores.get(fmt, {}).get("plan_correctness_stddev", 0)
+            for fmt in formats
+        },
     }
-    with open(output_path, "w") as f:
-        json.dump(artifact, f, indent=2, default=str)
+    with open(summary_path, "w") as f:
+        json.dump(summary, f, indent=2)
+    print(f"  Summary saved to: {summary_path}")
 
-    print(f"\n  Evidence artifact: {output_path}")
-    print(f"  Total wall clock: {elapsed:.1f}s")
+    print(f"\n  Total wall clock: {elapsed:.1f}s")
     print("=" * 70)
     print("BENCHMARK COMPLETE")
     print("=" * 70)
-    return 0
+
+    return result
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

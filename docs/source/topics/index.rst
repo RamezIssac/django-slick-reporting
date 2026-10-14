@@ -38,4 +38,3 @@ You saw how to use the ReportView class in the tutorial and you identified the t
    computation_field
    dynamic_model
    pivot_report
-   llm_assistant
