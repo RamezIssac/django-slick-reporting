@@ -294,7 +294,9 @@ class BackendTests(TestCase):
 
     def test_api_key_env_resolution(self):
         with patch.dict(os.environ, {"MY_LLM_KEY": "secret-from-env"}, clear=True):
-            backend = OpenAICompatibleBackend(base_url="https://api.example.com/v1", api_key_env="MY_LLM_KEY", model="m")
+            backend = OpenAICompatibleBackend(
+                base_url="https://api.example.com/v1", api_key_env="MY_LLM_KEY", model="m"
+            )
         self.assertEqual(backend.api_key, "secret-from-env")
         # A literal api_key wins over the env var.
         with patch.dict(os.environ, {"MY_LLM_KEY": "secret-from-env"}, clear=True):
@@ -344,7 +346,9 @@ class BackendTests(TestCase):
         self.assertEqual(captured["auth"], "Bearer or-key")
         self.assertEqual(captured["payload"]["model"], "google/gemma-4-31b-it:free")
         self.assertEqual(captured["payload"]["reasoning"], {"effort": "low"})
-        self.assertEqual(captured["payload"]["messages"], [{"role": "user", "content": "Return the JSON configuration."}])
+        self.assertEqual(
+            captured["payload"]["messages"], [{"role": "user", "content": "Return the JSON configuration."}]
+        )
 
     def test_openrouter_backend_null_content(self):
         # Some providers return explicit null content; treat it as empty text.
