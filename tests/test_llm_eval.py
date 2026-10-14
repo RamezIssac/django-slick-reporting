@@ -400,6 +400,9 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
             "Product 2 sales in the U.S. reached $1,250 while Egypt reached $1,500.",
             "Product 2 sales totaled $2,750 in Q1 2026, with the US at $1,250 and EG at $1,500.",
             "Product 2 sold $1,250 in the US and $1,500 in EG, for a total of $2,750.",
+            "EG outsold the US by $250 ($1,500 vs. $1,250).",
+            "In Q1 2026, EG outsold the US by $250, with $1,500 versus $1,250.",
+            "The US and EG together sold $2,750: $1,250 and $1,500 respectively.",
         ):
             passed, detail = EvaluationScorer.score_answer_correctness(self._answer("product2_us_vs_eg_q1", phrasing))
             self.assertTrue(passed, f"{phrasing} -> {detail}")
@@ -408,6 +411,11 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
             "product2_us_vs_eg_q1", "In Q1 2026, the US and EG recorded $1,500 and $1,250 respectively."
         )
         self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_respectively)[0])
+
+        swapped_after_difference = self._answer(
+            "product2_us_vs_eg_q1", "EG outsold the US by $250 ($1,250 vs. $1,500)."
+        )
+        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_after_difference)[0])
 
         missing = self._answer(
             "product2_us_vs_eg_q1",
