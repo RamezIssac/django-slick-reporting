@@ -827,7 +827,8 @@ def _pair_runs(runs: List[list]) -> List[Tuple[List[str], List[float]]]:
 def _bind_numbers_to_labels(labels: Dict[str, List[str]], text: str) -> Dict[str, List[float]]:
     """
     Bind the numbers of each sentence to its labels via ``_pair_runs``: one label takes
-    every number, one number goes to every label, otherwise they pair positionally.
+    every number, one number goes to every label, otherwise the labels pair positionally
+    with the trailing numbers (a leading total or difference stays unbound).
     A sentence without labels binds its numbers to the last label seen.
     """
     bound: Dict[str, List[float]] = {key: [] for key in labels}
@@ -846,7 +847,7 @@ def _bind_numbers_to_labels(labels: Dict[str, List[str]], text: str) -> Dict[str
                 for key in keys:
                     bound[key].extend(numbers)
             else:
-                for key, value in zip(keys, numbers):
+                for key, value in zip(keys, numbers[-len(keys) :]):
                     bound[key].append(value)
         current = label_runs[-1][3][-1]
     return bound
