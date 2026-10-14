@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- **Assistant label-to-id resolution narrowed to pk lookups** — the assistant resolved a
+  human-readable label to a primary key for any filter on a relation, so a lookup on a relation's
+  concrete field (e.g. ``product__name``) compared a text field against an integer id and silently
+  emptied the report. Resolution now applies only to pk-targeting lookups (``product``,
+  ``product_id``, ``product__id__in``, ...); other lookups keep their string value.
+- **Assistant ``__in`` filters accept a single value** — plain-text plans parse
+  ``product_id__in=Product 1`` to a single scalar, which raised a database error; the value is now
+  wrapped into a list.
+
+### Added
+
+- **LLM data-format evaluation harness** (development tooling) — compares JSON, plain-text and TOON
+  serialization of prompt data on token usage, plan/answer correctness and latency
+  (``python run_benchmark.py``; evidence artifacts under ``eval_evidence/``). No production default
+  changed.
+
 ## [1.5.0] - 2026-10-10
 
 ### New Features
