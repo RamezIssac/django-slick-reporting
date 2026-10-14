@@ -256,11 +256,11 @@ class PromptDataFormatTests(SimpleTestCase):
         )
         self.assertEqual(prompts.answer_prompt("q?", self.REPORTS), expected)
 
-    def test_plain_arm_uses_plain_text_instructions_and_data(self):
-        prompt = prompts.plan_prompt("q?", self.CATALOG, plain_text=True, data_format="plain")
-        self.assertIn("REPORT_MODEL:", prompt)  # plain-text response sections
+    def test_plain_arm_uses_json_instructions_with_plain_data(self):
+        prompt = prompts.plan_prompt("q?", self.CATALOG, data_format="plain")
+        self.assertIn("Output ONLY JSON", prompt)  # base JSON response instructions
         self.assertIn("Note: the data below is plain text", prompt)
-        self.assertNotIn('"identifier"', prompt)  # not JSON
+        self.assertNotIn('"identifier"', prompt)
 
     @unittest.skipUnless(HAS_TOON, "toon-format package not installed")
     def test_toon_arm_uses_json_instructions_with_toon_data(self):
@@ -308,11 +308,13 @@ class ScorerPlanTests(SimpleTestCase):
         self.assertFalse(passed)
         self.assertIn('"date_range": false', detail)
 
-    def test_exclusive_end_date_accepted(self):
+    def test_exclusive_end_date_rejected(self):
+        """end_date is inclusive, so 2026-04-01 is a different window than Q1."""
         cfg = dict(PERFECT_CONFIGS["product1_sales_q1"], end_date="2026-04-01")
         result = make_result("product1_sales_q1", plan_success=True, report_config=cfg)
         passed, detail = EvaluationScorer.score_plan_correctness(result)
-        self.assertTrue(passed, detail)
+        self.assertFalse(passed)
+        self.assertIn('"date_range": false', detail)
 
     def test_monthly_question_requires_time_series(self):
         cfg = dict(PERFECT_CONFIGS["product1_monthly_q1"])
@@ -382,6 +384,16 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
         )
         self.assertFalse(EvaluationScorer.score_answer_correctness(swapped)[0])
 
+        swapped_same_sentence = self._answer(
+            "product2_us_vs_eg_q1", "Product 2 sales in Q1 2026 were US $1,500 and EG $1,250."
+        )
+        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_same_sentence)[0])
+
+        value_before_label = self._answer(
+            "product2_us_vs_eg_q1", "EG recorded $1,500 in sales compared to $1,250 in the US."
+        )
+        self.assertTrue(EvaluationScorer.score_answer_correctness(value_before_label)[0])
+
         missing = self._answer(
             "product2_us_vs_eg_q1",
             "Product 2 sold better in EG than in the US in Q1 2026.",
@@ -401,6 +413,16 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
         )
         self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_month)[0])
 
+        value_before_label = self._answer(
+            "product1_monthly_q1", "Monthly sales were 1,750 in January, 1,750 in February, and 1,500 in March."
+        )
+        self.assertTrue(EvaluationScorer.score_answer_correctness(value_before_label)[0])
+
+        shifted_same_sentence = self._answer(
+            "product1_monthly_q1", "Monthly sales were 1500 in January and 1750 in February and March."
+        )
+        self.assertFalse(EvaluationScorer.score_answer_correctness(shifted_same_sentence)[0])
+
     def test_top_client_label_and_value(self):
         good = self._answer(
             "top_client_product1_q1", "Alpha US bought the most of Product 1 in Q1 2026, with $2,750 in sales."
@@ -414,6 +436,18 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
 
         no_value = self._answer("top_client_product1_q1", "Alpha US bought the most of Product 1 in Q1 2026.")
         self.assertFalse(EvaluationScorer.score_answer_correctness(no_value)[0])
+
+        wrong_subject = self._answer(
+            "top_client_product1_q1", "Beta EG was the top client with $2,750, ahead of Alpha US."
+        )
+        self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_subject)[0])
+
+        wrong_subject_full_proofs = self._answer(
+            "top_client_product1_q1",
+            "Beta EG bought the most of Product 1.",
+            {"Alpha US": 2750, "Beta EG": 1750, "Gamma DE": 500},
+        )
+        self.assertFalse(EvaluationScorer.score_answer_correctness(wrong_subject_full_proofs)[0])
 
     def test_no_answer_fails(self):
         result = make_result("product1_sales_q1", answer=None)
@@ -563,10 +597,10 @@ class ScriptedBackend:
             fmt = self._prompt_format(prompt)
             if self.fail_plan_for == (fmt, qid):
                 raise RuntimeError("scripted backend failure")
-            return self._plan_response(fmt, qid)
+            return self._plan_response(qid)
         question = prompt.split("User question: ", 1)[1].split("\n\nReports used as proof:", 1)[0]
         qid = self._question_id(question)
-        return self._answer_response(prompt, qid)
+        return self._answer_response(qid)
 
     def get_last_usage(self):
         return dict(self._last_usage)
@@ -583,38 +617,19 @@ class ScriptedBackend:
 
     @staticmethod
     def _prompt_format(prompt):
-        if "REPORT_MODEL:" in prompt.split("Available catalog:", 1)[0]:
+        if "Note: the data below is plain text" in prompt:
             return "plain"
         if "TOON (Token-Oriented Object Notation)" in prompt:
             return "toon"
         return "json"
 
     @staticmethod
-    def _plan_response(fmt, qid):
+    def _plan_response(qid):
         cfg = PERFECT_CONFIGS[qid]
-        if fmt == "plain":
-            lines = [
-                "THINKING: deterministic scripted plan",
-                f"REPORT_MODEL: {cfg['report_model']}",
-                f"DATE_FIELD: {cfg['date_field']}",
-                f"START_DATE: {cfg['start_date']}",
-                f"END_DATE: {cfg['end_date']}",
-                f"GROUP_BY: {cfg['group_by']}",
-            ]
-            metric_cols = cfg.get("columns", [])
-            columns = ", ".join(c if isinstance(c, str) else f"{c['method']}({c['field']})" for c in metric_cols)
-            lines.append(f"COLUMNS: {columns}")
-            if cfg.get("time_series_pattern"):
-                lines.append(f"TIME_SERIES_PATTERN: {cfg['time_series_pattern']}")
-                ts_cols = ", ".join(f"{c['method']}({c['field']})" for c in cfg["time_series_columns"])
-                lines.append(f"TIME_SERIES_COLUMNS: {ts_cols}")
-            for key, values in (cfg.get("filters") or {}).items():
-                lines.append(f"FILTERS: {key}={','.join(values)}")
-            return "\n".join(lines)
         return json.dumps({"thinking": "deterministic scripted plan", "report": cfg})
 
     @staticmethod
-    def _answer_response(prompt, qid):
+    def _answer_response(qid):
         answers = {
             "product1_sales_q1": (
                 "Product 1 total sales in Q1 2026 were $5,000.",
@@ -626,12 +641,6 @@ class ScriptedBackend:
             ),
         }
         text, key_numbers = answers[qid]
-        if "ANSWER:" in prompt.split("Reports used as proof:", 1)[0]:
-            kn = "; ".join(f"{k}: {v}" for k, v in key_numbers.items())
-            return (
-                f"ANSWER: {text}\nREASONING: scripted\nPROOF_TITLE: t\n"
-                f"PROOF_REPORT_MODEL: tests.SimpleSales\nPROOF_SUMMARY: s\nPROOF_KEY_NUMBERS: {kn}"
-            )
         return json.dumps(
             {
                 "answer": text,
@@ -719,6 +728,12 @@ class RunEvaluationEndToEndTests(TestCase):
                 self.assertIn("answer_seconds", r.timings)
                 self.assertIn("exec_seconds", r.timings)
                 self.assertIn("total_seconds", r.timings)
+
+        # the plain arm differs only in data serialization: base JSON response instructions
+        plain_prompts = [p for p in backend.calls if "Note: the data below is plain text" in p]
+        self.assertEqual(len(plain_prompts), 8)
+        for p in plain_prompts:
+            self.assertTrue(p.startswith((prompts.PLAN_SYSTEM_PROMPT, prompts.ANSWER_SYSTEM_PROMPT)), p[:80])
 
         # paired repetitions: rep 0 and rep 1 used identical prompts per format/question
         json_plans = [r.raw_plan for r in result["results"]["json"] if r.question_id == "product1_sales_q1"]

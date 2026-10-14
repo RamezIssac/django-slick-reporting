@@ -71,7 +71,7 @@ def main():
     served = query_served_models()
     backend = OpenAICompatibleBackend(
         api_url=ENDPOINT,
-        model="local",  # llama.cpp serves a single model; the served name is recorded per response
+        model=served[0] if served else "local",  # pinned to the served id; also recorded per response
         temperature=0.2,
         timeout=300,
         enable_thinking=False,
@@ -91,12 +91,13 @@ def main():
 
     prepare_database()
 
+    started_at = datetime.datetime.now(datetime.timezone.utc)
     start = time.perf_counter()
     result = run_evaluation(backend=backend, formats=FORMATS, repetitions=REPETITIONS)
     elapsed = time.perf_counter() - start
 
     result["meta"]["elapsed_seconds"] = round(elapsed, 2)
-    result["meta"]["wall_clock_start_utc"] = datetime.datetime.now(datetime.UTC).isoformat()
+    result["meta"]["wall_clock_start_utc"] = started_at.isoformat()
     result["meta"]["served_models_endpoint"] = served
 
     scores = result.get("scores", {})
@@ -112,7 +113,6 @@ def main():
         print(f"    Exact value match rate:   {s.get('exact_value_match_rate', 0) * 100:.0f}%")
         print(f"    Answer correctness rate:  {s.get('answer_correctness_rate', 0) * 100:.0f}%")
         print(f"    Avg normalized plan:      {s.get('avg_normalized_plan_score', 0):.2f}")
-        print(f"    Plan correctness stddev:  {s.get('plan_correctness_stddev', 0):.4f}")
         print(f"    Avg plan prompt tokens:   {s.get('avg_plan_prompt_tokens', 0):.0f}")
         print(f"    Avg answer prompt tokens: {s.get('avg_answer_prompt_tokens', 0):.0f}")
         print(f"    Avg total tokens/quest.:  {s.get('avg_total_tokens_per_question', 0):.0f}")
@@ -122,7 +122,7 @@ def main():
 
     evidence_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "eval_evidence")
     os.makedirs(evidence_dir, exist_ok=True)
-    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d_%H%M%S")
+    timestamp = started_at.strftime("%Y%m%d_%H%M%S")
     output_path = os.path.join(evidence_dir, f"benchmark_{timestamp}.json")
 
     artifact = {

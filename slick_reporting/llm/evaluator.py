@@ -40,9 +40,6 @@ TOLERANCE = 0.01
 #: The agreed evaluation window.
 Q1_START = datetime.date(2026, 1, 1)
 Q1_END = datetime.date(2026, 3, 31)
-#: The generator treats end_date as inclusive; a plan ending 2026-04-01 uses
-#: the exclusive-upper-bound convention and covers the same window.
-Q1_END_EXCLUSIVE = datetime.date(2026, 4, 1)
 
 REPORT_MODEL = "tests.SimpleSales"
 CATALOG_MODELS = ["tests.SimpleSales", "tests.Client", "tests.Product"]
@@ -425,7 +422,7 @@ class EvaluationScorer:
         The answer must state the expected numbers/labels, not just mention
         the product.  Numbers are compared numerically (``$5,000.00`` == 5000);
         grouped expectations must pair the label with its value either in the
-        structured ``key_numbers`` or in the same sentence-level text segment.
+        structured ``key_numbers`` or via ``_bind_numbers_to_labels``.
         """
         if not result.answer or not isinstance(result.answer, dict):
             return False, "no answer"
@@ -444,20 +441,18 @@ class EvaluationScorer:
         if "expected_quantity" in expected:
             scores["quantity"] = _number_stated(expected["expected_quantity"], answer_text, key_numbers)
         if "expected_country_values" in expected:
-            for country, exp_val in expected["expected_country_values"].items():
-                aliases = _COUNTRY_ALIASES.get(country, [country.lower()])
-                scores[f"country_{country}"] = _label_value_stated(aliases, exp_val, answer_text, key_numbers)
+            labels = {c: _COUNTRY_ALIASES.get(c, [c.lower()]) for c in expected["expected_country_values"]}
+            scores.update(
+                _labels_paired(labels, expected["expected_country_values"], answer_text, key_numbers, "country_")
+            )
         if "expected_monthly" in expected:
-            for month, exp_val in expected["expected_monthly"].items():
-                aliases = _MONTH_ALIASES.get(month, [month])
-                scores[f"month_{month}"] = _label_value_stated(aliases, exp_val, answer_text, key_numbers)
+            labels = {m: _MONTH_ALIASES.get(m, [m]) for m in expected["expected_monthly"]}
+            scores.update(_labels_paired(labels, expected["expected_monthly"], answer_text, key_numbers, "month_"))
         if "expected_top_client" in expected:
             top = expected["expected_top_client"]
-            aliases = [top.lower()] + [top.split()[0].lower()]
-            scores["top_client_label"] = _label_stated(aliases, answer_text, key_numbers)
-            top_value = expected.get("expected_client_values", {}).get(top)
-            if top_value is not None:
-                scores["top_client_value"] = _number_stated(top_value, answer_text, key_numbers)
+            client_values = expected["expected_client_values"]
+            labels = {c: [c.lower(), c.split()[0].lower()] for c in client_values}
+            scores["top_client"] = _labels_paired(labels, {top: client_values[top]}, answer_text, {}, "")[top]
 
         if not scores:
             return False, "no scoring criteria matched"
@@ -496,11 +491,6 @@ class EvaluationScorer:
             return (plan or 0) + (answer or 0)
 
         token_totals = [t for t in (tokens_total(r) for r in results) if t is not None]
-
-        plan_rates = [1.0 if r.scores.get("plan_correctness", (False, ""))[0] else 0.0 for r in results]
-        mean_rate = sum(plan_rates) / len(plan_rates)
-        std_dev = (sum((x - mean_rate) ** 2 for x in plan_rates) / len(plan_rates)) ** 0.5
-
         normalized = [r.scores.get("normalized_plan", 0.0) for r in results]
 
         return {
@@ -511,7 +501,6 @@ class EvaluationScorer:
             "exact_value_match_rate": rate("result_values"),
             "answer_correctness_rate": rate("answer_correctness"),
             "avg_normalized_plan_score": round(sum(normalized) / len(normalized), 2) if normalized else 0.0,
-            "plan_correctness_stddev": round(std_dev, 4),
             # headline token metrics: what each format costs in the prompt
             "avg_plan_prompt_tokens": avg_present("plan_prompt_tokens"),
             "avg_plan_completion_tokens": avg_present("plan_completion_tokens"),
@@ -592,10 +581,7 @@ def _plan_date_range_matches(cfg: Dict[str, Any], start: Optional[datetime.date]
         return True
     plan_start = _plan_date(cfg.get("start_date"))
     plan_end = _plan_date(cfg.get("end_date"))
-    if plan_start != start:
-        return False
-    # Inclusive (2026-03-31) and exclusive (2026-04-01) conventions both cover Q1.
-    return plan_end in {end, Q1_END_EXCLUSIVE}
+    return plan_start == start and plan_end == end
 
 
 def _plan_metric_matches(cfg: Dict[str, Any], metric_field: Optional[str]) -> bool:
@@ -765,32 +751,53 @@ def _number_stated(expected: float, answer_text: str, key_numbers: Dict[str, flo
     return any(abs(c - float(expected)) < TOLERANCE for c in candidates)
 
 
-def _text_segments(text: str) -> List[str]:
-    """Sentence-level segments: split on newlines, semicolons, '. ', ', '."""
-    return [seg for seg in re.split(r"[\n;]|\.\s+|,\s+", text) if seg.strip()]
+_CLAUSE_SPLIT_RE = re.compile(r"[\n;]|\.\s+|,\s+|\s+(?:and|while|whereas|than|compared (?:to|with)|versus|vs\.?)\s+")
 
 
-def _label_in_text(aliases: List[str], text: str) -> bool:
-    lowered = text.lower()
-    return any(re.search(rf"\b{re.escape(alias)}\b", lowered) for alias in aliases)
+def _bind_numbers_to_labels(labels: Dict[str, List[str]], text: str) -> Dict[str, List[float]]:
+    """
+    Bind every number in ``text`` to exactly one label: the nearest label in
+    its clause (ties go to the preceding one), else the last label of an
+    earlier clause.  Numbers before the first label stay unbound.
+    """
+    bound: Dict[str, List[float]] = {key: [] for key in labels}
+    current = None
+    for clause in _CLAUSE_SPLIT_RE.split(text.lower()):
+        hits = [
+            (m.start(), m.end(), key)
+            for key, aliases in labels.items()
+            for alias in aliases
+            for m in re.finditer(rf"\b{re.escape(alias)}\b", clause)
+        ]
+        for number in _NUMBER_RE.finditer(clause):
+            owner = current
+            if hits:
+                owner = min(
+                    hits,
+                    key=lambda h: (max(number.start() - h[1], h[0] - number.end(), 0), h[0] > number.start()),
+                )[2]
+            value = _coerce_float(number.group(0))
+            if owner is not None and value is not None:
+                bound[owner].append(value)
+        if hits:
+            current = max(hits)[2]
+    return bound
 
 
-def _label_stated(aliases: List[str], answer_text: str, key_numbers: Dict[str, float]) -> bool:
-    if _label_in_text(aliases, answer_text):
-        return True
-    return any(any(alias in key.lower() for alias in aliases) for key in key_numbers)
-
-
-def _label_value_stated(aliases: List[str], expected: float, answer_text: str, key_numbers: Dict[str, float]) -> bool:
-    """A label paired with its expected value in key_numbers or one text segment."""
-    for key, value in key_numbers.items():
-        if any(alias in key.lower() for alias in aliases) and abs(value - float(expected)) < TOLERANCE:
-            return True
-    for segment in _text_segments(answer_text):
-        if _label_in_text(aliases, segment):
-            if any(abs(n - float(expected)) < TOLERANCE for n in _extract_numbers(segment)):
-                return True
-    return False
+def _labels_paired(
+    labels: Dict[str, List[str]],
+    expected: Dict[str, float],
+    answer_text: str,
+    key_numbers: Dict[str, float],
+    prefix: str,
+) -> Dict[str, bool]:
+    """Per expected label: its value is in a matching key_numbers entry or bound to it in the text."""
+    bound = _bind_numbers_to_labels(labels, answer_text)
+    scores = {}
+    for key, exp_val in expected.items():
+        from_keys = [v for k, v in key_numbers.items() if any(alias in k.lower() for alias in labels[key])]
+        scores[f"{prefix}{key}"] = any(abs(n - float(exp_val)) < TOLERANCE for n in from_keys + bound[key])
+    return scores
 
 
 # ---------------------------------------------------------------------------
@@ -924,20 +931,19 @@ def _run_single_question(
     calls are preserved and scored like any other result.
     """
     from . import prompts
-    from .executor import parse_llm_json, parse_llm_plain_text_answer, parse_llm_plain_text_plan
+    from .executor import parse_llm_json
 
-    plain_text = fmt == "plain"
     question_start = time.perf_counter()
     try:
         # ---- Stage 1: plan ----
-        plan_prompt_text = prompts.plan_prompt(question_text, catalog, plain_text=plain_text, data_format=fmt)
+        plan_prompt_text = prompts.plan_prompt(question_text, catalog, data_format=fmt)
         plan_start = time.perf_counter()
         plan_raw = backend.complete(plan_prompt_text)
         result.timings["plan_seconds"] = round(time.perf_counter() - plan_start, 4)
         result.raw_plan = plan_raw or ""  # untruncated
         _record_usage(backend, result, "plan")
 
-        plan = parse_llm_plain_text_plan(plan_raw) if plain_text else parse_llm_json(plan_raw)
+        plan = parse_llm_json(plan_raw)
         result.parse_success = isinstance(plan, dict)
         if isinstance(plan, dict) and plan.get("report"):
             result.plan_success = True
@@ -962,16 +968,14 @@ def _run_single_question(
                     "columns": result.report_data.get("columns", []),
                 }
             ]
-            answer_prompt_text = prompts.answer_prompt(
-                question_text, reports_for_answer, plain_text=plain_text, data_format=fmt
-            )
+            answer_prompt_text = prompts.answer_prompt(question_text, reports_for_answer, data_format=fmt)
             answer_start = time.perf_counter()
             answer_raw = backend.complete(answer_prompt_text)
             result.timings["answer_seconds"] = round(time.perf_counter() - answer_start, 4)
             result.raw_answer = answer_raw or ""  # untruncated
             _record_usage(backend, result, "answer")
 
-            parsed = parse_llm_plain_text_answer(answer_raw) if plain_text else parse_llm_json(answer_raw)
+            parsed = parse_llm_json(answer_raw)
             result.answer = parsed if isinstance(parsed, dict) else {}
     except Exception as exc:
         result.error = f"Evaluation error: {exc}"
