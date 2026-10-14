@@ -791,12 +791,12 @@ class RunEvaluationEndToEndTests(TestCase):
 
     def test_full_run_all_formats(self):
         backend = ScriptedBackend()
-        result = run_evaluation(
-            backend=backend, formats=["json", "plain", "toon"], repetitions=2, question_ids=self.QIDS
-        )
+        # toon-format needs Python >= 3.10; the 3.9 CI leg runs without the TOON arm.
+        formats = ["json", "plain", "toon"] if HAS_TOON else ["json", "plain"]
+        result = run_evaluation(backend=backend, formats=formats, repetitions=2, question_ids=self.QIDS)
 
         # structure: every format x question x repetition is present
-        for fmt in ["json", "plain", "toon"]:
+        for fmt in formats:
             self.assertEqual(len(result["results"][fmt]), 4)
             for r in result["results"][fmt]:
                 self.assertTrue(r.parse_success, r.raw_plan)
@@ -832,7 +832,7 @@ class RunEvaluationEndToEndTests(TestCase):
         self.assertEqual(result["meta"]["sampling"], {"temperature": 0.2})
 
         # aggregates carry the headline token metrics and failure list
-        for fmt in ["json", "plain", "toon"]:
+        for fmt in formats:
             s = result["scores"][fmt]
             self.assertEqual(s["parse_success_rate"], 1.0)
             self.assertEqual(s["plan_calls_made"], 4)
