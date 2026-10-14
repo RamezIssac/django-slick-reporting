@@ -824,13 +824,21 @@ def _pair_runs(runs: List[list]) -> List[Tuple[List[str], List[float]]]:
     return list(entries.values())
 
 
-def _bind_numbers_to_labels(labels: Dict[str, List[str]], text: str) -> Dict[str, List[float]]:
+def _bind_numbers_to_labels(
+    labels: Dict[str, List[str]], text: str, expected: Dict[str, float]
+) -> Dict[str, List[float]]:
     """
     Bind the numbers of each sentence to its labels via ``_pair_runs``: one label takes
     every number, one number goes to every label, otherwise the labels pair positionally
-    with the trailing numbers (a leading total or difference stays unbound).
+    with the contiguous number window matching the most ``expected`` values (earliest on ties).
     A sentence without labels binds its numbers to the last label seen.
     """
+
+    def window_hits(keys, window):
+        return sum(
+            key in expected and abs(value - float(expected[key])) < TOLERANCE for key, value in zip(keys, window)
+        )
+
     bound: Dict[str, List[float]] = {key: [] for key in labels}
     current = None
     for sentence in _SENTENCE_SPLIT_RE.split(text):
@@ -847,7 +855,8 @@ def _bind_numbers_to_labels(labels: Dict[str, List[str]], text: str) -> Dict[str
                 for key in keys:
                     bound[key].extend(numbers)
             else:
-                for key, value in zip(keys, numbers[-len(keys) :]):
+                windows = [numbers[w : w + len(keys)] for w in range(max(1, len(numbers) - len(keys) + 1))]
+                for key, value in zip(keys, max(windows, key=lambda window: window_hits(keys, window))):
                     bound[key].append(value)
         current = label_runs[-1][3][-1]
     return bound
@@ -861,7 +870,7 @@ def _labels_paired(
     prefix: str,
 ) -> Dict[str, bool]:
     """Per expected label: its value is in a matching key_numbers entry or bound to it in the text."""
-    bound = _bind_numbers_to_labels(labels, answer_text)
+    bound = _bind_numbers_to_labels(labels, answer_text, expected)
     scores = {}
     for key, exp_val in expected.items():
         from_keys = [v for k, v in key_numbers.items() if any(alias in k.lower() for alias in labels[key])]
