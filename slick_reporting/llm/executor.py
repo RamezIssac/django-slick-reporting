@@ -206,7 +206,7 @@ def _is_pk_lookup(report_model, key):
             field = model._meta.get_field(part)
             model = getattr(field, "related_model", None) or model
         return bool(field is not None and field.is_relation)
-    except Exception:
+    except Exception:  # noqa: BLE001 - an unresolvable path means "not a pk lookup"
         return False
 
 

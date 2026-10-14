@@ -20,11 +20,11 @@ from decimal import Decimal
 
 __all__ = [
     "DATA_FORMATS",
-    "serialize_for_prompt",
     "dumps_json",
     "dumps_plain",
     "dumps_toon",
     "normalize_jsonable",
+    "serialize_for_prompt",
 ]
 
 #: Prompt-side data serialization formats that can be compared.

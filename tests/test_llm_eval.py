@@ -13,6 +13,7 @@ Run with:  python runtests.py tests.test_llm_eval
 
 import json
 import unittest
+from typing import ClassVar
 
 from django.test import SimpleTestCase, TestCase
 
@@ -31,7 +32,7 @@ from slick_reporting.llm.executor import run_llm_report_config
 from slick_reporting.llm.toon_data import dumps_json, dumps_plain, normalize_jsonable, serialize_for_prompt
 
 try:
-    import toon_format  # noqa: F401
+    import toon_format
 
     HAS_TOON = True
 except ImportError:
@@ -177,7 +178,7 @@ class DeterministicFixtureTests(TestCase):
 class DataSerializationTests(SimpleTestCase):
     """Prompt-side serialization: json (base default), plain, toon."""
 
-    SAMPLE = {
+    SAMPLE: ClassVar[dict] = {
         "columns": ["name", "value__sum"],
         "data": [{"name": "Product 1", "value__sum": 5000.0}, {"name": "Product 2", "value__sum": 2750.0}],
     }
@@ -243,8 +244,10 @@ class PromptDataFormatTests(SimpleTestCase):
     """plan_prompt/answer_prompt select data serialization per arm; the
     default stays byte-identical to the base branch."""
 
-    CATALOG = {"models": [{"identifier": "tests.SimpleSales", "fields": [{"name": "value", "type": "DecimalField"}]}]}
-    REPORTS = [
+    CATALOG: ClassVar[dict] = {
+        "models": [{"identifier": "tests.SimpleSales", "fields": [{"name": "value", "type": "DecimalField"}]}]
+    }
+    REPORTS: ClassVar[list] = [
         {"config": {"group_by": "product"}, "columns": [{"name": "name"}], "data": [{"name": "P1", "value__sum": 5}]}
     ]
 
@@ -336,7 +339,7 @@ class ScorerPlanTests(SimpleTestCase):
         cfg.pop("time_series_pattern")
         cfg.pop("time_series_columns")
         result = make_result("product1_monthly_q1", plan_success=True, report_config=cfg)
-        passed, detail = EvaluationScorer.score_plan_correctness(result)
+        passed, _detail = EvaluationScorer.score_plan_correctness(result)
         self.assertFalse(passed)
         score = EvaluationScorer.score_normalized_plan(result)
         self.assertGreater(score, 0.0)
@@ -797,7 +800,7 @@ class RunEvaluationEndToEndTests(TestCase):
     """run_evaluation end to end with a scripted backend: structure, token
     capture, paired repetitions, and failure persistence."""
 
-    QIDS = ["product1_sales_q1", "product1_monthly_q1"]
+    QIDS: ClassVar[list] = ["product1_sales_q1", "product1_monthly_q1"]
 
     @classmethod
     def setUpTestData(cls):

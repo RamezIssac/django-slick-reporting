@@ -69,7 +69,7 @@ class LLMBackend(ABC):
 
     def get_last_model(self):
         """Model identifier the provider reports for the last ``complete()`` call, if any."""
-        return None
+        return
 
 
 class EchoBackend(LLMBackend):

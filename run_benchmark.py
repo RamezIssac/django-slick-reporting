@@ -27,20 +27,20 @@ ENDPOINT = "http://192.168.178.100:8080/v1/chat/completions"
 
 os.environ["DJANGO_SETTINGS_MODULE"] = "tests.eval_settings"
 
-import django  # noqa: E402
+import django
 
 django.setup()
 
-from django.conf import settings  # noqa: E402
-from django.core.management import call_command  # noqa: E402
+from django.conf import settings
+from django.core.management import call_command
 
-from slick_reporting.llm.backends import OpenAICompatibleBackend  # noqa: E402
-from slick_reporting.llm.evaluator import (  # noqa: E402
+from slick_reporting.llm.backends import OpenAICompatibleBackend
+from slick_reporting.llm.evaluator import (
     EvaluationFixture,
     create_fixture_data,
     run_evaluation,
 )
-from slick_reporting.llm.toon_data import TOON_PACKAGE, TOON_PACKAGE_PIN  # noqa: E402
+from slick_reporting.llm.toon_data import TOON_PACKAGE, TOON_PACKAGE_PIN
 
 FORMATS = ["json", "plain", "toon"]
 REPETITIONS = 3
@@ -53,7 +53,7 @@ def query_served_models():
         with urllib.request.urlopen(url, timeout=10) as response:
             payload = json.loads(response.read().decode("utf-8"))
         return [m.get("id") or m.get("name") for m in payload.get("data") or payload.get("models") or []]
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - best-effort probe; the run proceeds with a warning
         print(f"WARNING: could not query served models from {url}: {exc}")
         return []
 

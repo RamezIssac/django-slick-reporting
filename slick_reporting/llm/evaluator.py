@@ -19,6 +19,8 @@ This module is evaluation tooling; it is wired to the ``tests`` app models
 (``tests.SimpleSales`` and friends) which carry the deterministic fixture.
 """
 
+from __future__ import annotations
+
 import calendar
 import datetime
 import hashlib
@@ -28,7 +30,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 from ..generator import ReportGenerator
 from .executor import run_llm_report_config
@@ -76,7 +78,7 @@ class FixtureEntry:
 # monthly time series buckets rows into the period *ending* on each boundary
 # date (a row on 2026-03-01 lands in the column labeled "February 2026"), so
 # boundary dates would make generator output diverge from calendar months.
-DETERMINISTIC_FIXTURE: List[FixtureEntry] = [
+DETERMINISTIC_FIXTURE: list[FixtureEntry] = [
     # ---- Product 1: total quantity = 100, total value = 5000 (price=50) ----
     FixtureEntry("Q1-P1-001", "2026-01-05", "Alpha US", "US", "Product 1", 20, 50.00),
     FixtureEntry("Q1-P1-002", "2026-01-15", "Beta EG", "EG", "Product 1", 15, 50.00),
@@ -116,7 +118,7 @@ _TS_KEY_RE = re.compile(r"^(?P<metric>.+)TS(?P<ymd>\d{8})$")
 _NUMBER_RE = re.compile(r"-?\$?\d[\d,]*(?:\.\d+)?")
 
 
-def _build_fixture_data() -> Tuple[List[FixtureEntry], Dict[str, Dict[str, Any]]]:
+def _build_fixture_data() -> tuple[list[FixtureEntry], dict[str, dict[str, Any]]]:
     """
     Return (fixture entries, expected results derived from those entries).
 
@@ -126,11 +128,11 @@ def _build_fixture_data() -> Tuple[List[FixtureEntry], Dict[str, Dict[str, Any]]
     """
     entries = DETERMINISTIC_FIXTURE
 
-    product_total_value: Dict[str, float] = defaultdict(float)
-    product_total_quantity: Dict[str, int] = defaultdict(int)
-    product_monthly_value: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
-    product_client_value: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
-    product_country_value: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    product_total_value: dict[str, float] = defaultdict(float)
+    product_total_quantity: dict[str, int] = defaultdict(int)
+    product_monthly_value: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    product_client_value: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    product_country_value: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
 
     for e in entries:
         val = e.quantity * e.price
@@ -142,7 +144,7 @@ def _build_fixture_data() -> Tuple[List[FixtureEntry], Dict[str, Dict[str, Any]]
         product_country_value[e.product_name][e.client_country] += val
 
     p1_client_values = dict(product_client_value.get("Product 1", {}))
-    expected: Dict[str, Dict[str, Any]] = {
+    expected: dict[str, dict[str, Any]] = {
         "product1_sales_q1": {
             "question": "What are the total sales for Product 1 in Q1 2026?",
             "checks": {
@@ -286,19 +288,19 @@ class EvaluationResult:
     repetition: int = 0
     raw_plan: str = ""
     raw_answer: str = ""
-    timings: Dict[str, float] = field(default_factory=dict)
-    token_counts: Dict[str, int] = field(default_factory=dict)
-    served_model: Optional[str] = None
+    timings: dict[str, float] = field(default_factory=dict)
+    token_counts: dict[str, int] = field(default_factory=dict)
+    served_model: str | None = None
     plan_success: bool = False
     parse_success: bool = False
     report_executed: bool = False
-    report_config: Optional[Dict[str, Any]] = None
-    report_data: Optional[Dict[str, Any]] = None
-    answer: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    scores: Dict[str, Any] = field(default_factory=dict)
+    report_config: dict[str, Any] | None = None
+    report_data: dict[str, Any] | None = None
+    answer: dict[str, Any] | None = None
+    error: str | None = None
+    scores: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """JSON-safe dict for the benchmark evidence artifact."""
         return {
             "question_id": self.question_id,
@@ -329,7 +331,7 @@ class EvaluationScorer:
 
     # -- plan / parse / execution ------------------------------------------
     @staticmethod
-    def score_plan_correctness(result: EvaluationResult) -> Tuple[bool, str]:
+    def score_plan_correctness(result: EvaluationResult) -> tuple[bool, str]:
         """
         Strict plan check: report model, group_by, time-series pattern,
         product filter, Q1 2026 date range, and metric must all be correct.
@@ -344,7 +346,7 @@ class EvaluationScorer:
         return (all(detail.values()), json.dumps(detail))
 
     @staticmethod
-    def _plan_dimension_results(cfg: Dict[str, Any], checks: Dict[str, Any]) -> Dict[str, bool]:
+    def _plan_dimension_results(cfg: dict[str, Any], checks: dict[str, Any]) -> dict[str, bool]:
         return {
             "report_model": cfg.get("report_model") == checks.get("report_model"),
             "group_by": (cfg.get("group_by") or None) == checks.get("group_by"),
@@ -366,13 +368,13 @@ class EvaluationScorer:
         return round(sum(1 for v in detail.values() if v) / len(detail), 2) if detail else 0.0
 
     @staticmethod
-    def score_parse_success(result: EvaluationResult) -> Tuple[bool, str]:
+    def score_parse_success(result: EvaluationResult) -> tuple[bool, str]:
         if result.parse_success:
             return True, "parsed"
         return False, "parse failure"
 
     @staticmethod
-    def score_report_execution(result: EvaluationResult) -> Tuple[bool, str]:
+    def score_report_execution(result: EvaluationResult) -> tuple[bool, str]:
         if result.report_executed:
             return True, "executed"
         if result.error:
@@ -381,7 +383,7 @@ class EvaluationScorer:
 
     # -- result values ------------------------------------------------------
     @staticmethod
-    def score_result_values(result: EvaluationResult) -> Tuple[bool, str]:
+    def score_result_values(result: EvaluationResult) -> tuple[bool, str]:
         """Exact report values and labels, read from the real report payload."""
         expected = EvaluationFixture.get_expected(result.question_id)
         if not expected:
@@ -389,7 +391,7 @@ class EvaluationScorer:
         if not result.report_executed or not result.report_data:
             return False, "no report data"
 
-        scores: Dict[str, bool] = {}
+        scores: dict[str, bool] = {}
         if "expected_value" in expected:
             actual = _extract_aggregate(result, "value")
             scores["value"] = actual is not None and _num_eq(actual, expected["expected_value"])
@@ -418,7 +420,7 @@ class EvaluationScorer:
 
     # -- answer -------------------------------------------------------------
     @staticmethod
-    def score_answer_correctness(result: EvaluationResult) -> Tuple[bool, str]:
+    def score_answer_correctness(result: EvaluationResult) -> tuple[bool, str]:
         """
         The answer must state the expected numbers/labels, not just mention
         the product.  Numbers are compared numerically (``$5,000.00`` == 5000);
@@ -435,7 +437,7 @@ class EvaluationScorer:
             return False, "no expected data"
 
         key_numbers = _answer_key_numbers(result.answer)
-        scores: Dict[str, bool] = {}
+        scores: dict[str, bool] = {}
 
         if "expected_value" in expected:
             scores["value"] = _number_stated(expected["expected_value"], answer_text, key_numbers)
@@ -463,7 +465,7 @@ class EvaluationScorer:
 
     # -- aggregation --------------------------------------------------------
     @staticmethod
-    def aggregate_scores(results: List[EvaluationResult]) -> Dict[str, Any]:
+    def aggregate_scores(results: list[EvaluationResult]) -> dict[str, Any]:
         """Aggregate per-format scores, token counts, latencies and failures."""
         total = len(results)
         if total == 0:
@@ -531,7 +533,7 @@ class EvaluationScorer:
 # ---------------------------------------------------------------------------
 # Plan-check helpers
 # ---------------------------------------------------------------------------
-def _plan_filter_matches_product(cfg: Dict[str, Any], product_name: Optional[str]) -> bool:
+def _plan_filter_matches_product(cfg: dict[str, Any], product_name: str | None) -> bool:
     """The plan filters by the expected product (by name or resolved id)."""
     if not product_name:
         return True
@@ -552,17 +554,17 @@ def _plan_filter_matches_product(cfg: Dict[str, Any], product_name: Optional[str
     return False
 
 
-def _product_ids_for_name(product_name: str) -> Optional[set]:
+def _product_ids_for_name(product_name: str) -> set | None:
     """Resolve a product name to database ids; None when no DB is available."""
     try:
         from tests.models import Product
 
         return set(Product.objects.filter(name=product_name).values_list("id", flat=True))
-    except Exception:
+    except Exception:  # noqa: BLE001 - DB access is best-effort; any failure means "unknown ids"
         return None
 
 
-def _plan_date(value: Any) -> Optional[datetime.date]:
+def _plan_date(value: Any) -> datetime.date | None:
     if isinstance(value, datetime.datetime):
         return value.date()
     if isinstance(value, datetime.date):
@@ -575,7 +577,7 @@ def _plan_date(value: Any) -> Optional[datetime.date]:
     return None
 
 
-def _plan_date_range_matches(cfg: Dict[str, Any], start: Optional[datetime.date], end: Optional[datetime.date]) -> bool:
+def _plan_date_range_matches(cfg: dict[str, Any], start: datetime.date | None, end: datetime.date | None) -> bool:
     if not start or not end:
         return True
     plan_start = _plan_date(cfg.get("start_date"))
@@ -583,7 +585,7 @@ def _plan_date_range_matches(cfg: Dict[str, Any], start: Optional[datetime.date]
     return plan_start == start and plan_end == end
 
 
-def _plan_metric_matches(cfg: Dict[str, Any], metric_field: Optional[str]) -> bool:
+def _plan_metric_matches(cfg: dict[str, Any], metric_field: str | None) -> bool:
     """The plan aggregates the expected field with Sum in some column."""
     if not metric_field:
         return True
@@ -603,7 +605,7 @@ def _plan_metric_matches(cfg: Dict[str, Any], metric_field: Optional[str]) -> bo
 # ---------------------------------------------------------------------------
 # Report-payload extraction helpers
 # ---------------------------------------------------------------------------
-def _num_eq(actual: Optional[float], expected: float) -> bool:
+def _num_eq(actual: float | None, expected: float) -> bool:
     if actual is None:
         return False
     try:
@@ -612,7 +614,7 @@ def _num_eq(actual: Optional[float], expected: float) -> bool:
         return False
 
 
-def _rows(result: EvaluationResult) -> List[Dict[str, Any]]:
+def _rows(result: EvaluationResult) -> list[dict[str, Any]]:
     if not result.report_data or not isinstance(result.report_data, dict):
         return []
     data = result.report_data.get("data") or []
@@ -621,7 +623,7 @@ def _rows(result: EvaluationResult) -> List[Dict[str, Any]]:
     return [row for row in data if isinstance(row, dict)]
 
 
-def _extract_aggregate(result: EvaluationResult, field_name: str) -> Optional[float]:
+def _extract_aggregate(result: EvaluationResult, field_name: str) -> float | None:
     """
     Sum the exact ``<field>__sum`` column across rows.
 
@@ -642,10 +644,10 @@ def _extract_aggregate(result: EvaluationResult, field_name: str) -> Optional[fl
     return total if found else None
 
 
-def _extract_group_values(result: EvaluationResult, label_keys: Tuple[str, ...], field_name: str) -> Dict[str, float]:
+def _extract_group_values(result: EvaluationResult, label_keys: tuple[str, ...], field_name: str) -> dict[str, float]:
     """Map group label -> summed ``<field>__sum`` across report rows."""
     value_keys = (f"{field_name}__sum", f"{field_name}__sum__sum")
-    values: Dict[str, float] = {}
+    values: dict[str, float] = {}
     for row in _rows(result):
         label = next((row[k] for k in label_keys if k in row and row[k] not in (None, "")), None)
         if label is None:
@@ -660,7 +662,7 @@ def _extract_group_values(result: EvaluationResult, label_keys: Tuple[str, ...],
     return values
 
 
-def _extract_monthly_values(result: EvaluationResult, field_name: str) -> Dict[str, float]:
+def _extract_monthly_values(result: EvaluationResult, field_name: str) -> dict[str, float]:
     """
     Map calendar month (``2026-01``) -> value from real time-series keys.
 
@@ -676,7 +678,7 @@ def _extract_monthly_values(result: EvaluationResult, field_name: str) -> Dict[s
             columns_meta[str(col.get("name"))] = str(col.get("verbose_name", ""))
 
     prefix = f"{field_name}__sumTS"
-    values: Dict[str, float] = {}
+    values: dict[str, float] = {}
     for row in _rows(result):
         for key, value in row.items():
             key = str(key)
@@ -695,7 +697,7 @@ def _extract_monthly_values(result: EvaluationResult, field_name: str) -> Dict[s
     return values
 
 
-def _month_label_for_ts(ymd: str, verbose_name: str) -> Optional[str]:
+def _month_label_for_ts(ymd: str, verbose_name: str) -> str | None:
     m = _MONTH_NAME_RE.search(verbose_name or "")
     if m:
         month_number = list(calendar.month_name).index(m.group(1))
@@ -711,9 +713,9 @@ def _month_label_for_ts(ymd: str, verbose_name: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 # Answer-text extraction helpers
 # ---------------------------------------------------------------------------
-def _answer_key_numbers(answer: Dict[str, Any]) -> Dict[str, float]:
+def _answer_key_numbers(answer: dict[str, Any]) -> dict[str, float]:
     """Numeric entries from the structured proofs' ``key_numbers``."""
-    numbers: Dict[str, float] = {}
+    numbers: dict[str, float] = {}
     for proof in answer.get("proofs") or []:
         if not isinstance(proof, dict):
             continue
@@ -724,7 +726,7 @@ def _answer_key_numbers(answer: Dict[str, Any]) -> Dict[str, float]:
     return numbers
 
 
-def _coerce_float(value: Any) -> Optional[float]:
+def _coerce_float(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, (int, float, Decimal)):
@@ -737,7 +739,7 @@ def _coerce_float(value: Any) -> Optional[float]:
     return None
 
 
-def _extract_numbers(text: str) -> List[float]:
+def _extract_numbers(text: str) -> list[float]:
     """Every numeric literal in ``text`` (``$`` and ``,`` separators tolerated)."""
     numbers = []
     for match in _NUMBER_RE.finditer(text):
@@ -747,7 +749,7 @@ def _extract_numbers(text: str) -> List[float]:
     return numbers
 
 
-def _number_stated(expected: float, answer_text: str, key_numbers: Dict[str, float]) -> bool:
+def _number_stated(expected: float, answer_text: str, key_numbers: dict[str, float]) -> bool:
     """The expected number appears in key_numbers values or in the answer text."""
     candidates = list(key_numbers.values()) + _extract_numbers(answer_text)
     return any(abs(c - float(expected)) < TOLERANCE for c in candidates)
@@ -758,7 +760,7 @@ _SENTENCE_SPLIT_RE = re.compile(r"[\n;]|\.\s+(?=[A-Z])")
 _NOISE_RE = re.compile(r"\bq[1-4]\b|\bproduct\s+\d+\b|(?<![$\d,.])\b(?:19|20)\d{2}\b(?![,.]?\d)")
 
 
-def _label_hits(labels: Dict[str, List[str]], text: str) -> List[Tuple[int, int, str]]:
+def _label_hits(labels: dict[str, list[str]], text: str) -> list[tuple[int, int, str]]:
     """Non-overlapping ``(start, end, key)`` label mentions in lowercased ``text``, longest alias first."""
     hits = sorted(
         (m.start(), -m.end(), key)
@@ -766,14 +768,14 @@ def _label_hits(labels: Dict[str, List[str]], text: str) -> List[Tuple[int, int,
         for alias in aliases
         for m in re.finditer(rf"(?<!\w){re.escape(alias)}(?!\w)", text)
     )
-    kept: List[Tuple[int, int, str]] = []
+    kept: list[tuple[int, int, str]] = []
     for start, neg_end, key in hits:
         if not kept or start >= kept[-1][1]:
             kept.append((start, -neg_end, key))
     return kept
 
 
-def _token_runs(labels: Dict[str, List[str]], sentence: str) -> List[list]:
+def _token_runs(labels: dict[str, list[str]], sentence: str) -> list[list]:
     """Maximal runs ``[kind, start, end, items]`` of label mentions ("L") or numbers ("N")."""
     tokens = [("L", start, end, key) for start, end, key in _label_hits(labels, sentence)]
     taken = [m.span() for m in _NOISE_RE.finditer(sentence)] + [(t[1], t[2]) for t in tokens]
@@ -781,7 +783,7 @@ def _token_runs(labels: Dict[str, List[str]], sentence: str) -> List[list]:
         value = _coerce_float(m.group(0))
         if value is not None and not any(s < m.end() and m.start() < e for s, e in taken):
             tokens.append(("N", m.start(), m.end(), value))
-    runs: List[list] = []
+    runs: list[list] = []
     for kind, start, end, item in sorted(tokens, key=lambda t: t[1]):
         if runs and runs[-1][0] == kind:
             runs[-1][2] = end
@@ -792,14 +794,14 @@ def _token_runs(labels: Dict[str, List[str]], sentence: str) -> List[list]:
     return runs
 
 
-def _pair_runs(runs: List[list]) -> List[Tuple[List[str], List[float]]]:
+def _pair_runs(runs: list[list]) -> list[tuple[list[str], list[float]]]:
     """
     Pair adjacent label and number runs, leaving out at most one run and picking
     the pairing with the smallest text gaps.  A left-out label run takes the
     surplus numbers of a neighbouring run that has more numbers than labels.
     """
     n = len(runs)
-    skips: List[Optional[int]] = [None] if n % 2 == 0 else list(range(n - 1, -1, -2))
+    skips: list[int | None] = [None] if n % 2 == 0 else list(range(n - 1, -1, -2))
 
     def pairs_for(skip):
         order = [i for i in range(n) if i != skip]
@@ -825,8 +827,8 @@ def _pair_runs(runs: List[list]) -> List[Tuple[List[str], List[float]]]:
 
 
 def _bind_numbers_to_labels(
-    labels: Dict[str, List[str]], text: str, expected: Dict[str, float]
-) -> Dict[str, List[float]]:
+    labels: dict[str, list[str]], text: str, expected: dict[str, float]
+) -> dict[str, list[float]]:
     """
     Bind the numbers of each sentence to its labels via ``_pair_runs``: one label takes
     every number, one number goes to every label, otherwise the labels pair positionally
@@ -839,7 +841,7 @@ def _bind_numbers_to_labels(
             key in expected and abs(value - float(expected[key])) < TOLERANCE for key, value in zip(keys, window)
         )
 
-    bound: Dict[str, List[float]] = {key: [] for key in labels}
+    bound: dict[str, list[float]] = {key: [] for key in labels}
     current = None
     for sentence in _SENTENCE_SPLIT_RE.split(text):
         runs = _token_runs(labels, sentence.lower())
@@ -864,12 +866,12 @@ def _bind_numbers_to_labels(
 
 
 def _labels_paired(
-    labels: Dict[str, List[str]],
-    expected: Dict[str, float],
+    labels: dict[str, list[str]],
+    expected: dict[str, float],
     answer_text: str,
-    key_numbers: Dict[str, float],
+    key_numbers: dict[str, float],
     prefix: str,
-) -> Dict[str, bool]:
+) -> dict[str, bool]:
     """Per expected label: its value is in a matching key_numbers entry or bound to it in the text."""
     bound = _bind_numbers_to_labels(labels, answer_text, expected)
     scores = {}
@@ -885,21 +887,21 @@ def _labels_paired(
 class EvaluationFixture:
     """Access to the deterministic fixture and its derived expectations."""
 
-    _expected: Dict[str, Dict[str, Any]] = {}
-    _entries: List[FixtureEntry] = []
+    _expected: ClassVar[dict[str, dict[str, Any]]] = {}
+    _entries: ClassVar[list[FixtureEntry]] = []
 
     @classmethod
-    def setup(cls) -> Tuple[List[FixtureEntry], Dict[str, Dict[str, Any]]]:
+    def setup(cls) -> tuple[list[FixtureEntry], dict[str, dict[str, Any]]]:
         if not cls._entries:
             cls._entries, cls._expected = _build_fixture_data()
         return cls._entries, cls._expected
 
     @classmethod
-    def get_expected(cls, question_id: str) -> Optional[Dict[str, Any]]:
+    def get_expected(cls, question_id: str) -> dict[str, Any] | None:
         return cls._expected.get(question_id)
 
     @classmethod
-    def get_all_question_ids(cls) -> List[str]:
+    def get_all_question_ids(cls) -> list[str]:
         return list(cls._expected.keys())
 
     @classmethod
@@ -929,11 +931,11 @@ class EvaluationFixture:
 # ---------------------------------------------------------------------------
 def run_evaluation(
     backend,
-    formats: Optional[List[str]] = None,
+    formats: list[str] | None = None,
     repetitions: int = 3,
-    question_ids: Optional[List[str]] = None,
+    question_ids: list[str] | None = None,
     seed: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Run the full evaluation against ``backend`` (an LLMBackend instance).
 
@@ -960,7 +962,7 @@ def run_evaluation(
 
     catalog = build_reporting_catalog(extra_models=CATALOG_MODELS)
 
-    results_by_format: Dict[str, List[EvaluationResult]] = {fmt: [] for fmt in formats}
+    results_by_format: dict[str, list[EvaluationResult]] = {fmt: [] for fmt in formats}
 
     for rep in range(repetitions):
         for fmt in formats:
@@ -1002,7 +1004,7 @@ def run_evaluation(
 
 
 def _run_single_question(
-    backend, fmt: str, question_text: str, catalog: Dict[str, Any], result: EvaluationResult
+    backend, fmt: str, question_text: str, catalog: dict[str, Any], result: EvaluationResult
 ) -> None:
     """Drive the three stages (plan, execute, answer) for one question.
 
@@ -1034,7 +1036,7 @@ def _run_single_question(
             try:
                 result.report_data = run_llm_report_config(result.report_config)
                 result.report_executed = True
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - any executor failure is recorded as the call outcome
                 result.error = f"Report execution failed: {exc}"
             result.timings["exec_seconds"] = round(time.perf_counter() - exec_start, 4)
 
@@ -1056,7 +1058,7 @@ def _run_single_question(
 
             parsed = parse_llm_json(answer_raw)
             result.answer = parsed if isinstance(parsed, dict) else {}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - a failed call must be preserved on the result, not raised
         result.error = f"Evaluation error: {exc}"
     result.timings["total_seconds"] = round(time.perf_counter() - question_start, 4)
 
