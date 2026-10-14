@@ -45,7 +45,6 @@ _allowed_hosts = os.getenv("ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = _allowed_hosts.split(",") if _allowed_hosts else ["*"]
 
 
-
 # Application definition
 
 INSTALLED_APPS = [
