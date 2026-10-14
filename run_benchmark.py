@@ -16,6 +16,7 @@ per-stage latencies, failures -- to eval_evidence/benchmark_<timestamp>.json.
 """
 
 import datetime
+import importlib.metadata
 import json
 import os
 import sys
@@ -99,6 +100,10 @@ def main():
     result["meta"]["elapsed_seconds"] = round(elapsed, 2)
     result["meta"]["wall_clock_start_utc"] = started_at.isoformat()
     result["meta"]["served_models_endpoint"] = served
+    try:
+        result["meta"]["toon_format_version"] = importlib.metadata.version("toon-format")
+    except importlib.metadata.PackageNotFoundError:
+        result["meta"]["toon_format_version"] = None
 
     scores = result.get("scores", {})
     print("\n" + "=" * 70)
