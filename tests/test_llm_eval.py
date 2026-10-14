@@ -403,6 +403,8 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
             "EG outsold the US by $250 ($1,500 vs. $1,250).",
             "In Q1 2026, EG outsold the US by $250, with $1,500 versus $1,250.",
             "The US and EG together sold $2,750: $1,250 and $1,500 respectively.",
+            "The US and EG sold $1,250 and $1,500, for a total of $2,750.",
+            "The US and EG recorded $1,250 and $1,500 respectively, a gap of $250.",
         ):
             passed, detail = EvaluationScorer.score_answer_correctness(self._answer("product2_us_vs_eg_q1", phrasing))
             self.assertTrue(passed, f"{phrasing} -> {detail}")
@@ -416,6 +418,11 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
             "product2_us_vs_eg_q1", "EG outsold the US by $250 ($1,250 vs. $1,500)."
         )
         self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_after_difference)[0])
+
+        swapped_before_total = self._answer(
+            "product2_us_vs_eg_q1", "The US and EG sold $1,500 and $1,250, for a total of $2,750."
+        )
+        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_before_total)[0])
 
         missing = self._answer(
             "product2_us_vs_eg_q1",
@@ -449,6 +456,7 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
         for phrasing in (
             "Sales were $1,750 in both January and February, and $1,500 in March.",
             "January and February each recorded $1,750, while March had $1,500.",
+            "January, February and March sales were $1,750, $1,750 and $1,500, totaling $5,000.",
         ):
             passed, detail = EvaluationScorer.score_answer_correctness(self._answer("product1_monthly_q1", phrasing))
             self.assertTrue(passed, f"{phrasing} -> {detail}")
@@ -457,6 +465,12 @@ class ScorerAnswerRegressionTests(SimpleTestCase):
             "product1_monthly_q1", "January and February each recorded $1,500, while March had $1,750."
         )
         self.assertFalse(EvaluationScorer.score_answer_correctness(shared_wrong)[0])
+
+        swapped_before_total = self._answer(
+            "product1_monthly_q1",
+            "January, February and March sales were $1,500, $1,750 and $1,750, totaling $5,000.",
+        )
+        self.assertFalse(EvaluationScorer.score_answer_correctness(swapped_before_total)[0])
 
     def test_top_client_label_and_value(self):
         good = self._answer(
