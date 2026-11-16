@@ -54,9 +54,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "title",
-                    models.CharField(
-                        blank=True, help_text="Overrides the report's own title.", max_length=200
-                    ),
+                    models.CharField(blank=True, help_text="Overrides the report's own title.", max_length=200),
                 ),
                 ("gs_x", models.IntegerField(default=0)),
                 ("gs_y", models.IntegerField(default=0)),

@@ -2,7 +2,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("slick_reporting_dashboard", "0002_savedwidget_restructure"),
     ]
