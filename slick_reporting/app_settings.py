@@ -50,13 +50,18 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
         "override": False,
         "js": (
             "https://cdn.jsdelivr.net/momentjs/latest/moment.min.js",
+
             "https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js",
             "https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js",
             "slick_reporting/slick_reporting.js",
             "slick_reporting/slick_reporting.report_loader.js",
             "slick_reporting/slick_reporting.datatable.js",
         ),
-        "css": {"all": ("https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css",)},
+        "css": {
+            "all": (
+                "https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css",
+            )
+        },
     },
     "FONT_AWESOME": {
         "CSS_URL": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css",
