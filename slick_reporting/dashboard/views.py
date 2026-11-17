@@ -87,9 +87,7 @@ class DashboardMixin:
         if not dashboard:
             return []
         return [
-            p
-            for p in dashboard.widgets.select_related("saved_widget").all()
-            if _url_ok(p.saved_widget.report_url_name)
+            p for p in dashboard.widgets.select_related("saved_widget").all() if _url_ok(p.saved_widget.report_url_name)
         ]
 
     def get_saved_widget_palette(self, request):
