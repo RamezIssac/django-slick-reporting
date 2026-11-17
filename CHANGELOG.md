@@ -43,6 +43,9 @@ All notable changes to this project will be documented in this file.
 
 - Time-series and crosstab column metadata was missing the ``type`` key, which would
   silently prevent number formatting from applying to those column types.
+- The sdist and wheel now ship `slick_reporting/dashboard/static` and `slick_reporting/dashboard/templates`.
+  `dashboard.css` and `dashboard.js` were missing from built packages, which made pages referencing them
+  return HTTP 500 under `ManifestStaticFilesStorage`.
 
 ## [1.4.0] - 2026-05-01
 

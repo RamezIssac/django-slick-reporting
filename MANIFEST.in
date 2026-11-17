@@ -3,4 +3,6 @@ include README.md
 recursive-include slick_reporting/static *
 recursive-include slick_reporting/templates *
 recursive-include slick_reporting/locale *
+recursive-include slick_reporting/dashboard/static *
+recursive-include slick_reporting/dashboard/templates *
 recursive-exclude tests/ *
