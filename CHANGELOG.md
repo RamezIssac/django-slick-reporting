@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Escape report table output**: report table cells, header cells and footer cells now display their
+  values as text. Values containing HTML markup were previously inserted into the page as HTML. The
+  Highcharts stacked tooltip formatter escapes the category and series names the same way. The footer
+  ``data-id`` attributes are no longer malformed.
 - **Assistant label-to-id resolution narrowed to pk lookups** — the assistant resolved a
   human-readable label to a primary key for any filter on a relation, so a lookup on a relation's
   concrete field (e.g. ``product__name``) compared a text field against an integer id and silently

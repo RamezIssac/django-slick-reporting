@@ -25,8 +25,9 @@
 
         function normalStackedTooltipFormatter() {
 
-            var tooltip = '<small>' + this.x + '</small><table>' +
-                '<tr><td style="color: ' + this.series.color + '">' + this.series.name + ': </td> <td style="text-align: right"><b>' + this.point.y + ' </b></td></tr>' +
+            var escapeHtml = $.slick_reporting.escapeHtml;
+            var tooltip = '<small>' + escapeHtml(this.x) + '</small><table>' +
+                '<tr><td style="color: ' + this.series.color + '">' + escapeHtml(this.series.name) + ': </td> <td style="text-align: right"><b>' + this.point.y + ' </b></td></tr>' +
                 '<tr><td style="color: ' + this.series.color + '">{pertoTotal}:</td><td style="text-align: right"><b>' + this.point.percentage.toFixed(2) + ' %</b></td></tr>' +
                 '<tr><td> {Total}:</td><td style="text-align: right"><b>' + this.point.stackTotal + '<b></td></tr>' +
                 '</table>';

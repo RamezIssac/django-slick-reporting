@@ -123,6 +123,10 @@
         return rows;
     }
 
+    function escapeHtml(value) {
+        return $('<div>').text(value === null || value === undefined ? '' : String(value)).html();
+    }
+
     function get_xpath($element, forceTree) {
         if ($element.length === 0) {
             return null;
@@ -159,6 +163,7 @@
         'calculateTotalOnColumnArray': calculateTotalOnColumnArray,
         'getReportRowCount': getReportRowCount,
         'dataToRows': dataToRows,
+        'escapeHtml': escapeHtml,
         "executeFunctionByName": executeFunctionByName,
         "get_xpath": get_xpath,
         defaults: {
