@@ -16,9 +16,9 @@
         cols = typeof cols != 'undefined' ? cols : false;
         cols_names = typeof cols_names != 'undefined' ? cols_names : cols;
 
-        let return_val = `<table class="${css_class}"> <thead><tr>`;
-        let header_th = '';
-        let footer_th = '';
+        let $table = $('<table>').addClass(css_class);
+        let $headerRow = $('<tr>');
+        let $footerCells = [];
         let footer_colspan = 0;
         let stop_colspan_detection = false;
         let totals_container = $.slick_reporting.calculateTotalOnColumnArray(data, total_fields);
@@ -33,7 +33,7 @@
 
         for (let i = 0; i < cols.length; i++) {
             let col_name = cols[i].name;
-            header_th += `<th data-id="${col_name}">${cols_names[i]}</th>`;
+            $headerRow.append($('<th>').attr('data-id', col_name).text(cols_names[i]));
             if (total_fields.indexOf(col_name) !== -1) {
                 stop_colspan_detection = true;
             }
@@ -44,15 +44,16 @@
                 if (!(column_total || column_total === 0)) {
                     column_total = ''
                 }
-                footer_th += `<th data-id=${col_name}">${column_total}</th>`;
+                $footerCells.push($('<th>').attr('data-id', col_name).text(column_total));
             }
         }
-        let footer = '';
+        $table.append($('<thead>').append($headerRow));
         if (add_footer && stop_colspan_detection) {
-            footer = '<tfoot><tr class="tr-totals active"><th colspan="' + footer_colspan + '" style="text-align:left">' + total_verbose + '</th>' + footer_th + '</tr></tfoot>';
+            let $totalLabel = $('<th>').attr('colspan', footer_colspan).css('text-align', 'left').text(total_verbose);
+            let $footerRow = $('<tr class="tr-totals active">').append($totalLabel).append($footerCells);
+            $table.append($('<tfoot>').append($footerRow));
         }
-        return_val = return_val + header_th + `</tr> </thead>${footer}</table>`;
-        return return_val;
+        return $table.prop('outerHTML');
     }
 
 
@@ -97,7 +98,8 @@
             let col_data = {
                 "data": server_data['name'],
                 'visible': server_data['visible'],
-                'title': server_data['verbose_name']
+                // DataTables writes cells as HTML; render.text() escapes them. The title comes from the escaped <th>.
+                'render': $.fn.dataTable.render.text()
             };
             columns.push(col_data);
 
