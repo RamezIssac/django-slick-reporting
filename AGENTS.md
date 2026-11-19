@@ -85,7 +85,7 @@ Tests live in `tests/` with settings in `tests/settings.py` (SQLite, no migratio
 ## Code style
 
 - Black + Ruff, line length 120
-- CI runs on Python 3.9, 3.10, 3.11
+- CI runs Python 3.10 to 3.13 against Django 5.2 and 6.1 (6.1 needs Python 3.12+)
 
 ## Gotchas
 

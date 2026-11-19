@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Supported versions** — Python 3.9 and Django below 5.2 are dropped. Supported: Python 3.10 to 3.13
+  and Django 5.2 and 6.1 (Django 6.1 requires Python 3.12 or newer). ``python_requires`` is now
+  ``>=3.10`` and ``install_requires`` is ``django>=5.2``. CI runs the 3.10 to 3.13 matrix against
+  Django 5.2 and 6.1, excluding the combinations Django does not support.
+
 ## [1.5.1] - 2026-11-18
 
 ### Fixed
