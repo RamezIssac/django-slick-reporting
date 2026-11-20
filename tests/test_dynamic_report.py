@@ -121,7 +121,10 @@ class DynamicReportTest(BaseTestData, TestCase):
         spec = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}
         self.assert_spec_error(spec, "report_model", "model_not_allowed", allowed_models=["tests.Client"])
         spec = {"report_model": "tests.SimpleSales", "group_by": "client", "columns": ["name", VALUE_SUM]}
-        self.assert_spec_error(spec, "group_by", "model_not_allowed", allowed_models=["tests.SimpleSales"])
+        with self.assertRaises(ValidationError) as caught:
+            self.run_spec(spec, allowed_models=["tests.SimpleSales"])
+        self.assertEqual(list(caught.exception.error_dict), ["group_by"])
+        self.assertEqual(caught.exception.error_dict["group_by"][0].code, "model_not_allowed")
         spec = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM], "filters": {"client__contact__agent": 1}}
         self.assert_spec_error(spec, "filters", "model_not_allowed")
 

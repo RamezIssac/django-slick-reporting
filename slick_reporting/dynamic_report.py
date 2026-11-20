@@ -365,7 +365,9 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
             elif is_plain and not group_by:
                 validator.add_error("columns", f"Field column '{column}' needs a group_by.")
             elif is_plain:
-                validator.resolve_path(column_model, column, "columns")
+                # A rejected group_by already carries the error; its columns cannot be resolved.
+                if group_by_field is not None:
+                    validator.resolve_path(column_model, column, "columns")
                 cleaned_columns.append(column)
             else:
                 cleaned_columns.append(validator.computation(report_model, column, "columns"))
