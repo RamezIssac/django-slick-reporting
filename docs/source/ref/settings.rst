@@ -71,11 +71,13 @@ Below are the default settings for django-slick-reporting. You can override them
 
 * DEFAULT_START_DATE_TIME
 
-    Default date time that would appear on the filter form in the start date
+    Default date time that would appear on the filter form in the start date.
+    Unless you set it, it is computed on each read: the start of the current year.
 
 * DEFAULT_END_DATE_TIME
 
-    Default date time that would appear on the filter form in the end date
+    Default date time that would appear on the filter form in the end date.
+    Unless you set it, it is computed on each read: the end of the current day.
 
 * FONT_AWESOME:
 
