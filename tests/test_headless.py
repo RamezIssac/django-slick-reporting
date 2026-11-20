@@ -5,8 +5,10 @@ from unittest.mock import patch
 
 from django import forms
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Max
 from django.test import RequestFactory, TestCase, override_settings
 
+from slick_reporting.fields import ComputationField
 from slick_reporting.forms import BaseReportForm
 from slick_reporting.generator import ListViewReportGenerator, ReportGenerator
 from slick_reporting.helpers import compact_response
@@ -193,6 +195,22 @@ class HeadlessRunTest(BaseTestData, TestCase):
         self.assertEqual(rows[0]["__total__"], 200)
 
 
+class LatestValue(ComputationField):
+    calculation_method = Max
+
+    def resolve(self, prepared_results, required_computation_results, current_pk, current_row=None):
+        return self.extract_data(prepared_results, current_pk)[0]
+
+
+class ClientLastSale(ClientTotals):
+    columns = [
+        "name",
+        "__total__",
+        LatestValue.create(Max, "flag", name="last_flag", verbose_name="Last flag"),
+        LatestValue.create(Max, "doc_date", name="last_sale", verbose_name="Last sale"),
+    ]
+
+
 @override_settings(SLICK_REPORTING_SETTINGS=HEADLESS_SETTINGS)
 class CompactResponseTest(BaseTestData, TestCase):
     def setUp(self):
@@ -237,6 +255,12 @@ class CompactResponseTest(BaseTestData, TestCase):
         self.assertEqual(compact["totals"], {})
         self.assertTrue(compact["rows"][0][1].startswith(f"{year}-02-02"))
         self.assertIn(compact["rows"][0][3], {"100.00", "200.00", "300.00"})
+        json.dumps(compact)
+
+    def test_non_numeric_computation_column_has_no_total(self):
+        compact = compact_response(ClientLastSale.run(self.request))
+        self.assertEqual(compact["totals"], {"__total__": "1800"})
+        self.assertEqual([row[2] for row in compact["rows"]], ["sales", "sales", "sales"])
         json.dumps(compact)
 
     def test_value_normalization(self):

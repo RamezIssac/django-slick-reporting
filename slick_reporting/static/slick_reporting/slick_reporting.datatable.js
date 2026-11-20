@@ -118,10 +118,11 @@
                 let fmt = server_data['number_format'] || $.slick_reporting.defaults.number_format;
                 if (fmt) {
                     col_data['render'] = function (cellData, type) {
-                        if (type === 'display' && cellData !== null && cellData !== undefined && cellData !== '') {
+                        if (type === 'display' && cellData !== null && cellData !== undefined && cellData !== ''
+                            && !isNaN(parseFloat(cellData))) {
                             return $.slick_reporting.formatNumber(cellData, fmt);
                         }
-                        return cellData;
+                        return $.fn.dataTable.render.text().display(cellData);
                     };
                 }
             }

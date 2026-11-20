@@ -1,7 +1,7 @@
 import datetime
 import re
 from collections import OrderedDict
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -160,7 +160,12 @@ def compact_response(full_response, max_rows=None):
         compact_columns.append({"name": col["name"], "label": force_str(col["verbose_name"]), "type": col_type})
         if col_type == "number" and col.get("is_summable") is True:
             values = data.get(col["name"], [])
-            total = sum((_to_decimal(v) for v in values if v not in (None, "") and not isinstance(v, bool)), Decimal(0))
+            try:
+                total = sum(
+                    (_to_decimal(v) for v in values if v not in (None, "") and not isinstance(v, bool)), Decimal(0)
+                )
+            except (InvalidOperation, TypeError, ValueError):
+                continue
             totals[col["name"]] = format(total, "f")
 
     shown = row_count if max_rows is None else min(row_count, max_rows)
