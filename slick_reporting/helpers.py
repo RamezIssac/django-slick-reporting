@@ -12,7 +12,7 @@ def get_calculation_annotation(calculation_field, calculation_method):
     @return: the annotation ex value__sum
     """
 
-    return "__".join([calculation_field.lower(), calculation_method.name.lower()])
+    return f"{calculation_field.lower()}__{calculation_method.name.lower()}"
 
 
 def get_foreign_keys(model):
@@ -56,12 +56,21 @@ def get_field_from_query_text(path, model):
     return field
 
 
-def user_test_function(report_view):
+def user_test_function(report_view, request=None):
     """
     A default test function return True on DEBUG, otherwise return the user.is_superuser
-    :param report_view:
+    :param report_view: the report view being accessed, or None for non-view contexts
+    :param request: optional request object (used by the LLM assistant endpoint)
     :return:
     """
+    # In test mode without an actual request, allow access.
+    if request is None and report_view is not None:
+        request = getattr(report_view, "request", None)
+
+    if request is None:
+        return settings.DEBUG
+
+    user = getattr(request, "user", None)
     if not settings.DEBUG:
-        return report_view.request.user.is_superuser
+        return bool(user and getattr(user, "is_superuser", False))
     return True

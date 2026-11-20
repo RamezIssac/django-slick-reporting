@@ -1,4 +1,4 @@
-from slick_reporting.views import ReportView
+from slick_reporting.views import ReportView, ListReportView
 from slick_reporting.fields import ComputationField, TotalReportField
 from django.db.models import Sum, Count
 from .models import SimpleSales, ComplexSales, SimpleSales2
@@ -118,6 +118,12 @@ class MonthlyProductSalesWQS(ReportView):
     columns = ["slug", "name"]
     time_series_pattern = "monthly"
     time_series_columns = [TotalReportField, "__balance__"]
+
+
+class SimpleSalesListReport(ListReportView):
+    report_model = SimpleSales
+    date_field = "doc_date"
+    columns = ["slug", "doc_date", "client__name", "quantity", "price", "value"]
 
 
 class TaxSales(ReportView):

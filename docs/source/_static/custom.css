@@ -1,0 +1,11 @@
+/* Navy blue accent, matching the tone of the demo project's hero section
+ * (see demo_proj/templates/home.html `.srr-hero` gradient). */
+html[data-theme="light"] {
+    --pst-color-primary: #1f377a;
+    --pst-color-primary-bg: #e6eaf6;
+}
+
+html[data-theme="dark"] {
+    --pst-color-primary: #6c8be0;
+    --pst-color-primary-bg: #1b2440;
+}

@@ -8,23 +8,23 @@ from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import Q
 from django.forms import modelform_factory
-from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.views.generic import FormView
 
 from .app_settings import SLICK_REPORTING_SETTINGS, get_access_function, get_end_date, get_start_date
 from .forms import (
-    report_form_factory,
-    get_crispy_helper,
-    default_formfield_callback,
     OrderByForm,
+    default_formfield_callback,
+    get_crispy_helper,
+    report_form_factory,
 )
 from .generator import (
-    ReportGenerator,
-    ListViewReportGenerator,
-    ReportGeneratorAPI,
     Chart,  # noqa # needed for easier importing in other apps
+    ListViewReportGenerator,
+    ReportGenerator,
+    ReportGeneratorAPI,
 )
 
 
@@ -36,7 +36,7 @@ def dictsort(value, arg, desc=False):
     return sorted(value, key=lambda x: x[arg], reverse=desc)
 
 
-class ExportToCSV(object):
+class ExportToCSV:
     def get_filename(self):
         return self.report_title
 
@@ -53,8 +53,8 @@ class ExportToCSV(object):
     def get_rows(self):
         columns, verbose_names = self.get_columns()
         yield verbose_names
-        for line in self.report_data["data"]:
-            yield [line[col_name] for col_name in columns]
+        for row in ReportGenerator.columns_to_rows(self.report_data["data"], columns):
+            yield [row[col_name] for col_name in columns]
 
     def get_columns(self, extra_context=None):
         return list(zip(*[(x["name"], x["verbose_name"]) for x in self.report_data["columns"]]))
@@ -103,7 +103,9 @@ class PrintHTMLExport:
 
         columns = self.report_data.get("columns", [])
         headers = [col["verbose_name"] for col in columns]
-        rows = [[row.get(col["name"], "") for col in columns] for row in self.report_data.get("data", [])]
+        column_names = [col["name"] for col in columns]
+        rows_data = ReportGenerator.columns_to_rows(self.report_data.get("data", {}), column_names)
+        rows = [[row.get(col_name, "") for col_name in column_names] for row in rows_data]
         return render(
             self.request, self.template_name, {"report_title": self.report_title, "headers": headers, "rows": rows}
         )
@@ -333,13 +335,14 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
                     "files": self.request.FILES,
                 }
             )
-        elif self.request.method in ("GET", "PUT"):
-            if self.request.GET or self.request.headers.get("x-requested-with") == "XMLHttpRequest":
-                kwargs.update(
-                    {
-                        "data": self.request.GET,
-                    }
-                )
+        elif self.request.method in ("GET", "PUT") and (
+            self.request.GET or self.request.headers.get("x-requested-with") == "XMLHttpRequest"
+        ):
+            kwargs.update(
+                {
+                    "data": self.request.GET,
+                }
+            )
         return kwargs
 
     def get_crosstab_ids(self):

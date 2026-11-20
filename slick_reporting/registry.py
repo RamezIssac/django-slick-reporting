@@ -1,11 +1,9 @@
-from __future__ import unicode_literals
-
 from django.contrib.admin.sites import AlreadyRegistered, NotRegistered
 
 
-class ReportFieldRegistry(object):
+class ReportFieldRegistry:
     def __init__(self):
-        super(ReportFieldRegistry, self).__init__()
+        super().__init__()
         self._registry = {}  # holds
 
     def register(self, report_field, override=False):

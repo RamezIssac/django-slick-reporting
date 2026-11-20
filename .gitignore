@@ -128,3 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 fabfile.py
+
+# Local verification screenshots (agent workflow)
+proofs/

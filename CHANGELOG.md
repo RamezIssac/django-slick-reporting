@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.5.0] - Unreleased
+## [Unreleased]
 
 ### New Features
 
@@ -46,6 +46,67 @@ All notable changes to this project will be documented in this file.
 - The sdist and wheel now ship `slick_reporting/dashboard/static` and `slick_reporting/dashboard/templates`.
   `dashboard.css` and `dashboard.js` were missing from built packages, which made pages referencing them
   return HTTP 500 under `ManifestStaticFilesStorage`.
+
+## [1.5.1] - 2026-11-18
+
+### Fixed
+
+- **Escape report table output** (cells, headers, footers and chart tooltips).
+- **Assistant label-to-id resolution narrowed to pk lookups** — the assistant resolved a
+  human-readable label to a primary key for any filter on a relation, so a lookup on a relation's
+  concrete field (e.g. ``product__name``) compared a text field against an integer id and silently
+  emptied the report. Resolution now applies only to pk-targeting lookups (``product``,
+  ``product_id``, ``product__id__in``, ...); other lookups keep their string value.
+- **Assistant ``__in`` filters accept a single value** — plain-text plans parse
+  ``product_id__in=Product 1`` to a single scalar, which raised a database error; the value is now
+  wrapped into a list.
+
+### Added
+
+- **LLM data-format evaluation harness** (development tooling) — compares JSON, plain-text and TOON
+  serialization of prompt data on token usage, plan/answer correctness and latency
+  (``python run_benchmark.py``; evidence artifacts under ``eval_evidence/``). No production default
+  changed.
+
+## [1.5.0] - 2026-10-10
+
+### New Features
+
+- **Natural-language "Ask the data" assistant** (`slick_reporting.llm`) — users post a plain-English
+  business question; the assistant plans a report configuration with an LLM, executes it with the
+  reporting engine, and answers with reasoning and data-backed proofs. Ships with a pluggable backend
+  interface: ``OpenRouterBackend`` (hosted `OpenRouter <https://openrouter.ai>`_ models, including
+  free-tier ones; API key read from the ``OPENROUTER_API_KEY`` environment variable) and
+  ``OpenAICompatibleBackend`` (any OpenAI-compatible endpoint, e.g. OpenAI, Groq, or a local llama.cpp
+  server via ``base_url``). Backend options support ``api_url``/``base_url``, ``api_key``/``api_key_env``,
+  ``model``, ``temperature``, ``max_tokens``, ``timeout``, ``extra_headers``, ``extra_payload`` (e.g.
+  OpenRouter reasoning controls) and the llama.cpp ``enable_thinking``/``reasoning_budget`` switches.
+  If no backend is configured it is auto-detected from the environment. Planning and answering can
+  exchange JSON (default) or structured plain text for smaller/local models
+  (``LLM_PLAIN_TEXT_RESPONSE``). Includes an ``evaluate_llm`` management command in the demo project
+  to benchmark models against a set of questions. See :doc:`topics/llm_assistant`.
+- **Effective date window on report widgets** — widgets and report pages now display the date window the
+  report actually covers: ``From <start> to <end>`` when both dates are set, ``As of <end>`` for open-ended
+  (financial-style) reports with only an end date, and ``All time`` when the report is not date-filtered.
+  Exposed as ``metadata.date_window`` in the report response and rendered by the report loader.
+
+### Breaking Changes
+
+- **Columnar JSON report response** — the AJAX/JSON report response now delivers ``data`` in a columnar
+  shape: a dictionary mapping each column name to a list of values (one per row), instead of a list of
+  row objects repeating every column key. Applies to all report types (group-by, time-series, crosstab
+  and list reports) and makes the payload more compact. ``columns``, ``metadata`` and ``chart_settings``
+  are unchanged, as are the row-oriented Python APIs (``get_report_data()``, ``format_row()``,
+  ``filter_results()``). The bundled front end (table rendering and the Highcharts / Chart.js engines)
+  was updated to match. If you consume the JSON response directly (custom JS or custom export actions),
+  update your code; ``ReportGenerator.columns_to_rows(data, column_names)`` rebuilds the row-oriented
+  list of dictionaries.
+
+### Fixes
+
+- **"Ask the data" answer polish** — the raw response block is now theme-aware (readable on light and dark
+  sections) and collapsed under a ``View raw response`` details toggle; the answer's supporting report
+  renders inside the widget (new ``$.slick_reporting.loadReport`` helper).
 
 ## [1.4.0] - 2026-05-01
 

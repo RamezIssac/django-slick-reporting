@@ -1,4 +1,5 @@
 django>=4.2
+python-dotenv
 python-dateutil>=2.8.1
 simplejson
 django-crispy-forms

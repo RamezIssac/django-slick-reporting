@@ -1,19 +1,24 @@
+import datetime
+
 from django.conf import settings
 from django.urls import get_callable
 from django.utils.functional import lazy
 from django.utils.translation import gettext_lazy as _
 
-import datetime
+
+def _get_naive_local_now():
+    """Current local date and time as a naive datetime, matching the project's naive (USE_TZ=False) semantics."""
+    return datetime.datetime.now(tz=datetime.timezone.utc).astimezone().replace(tzinfo=None)
 
 
 def get_first_of_this_year():
-    d = datetime.datetime.today()
-    return datetime.datetime(d.year, 1, 1, 0, 0)
+    d = _get_naive_local_now()
+    return d.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
 def get_end_of_this_year():
-    d = datetime.datetime.today()
-    return datetime.datetime(d.year + 1, 1, 1, 0, 0)
+    d = _get_naive_local_now()
+    return d.replace(year=d.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
 def get_start_date():
@@ -23,10 +28,7 @@ def get_start_date():
 
 def get_end_date():
     end_date = getattr(settings, "SLICK_REPORTING_DEFAULT_END_DATE", False)
-    if end_date:
-        return end_date
-    d = datetime.datetime.today()
-    return d.replace(hour=23, minute=59, second=59, microsecond=0)
+    return end_date or _get_naive_local_now().replace(hour=23, minute=59, second=59, microsecond=0)
 
 
 SLICK_REPORTING_DEFAULT_START_DATE = lazy(get_start_date, datetime.datetime)()
@@ -97,6 +99,12 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
     # Example: {"url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/ar.json"}
     # Or pass inline strings — see SLICK_REPORTING_SETTINGS in consumer project settings.
     "DATATABLE_LANGUAGE": {},
+    # LLM assistant defaults.  Override via your own SLICK_REPORTING_SETTINGS.
+    "LLM_BACKEND": None,
+    "LLM_BACKEND_OPTIONS": None,
+    "LLM_CATALOG_MODELS": None,
+    "LLM_ASK_URL": None,  # defaults to "ask/" under the dashboard path
+    "LLM_PLAIN_TEXT_RESPONSE": False,  # if True, exchange plan/answer as plain text instead of JSON
 }
 
 

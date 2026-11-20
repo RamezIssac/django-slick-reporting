@@ -3,14 +3,15 @@ import logging
 from dataclasses import dataclass
 from inspect import isclass
 
-from django.core.exceptions import ImproperlyConfigured, FieldDoesNotExist
-from django.db.models import Q, ForeignKey
+from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured
+from django.db.models import ForeignKey, Q
+from django.utils.translation import gettext as _
 
+from . import app_settings
 from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import ComputationField
 from .helpers import get_field_from_query_text
 from .registry import field_registry
-from . import app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +33,16 @@ class Chart:
     AREA = "area"
 
     def to_dict(self):
-        return dict(
-            title=self.title,
-            type=self.type,
-            data_source=self.data_source,
-            title_source=self.title_source,
-            plot_total=self.plot_total,
-            engine=self.engine,
-            entryPoint=self.entryPoint,
-            stacking=self.stacking,
-        )
+        return {
+            "title": self.title,
+            "type": self.type,
+            "data_source": self.data_source,
+            "title_source": self.title_source,
+            "plot_total": self.plot_total,
+            "engine": self.engine,
+            "entryPoint": self.entryPoint,
+            "stacking": self.stacking,
+        }
 
 
 class ReportGeneratorAPI:
@@ -151,7 +152,7 @@ class ReportGeneratorAPI:
     In this mode, crosstab_columns should be a list of DB column name strings (not ComputationField classes)."""
 
 
-class ReportGenerator(ReportGeneratorAPI, object):
+class ReportGenerator(ReportGeneratorAPI):
     """
     The main class responsible generating the report and managing the flow
     """
@@ -220,13 +221,18 @@ class ReportGenerator(ReportGeneratorAPI, object):
         :param limit_records:
         """
         from .app_settings import (
-            SLICK_REPORTING_DEFAULT_START_DATE,
             SLICK_REPORTING_DEFAULT_END_DATE,
+            SLICK_REPORTING_DEFAULT_START_DATE,
         )
 
         super().__init__()
 
         _table_name = table_name or self.table_name
+
+        # Keep the dates as passed (before falling back to the default window)
+        # so we can display the effective date window the report covers.
+        self.requested_start_date = start_date
+        self.requested_end_date = end_date
         if _table_name and not (report_model or self.report_model):
             from .dynamic_model import get_dynamic_model
 
@@ -579,9 +585,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     group_data = self._precomputed_crosstab_data.get(group_by_val, {})
                     data[name] = group_data.get(crosstab_val, {}).get(crosstab_col, 0)
 
-                elif col_data.get("source", "") == "attribute_field":
-                    data[name] = col_data["ref"](obj, data)
-                elif col_data.get("source", "") == "container_class_attribute_field":
+                elif col_data.get("source", "") in ("attribute_field", "container_class_attribute_field"):
                     data[name] = col_data["ref"](obj, data)
 
                 elif (
@@ -631,7 +635,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
     @staticmethod
     def check_columns(
-        cls,
+        caller,
         columns,
         group_by,
         report_model,
@@ -649,16 +653,17 @@ class ReportGenerator(ReportGeneratorAPI, object):
         """
 
         group_by_model = None
-        if group_by_custom_querysets:
-            if "__index__" not in columns:
-                columns.insert(0, "__index__")
+        if group_by_custom_querysets and "__index__" not in columns:
+            columns.insert(0, "__index__")
 
         if group_by:
             try:
-                group_by_field = [x for x in report_model._meta.get_fields() if x.name == group_by.split("__")[0]][0]
-            except IndexError:
+                group_by_field = next(
+                    x for x in report_model._meta.get_fields() if x.name == group_by.split("__")[0]
+                )
+            except StopIteration:
                 raise ImproperlyConfigured(
-                    f"ReportView {cls}: Could not find the group_by field: `{group_by}` in "
+                    f"ReportView {caller}: Could not find the group_by field: `{group_by}` in "
                     f"report_model: `{report_model}`"
                 )
             if group_by_field.is_relation:
@@ -681,7 +686,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             is_container_class_attribute = False
 
             if isinstance(col, str):
-                attribute_field = getattr(cls, col, None)
+                attribute_field = getattr(caller, col, None)
                 if attribute_field is None:
                     is_container_class_attribute = True
                     attribute_field = getattr(container_class, col, None)
@@ -718,7 +723,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
                     # group by custom queryset special case: which is the index
                     col_data = {
                         "name": col,
-                        "verbose_name": cls.group_by_custom_querysets_column_verbose_name,
+                        "verbose_name": caller.group_by_custom_querysets_column_verbose_name,
                         "source": "database",
                         "ref": "",
                         "type": "text",
@@ -744,7 +749,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
 
                     if not field:
                         raise FieldDoesNotExist(
-                            f'Field "{col}" not found either as an attribute to the generator class {cls}, '
+                            f'Field "{col}" not found either as an attribute to the generator class {caller}, '
                             f'{f"Container class {container_class}," if container_class else ""}'
                             f'or a computation field, or a database column for the model "{model_to_use}"'
                         )
@@ -986,6 +991,45 @@ class ReportGenerator(ReportGeneratorAPI, object):
         """
         return computation_class.get_crosstab_field_verbose_name(model, id)
 
+    @staticmethod
+    def _date_window_point(value):
+        """Normalize a date/datetime to a date object for display."""
+        if isinstance(value, datetime.datetime):
+            return value.date()
+        return value
+
+    def get_date_window(self):
+        """
+        Compute the effective date window the report covers, for display on widgets and report pages.
+
+        :return: a dict {"start": date|None, "end": date|None, "label": str}
+            - both dates: the report is limited to that window ("From X to Y")
+            - only an end date: the report is open-ended ("As of Y")
+            - neither: no date filtering is applied ("All time")
+        """
+        if not (self.date_field or (self.start_date_field_name and self.end_date_field_name)):
+            # No date filtering is applied at all
+            start = end = None
+        else:
+            start, end = self.requested_start_date, self.requested_end_date
+            if not (start or end):
+                # Nothing was requested; the report falls back to the default window
+                start, end = self.start_date, self.end_date
+
+        start = self._date_window_point(start)
+        end = self._date_window_point(end)
+
+        if start and end:
+            label = _("From %(start)s to %(end)s") % {"start": start, "end": end}
+        elif end:
+            label = _("As of %(end)s") % {"end": end}
+        elif start:
+            label = _("From %(start)s") % {"start": start}
+        else:
+            label = _("All time")
+
+        return {"start": start, "end": end, "label": label}
+
     def get_metadata(self):
         """
         A hook to send data about the report for front end which can later be used in charting
@@ -1000,6 +1044,7 @@ class ReportGenerator(ReportGeneratorAPI, object):
             "crosstab_model": self.crosstab_field or "",
             "crosstab_column_names": [x["name"] for x in crosstab_columns],
             "crosstab_column_verbose_names": [x["verbose_name"] for x in crosstab_columns],
+            "date_window": self.get_date_window(),
         }
         return metadata
 
@@ -1031,14 +1076,63 @@ class ReportGenerator(ReportGeneratorAPI, object):
             data.append(entry)
         return data
 
+    @staticmethod
+    def rows_to_columns(data, columns):
+        """
+        Convert row-oriented report data (a list of dicts, one dict per row) into the columnar
+        structure used in the JSON response: a dict mapping each column name to a list holding
+        one value per row.
+
+        :param data: list of dicts as returned by ``get_report_data()``
+        :param columns: list of column definition dicts as returned by ``get_columns_data()``
+        :return: dict mapping column name -> list of values, one per row
+        """
+        names = [col["name"] for col in columns]
+        seen = set(names)
+        for row in data:
+            for key in row:
+                if key not in seen:
+                    # keep keys added by format_row hooks that are not in the columns definition
+                    seen.add(key)
+                    names.append(key)
+        columnar = {name: [None] * len(data) for name in names}
+        for index, row in enumerate(data):
+            for key, value in row.items():
+                columnar[key][index] = value
+        return columnar
+
+    @staticmethod
+    def columns_to_rows(columnar_data, column_names=None):
+        """
+        Inverse of ``rows_to_columns``: rebuild the row-oriented list of dicts from the columnar
+        structure. Used by exports (CSV / print) that consume the full response.
+
+        :param columnar_data: dict mapping column name -> list of values, one per row
+        :param column_names: order of the columns in the returned rows; defaults to all keys
+        :return: list of dicts, one per row
+        """
+        column_names = list(column_names) if column_names is not None else list(columnar_data.keys())
+        if not column_names:
+            return []
+        first_values = columnar_data.get(column_names[0]) or []
+        rows = []
+        for i in range(len(first_values)):
+            row = {}
+            for name in column_names:
+                values = columnar_data.get(name)
+                row[name] = values[i] if values is not None and i < len(values) else None
+            rows.append(row)
+        return rows
+
     def get_full_response(
         self, data=None, report_slug=None, chart_settings=None, default_chart_title=None, default_chart_engine=None
     ):
         data = data or self.get_report_data()
+        columns_data = self.get_columns_data()
         data = {
             "report_slug": report_slug or self.__class__.__name__,
-            "data": data,
-            "columns": self.get_columns_data(),
+            "data": self.rows_to_columns(data, columns_data),
+            "columns": columns_data,
             "metadata": self.get_metadata(),
             "chart_settings": self.get_chart_settings(
                 chart_settings, default_chart_title=default_chart_title, chart_engine=default_chart_engine

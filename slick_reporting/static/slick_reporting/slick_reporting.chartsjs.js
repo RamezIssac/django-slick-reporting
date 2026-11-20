@@ -86,14 +86,16 @@
         let dataFieldName = chartOptions['data_source'];
         let titleFieldName = chartOptions['title_source'];
 
-        for (let i = 0; i < response.data.length; i++) {
-            let row = response.data[i];
+        let dataValues = response.data[dataFieldName] || [];
+        let titleValues = titleFieldName !== '' ? (response.data[titleFieldName] || []) : [];
+        let rowCount = $.slick_reporting.getReportRowCount(response);
+        for (let i = 0; i < rowCount; i++) {
             if (titleFieldName !== '') {
-                let txt = row[titleFieldName];
+                let txt = titleValues[i];
                 txt = $(txt).text() || txt; // the title is an <a tag , we want the text only
                 legendResults.push(txt)
             }
-            datasetData.push(parseFloat(row[dataFieldName]))
+            datasetData.push(parseFloat(dataValues[i]))
         }
         return {
             'labels': legendResults,
@@ -134,7 +136,7 @@
             }
 
             if (chartOptions.plot_total) {
-                let results = $.slick_reporting.calculateTotalOnObjectArray(response.data, seriesColNames);
+                let results = $.slick_reporting.calculateTotalOnColumnArray(response.data, seriesColNames);
                 for (let fieldIdx = 0; fieldIdx < seriesColNames.length; fieldIdx++) {
                     datasetData.push(results[seriesColNames[fieldIdx]])
                 }
@@ -149,13 +151,15 @@
 
             } else {
 
-                for (let i = 0; i < response.data.length; i++) {
-                    let row = response.data[i];
+                let rowCount = $.slick_reporting.getReportRowCount(response);
+                let titleValues = response.data[titleFieldName] || [];
+                for (let i = 0; i < rowCount; i++) {
                     let rowData = [];
                     for (let field = 0; field < seriesColNames.length; field++) {
-                        rowData.push(response.data[i][seriesColNames[field]])
+                        let colValues = response.data[seriesColNames[field]] || [];
+                        rowData.push(colValues[i])
                     }
-                    let txt = row[titleFieldName];
+                    let txt = titleValues[i];
                     try {
                         txt = $($.parseHTML(txt)).text() || txt;
                     } catch (e) {
@@ -182,7 +186,7 @@
             let crosstabColNames = getCrosstabColumnNames(response, chartOptions);
 
             if (chartOptions.plot_total) {
-                let results = $.slick_reporting.calculateTotalOnObjectArray(response.data, crosstabColNames);
+                let results = $.slick_reporting.calculateTotalOnColumnArray(response.data, crosstabColNames);
                 for (let fieldIdx = 0; fieldIdx < crosstabColNames.length; fieldIdx++) {
                     datasetData.push(results[crosstabColNames[fieldIdx]])
                 }
@@ -193,13 +197,15 @@
                     borderColor: getBackgroundColors(),
                 })
             } else {
-                for (let i = 0; i < response.data.length; i++) {
-                    let row = response.data[i];
+                let rowCount = $.slick_reporting.getReportRowCount(response);
+                let titleValues = response.data[titleFieldName] || [];
+                for (let i = 0; i < rowCount; i++) {
                     let rowData = [];
                     for (let field = 0; field < crosstabColNames.length; field++) {
-                        rowData.push(row[crosstabColNames[field]])
+                        let colValues = response.data[crosstabColNames[field]] || [];
+                        rowData.push(colValues[i])
                     }
-                    let txt = row[titleFieldName];
+                    let txt = titleValues[i];
                     try {
                         txt = $($.parseHTML(txt)).text() || txt;
                     } catch (e) {}
