@@ -95,6 +95,7 @@
     }
 
     function createChartObject(response, chartOptions) {
+        response = $.extend({}, response, {data: $.slick_reporting.dataToRows(response)});
         let chartType = chartOptions.type || 'bar';
 
         if (chartType === 'pie') {
