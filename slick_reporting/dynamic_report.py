@@ -16,7 +16,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.db.models import Model, QuerySet
+from django.db.models import Model, Q, QuerySet
 
 from .app_settings import get_end_date, get_start_date
 from .generator import TIME_SERIES_DELTAS, ListViewReportGenerator, ReportGenerator
@@ -26,11 +26,13 @@ from .llm.introspection import REPORTABLE_METHODS, _model_to_catalog
 from .registry import field_registry
 
 __all__ = [
+    "DEFAULT_EXCLUDED_MODELS",
     "DYNAMIC_REPORT_SPEC_SCHEMA",
     "describe_dynamic_report_models",
     "run_dynamic_report",
 ]
 
+DEFAULT_EXCLUDED_MODELS = ("auth", "sessions")
 MAX_TIME_SERIES_PERIODS = 120
 MAX_CROSSTAB_IDS = 50
 MAX_COMPUTED_COLUMNS = 500
@@ -139,27 +141,37 @@ def _label(model):
 class _SpecValidator:
     """Collects the errors of one spec, keyed by spec key."""
 
-    def __init__(self, spec, request, allowed_models):
+    def __init__(self, spec, request, allowed_models, excluded_models):
         self.spec = spec
         self.user = getattr(request, "user", None)
         if self.user is None:
             raise PermissionDenied("A request with a user is required.")
-        if allowed_models is None:
-            raise ImproperlyConfigured("allowed_models is required: pass the models a spec may use.")
-        self.allowed_models = set()
-        for identifier in allowed_models:
-            model = _resolve_model(identifier)
-            if model is None:
-                raise ImproperlyConfigured(f"allowed_models: could not resolve {identifier!r}")
-            self.allowed_models.add(model)
+        self.allowed_models = None if allowed_models is None else self.resolve_models(allowed_models, "allowed_models")
+        self.excluded_apps = {entry for entry in excluded_models if isinstance(entry, str) and "." not in entry}
+        self.excluded_models = self.resolve_models(set(excluded_models) - self.excluded_apps, "excluded_models")
         self.relations = {}
         self.errors = {}
+
+    @staticmethod
+    def resolve_models(identifiers, argument):
+        models = set()
+        for identifier in identifiers:
+            model = _resolve_model(identifier)
+            if model is None:
+                raise ImproperlyConfigured(f"{argument}: could not resolve {identifier!r}")
+            models.add(model)
+        return models
+
+    def is_allowed(self, model):
+        if model._meta.app_label in self.excluded_apps or model in self.excluded_models:
+            return False
+        return self.allowed_models is None or model in self.allowed_models
 
     def add_error(self, key, message, code="invalid"):
         self.errors.setdefault(key, []).append(ValidationError(message, code=code))
 
     def check_model(self, model, key):
-        if model not in self.allowed_models:
+        if not self.is_allowed(model):
             self.add_error(key, f"Model {_label(model)} is not available for reports.", code="model_not_allowed")
             return False
         opts = model._meta
@@ -311,11 +323,11 @@ TIME_SERIES_KEYS = ("time_series_columns",)
 CROSSTAB_KEYS = ("crosstab_ids", "crosstab_columns", "crosstab_compute_remainder")
 
 
-def _clean_spec(spec, request, allowed_models, max_time_series_periods):
+def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_periods):
     """Validate ``spec`` and return the keyword arguments of the report generator."""
     if not isinstance(spec, dict):
         raise ValidationError({"spec": ValidationError("Expected a JSON object.", code="invalid")})
-    validator = _SpecValidator(spec, request, allowed_models)
+    validator = _SpecValidator(spec, request, allowed_models, excluded_models)
     unknown = set(spec) - set(DYNAMIC_REPORT_SPEC_SCHEMA["properties"])
     for key in sorted(unknown):
         validator.add_error(key, "Unknown spec key.", code="unknown_key")
@@ -467,22 +479,31 @@ def _resolve_base_querysets(base_querysets):
 
 
 def run_dynamic_report(
-    spec, request, allowed_models, base_querysets=None, max_time_series_periods=MAX_TIME_SERIES_PERIODS
+    spec,
+    request,
+    allowed_models=None,
+    excluded_models=DEFAULT_EXCLUDED_MODELS,
+    base_querysets=None,
+    max_time_series_periods=MAX_TIME_SERIES_PERIODS,
 ):
     """
-    Validate ``spec`` (see ``DYNAMIC_REPORT_SPEC_SCHEMA``) against ``allowed_models`` and run it; return the full
-    response. ``base_querysets`` maps a model to the queryset its rows come from, also when the spec reaches it
-    through a relation. A bad spec raises ``ValidationError`` keyed by spec key, a missing permission
-    ``PermissionDenied``.
+    Validate ``spec`` (see ``DYNAMIC_REPORT_SPEC_SCHEMA``) against the models the user may view, narrowed by
+    ``allowed_models`` and ``excluded_models``, and run it; return the full response. ``base_querysets`` maps a
+    model to the queryset its rows come from, also when the spec reaches it through a relation.
     """
     scopes = _resolve_base_querysets(base_querysets)
-    kind, config, relations = _clean_spec(spec, request, allowed_models, max_time_series_periods)
+    kind, config, relations = _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_periods)
     report_model = config["report_model"]
     try:
         main_queryset = scopes.get(report_model, report_model._default_manager.all())
-        config["main_queryset"] = main_queryset.filter(
-            **{f"{path}__in": scopes[model] for path, model in relations.items() if model in scopes}
-        )
+        scope = Q()
+        for path, model in relations.items():
+            if model in scopes:
+                scope &= Q(**{f"{path}__in": scopes[model]}) | Q(**{f"{path}__isnull": True})
+        if scope:
+            scoped_pks = report_model._default_manager.filter(scope).values("pk")
+            main_queryset = main_queryset.filter(pk__in=scoped_pks)
+        config["main_queryset"] = main_queryset
         q_filters, config["kwargs_filters"] = prepare_filters(report_model, config["kwargs_filters"])
         for key in ("columns", "time_series_columns", "crosstab_columns"):
             if key in config:
@@ -505,14 +526,15 @@ def run_dynamic_report(
         raise ValidationError({"filters": error.error_list}) from error
 
 
-def describe_dynamic_report_models(request, allowed_models):
+def describe_dynamic_report_models(request, allowed_models=None, excluded_models=DEFAULT_EXCLUDED_MODELS):
     """
     Describe the models a spec may use: fields with their types and relations, in the shape of the llm catalog.
 
-    Only the ``allowed_models`` the user may view are listed, relations to other models are left out.
+    Only models the user may view, narrowed by ``allowed_models`` and ``excluded_models``, are listed; relations
+    to other models are left out.
     """
-    validator = _SpecValidator({}, request, allowed_models)
-    candidates = validator.allowed_models
+    validator = _SpecValidator({}, request, allowed_models, excluded_models)
+    candidates = validator.allowed_models if validator.allowed_models is not None else apps.get_models()
 
     def usable(model):
         try:

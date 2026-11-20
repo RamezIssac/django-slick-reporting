@@ -2,7 +2,7 @@ import json
 
 import datetime
 
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Permission, User
 from django.db.models import Sum
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.test import RequestFactory, TestCase
@@ -17,7 +17,7 @@ from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import compact_response
 from slick_reporting.registry import field_registry
 
-from .models import Client, SalesWithFlag, SimpleSales
+from .models import Client, Contact, Product, SalesWithFlag, SimpleSales
 from .tests import BaseTestData, year
 
 ALLOWED = ["tests.SimpleSales", "tests.Client", "tests.Product"]
@@ -186,20 +186,40 @@ class DynamicReportTest(BaseTestData, TestCase):
             with self.assertRaises(PermissionDenied):
                 describe_dynamic_report_models(request, ALLOWED)
 
-    def test_allowed_models_are_required_and_narrowed_to_viewable_ones(self):
+    def test_default_allowed_models_are_the_ones_the_user_may_view(self):
         spec = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}
-        with self.assertRaises(ImproperlyConfigured):
-            run_dynamic_report(spec, self.request, None)
-        with self.assertRaises(ImproperlyConfigured):
-            describe_dynamic_report_models(self.request, None)
         self.limited_user.user_permissions.add(Permission.objects.get(codename="view_simplesales"))
         self.request.user = type(self.limited_user).objects.get(pk=self.limited_user.pk)
-        catalog = describe_dynamic_report_models(self.request, ALLOWED)
+        catalog = describe_dynamic_report_models(self.request)
         self.assertEqual([entry["identifier"] for entry in catalog], ["tests.SimpleSales"])
-        response = run_dynamic_report(spec, self.request, ALLOWED)
+        response = run_dynamic_report(spec, self.request)
         self.assertEqual(response["data"]["value_sum"], [SimpleSales.objects.aggregate(total=Sum("value"))["total"]])
         with self.assertRaises(PermissionDenied):
-            run_dynamic_report({"report_model": "tests.Client"}, self.request, ALLOWED)
+            run_dynamic_report({"report_model": "tests.Client"}, self.request)
+
+    def test_auth_and_sessions_are_excluded_by_default(self):
+        for spec in (
+            {"report_model": "auth.User", "kind": "list", "columns": ["username", "password"]},
+            {"report_model": "sessions.Session", "kind": "list", "columns": ["session_key"]},
+        ):
+            with self.assertRaises(ValidationError) as caught:
+                run_dynamic_report(spec, self.request)
+            self.assertEqual(caught.exception.error_dict["report_model"][0].code, "model_not_allowed")
+        identifiers = {entry["identifier"] for entry in describe_dynamic_report_models(self.request)}
+        self.assertIn("tests.SimpleSales", identifiers)
+        self.assertFalse({"auth.User", "auth.Group", "auth.Permission", "sessions.Session"} & identifiers)
+
+    def test_excluded_models_replace_the_default(self):
+        spec = {"report_model": "tests.SimpleSales", "group_by": "product", "columns": ["name", VALUE_SUM]}
+        with self.assertRaises(ValidationError) as caught:
+            run_dynamic_report(spec, self.request, excluded_models=["tests.Product"])
+        self.assertEqual(caught.exception.error_dict["group_by"][0].code, "model_not_allowed")
+        users = {"report_model": "auth.User", "kind": "list", "columns": ["username"]}
+        response = run_dynamic_report(users, self.request, excluded_models=[Product])
+        self.assertEqual(len(response["data"]["username"]), User.objects.count())
+        catalog = describe_dynamic_report_models(self.request, ALLOWED, excluded_models=["tests.Product"])
+        self.assertEqual([entry["identifier"] for entry in catalog], ["tests.Client", "tests.SimpleSales"])
+        self.assertNotIn("product", {field["name"] for field in catalog[1]["fields"]})
 
     def test_wrongly_typed_values_are_invalid_on_their_key(self):
         base = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}
@@ -251,6 +271,30 @@ class DynamicReportTest(BaseTestData, TestCase):
         self.assertEqual(compact_response(self.run_spec(spec, base_querysets=scoped))["totals"], {"value_sum": "900"})
         with self.assertRaises(ImproperlyConfigured):
             self.run_spec(spec, base_querysets={Client: SimpleSales.objects.all()})
+
+    def test_scope_on_a_reverse_relation_adds_no_rows(self):
+        everything = {SimpleSales: SimpleSales.objects.all()}
+        spec = {
+            "report_model": "tests.Client",
+            "kind": "list",
+            "columns": ["name"],
+            "filters": {"simplesales__value": 100},
+        }
+        unscoped = compact_response(self.run_spec(spec))
+        self.assertEqual(compact_response(self.run_spec(spec, base_querysets=everything)), unscoped)
+        spec = {**spec, "kind": "aggregate", "columns": [{"method": "Count", "field": "id", "name": "clients"}]}
+        unscoped = compact_response(self.run_spec(spec))
+        self.assertEqual(compact_response(self.run_spec(spec, base_querysets=everything)), unscoped)
+
+    def test_rows_with_a_null_relation_stay_in_scope(self):
+        no_contact = Client.objects.create(name="Client 4", sex="MALE")
+        SimpleSales.objects.create(
+            doc_date=datetime.datetime(year, 1, 3), client=no_contact, product=self.product1, quantity=5, price=10
+        )
+        scoped = {Contact: Contact.objects.exclude(pk=self.client3.contact_id)}
+        spec = {"report_model": "tests.SimpleSales", "kind": "list", "columns": ["value", "client__contact__address"]}
+        compact = compact_response(self.run_spec(spec, allowed_models=[*ALLOWED, Contact], base_querysets=scoped))
+        self.assertEqual(sorted(row[0] for row in compact["rows"]), ["100.00"] * 3 + ["200.00"] * 3 + ["50.00"])
 
     def test_runs_leave_the_field_registry_unchanged(self):
         names = field_registry.get_all_report_fields_names()

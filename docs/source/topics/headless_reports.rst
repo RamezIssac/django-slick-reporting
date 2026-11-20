@@ -84,10 +84,11 @@ Compact output
 Dynamic reports from a JSON spec
 --------------------------------
 
-``run_dynamic_report(spec, request, allowed_models, base_querysets=None)`` validates ``spec`` and returns the
-report full response, ready for ``compact_response()``. ``DYNAMIC_REPORT_SPEC_SCHEMA`` is the JSON Schema of the spec,
-and ``describe_dynamic_report_models(request, allowed_models)`` lists the usable models and fields in the
-shape of the LLM assistant catalog.
+``run_dynamic_report(spec, request, allowed_models=None, excluded_models=DEFAULT_EXCLUDED_MODELS,
+base_querysets=None)`` validates ``spec`` and returns the report full response, ready for ``compact_response()``.
+``DYNAMIC_REPORT_SPEC_SCHEMA`` is the JSON Schema of the spec, and
+``describe_dynamic_report_models(request, allowed_models=None, excluded_models=DEFAULT_EXCLUDED_MODELS)`` lists
+the usable models and fields in the shape of the LLM assistant catalog.
 
 .. code-block:: python
 
@@ -114,8 +115,10 @@ shape of the LLM assistant catalog.
 
 * The ``report_model`` entry is the report's main queryset: only its rows are listed, grouped and summed.
 * An entry for a model the spec traverses (``group_by``, ``filters``, ``crosstab_field``, ``date_field``, plain
-  columns through ``group_by``, computation field paths) adds ``<relation path>__in=<queryset>`` to the main
-  queryset. With the example above, sales of clients outside the queryset are left out of every column.
+  columns through ``group_by``, computation field paths) keeps the main rows whose relation is in the queryset
+  (``<relation path>__in=<queryset>``) or is empty (``<relation path>__isnull=True``). All scopes apply as one
+  subquery on the report model's primary key, and a reverse or many-to-many path adds no duplicate rows.
+  With the example above, sales of clients outside the queryset are left out of every column.
 * A value that is not a ``QuerySet`` of its model raises ``ImproperlyConfigured``.
 
 The keys follow the configuration of the LLM assistant (``run_llm_report_config``):
@@ -156,8 +159,12 @@ The keys follow the configuration of the LLM assistant (``run_llm_report_config`
 Validation runs before any query:
 
 * Every model the spec names or traverses (``client__contact__agent`` traverses three), and every model a
-  registered computation field reads, must be in ``allowed_models``, else ``ValidationError`` with code
-  ``model_not_allowed``. ``allowed_models`` is required; ``None`` raises ``ImproperlyConfigured``.
+  registered computation field reads, must be in ``allowed_models`` and not in ``excluded_models``, else
+  ``ValidationError`` with code ``model_not_allowed``. ``allowed_models=None`` means every installed model
+  ``request.user`` may view. ``excluded_models`` entries are app labels (``"auth"``) or
+  ``"app_label.ModelName"``; the default ``DEFAULT_EXCLUDED_MODELS`` is ``("auth", "sessions")``, and a list
+  passed by the caller replaces it. ``describe_dynamic_report_models()`` leaves excluded models out, along with
+  the relations pointing to them.
 * Filter values are checked against their field (``value__gte: "abc"`` is rejected).
 * A report computes at most 500 computation columns (columns, plus time series and crosstab columns
   repeated per period and value), else code ``too_large``.
@@ -168,3 +175,7 @@ Validation runs before any query:
 * Unknown keys, unknown fields, unsupported lookups and malformed or wrongly typed values raise
   ``ValidationError``; its ``error_dict`` is keyed by spec key, with the codes ``unknown_key``,
   ``unknown_field``, ``required``, ``too_many_periods``, ``too_large``, ``invalid`` or ``invalid_spec``.
+
+Note: pass your own ``excluded_models`` as the default plus your sensitive apps (``[*DEFAULT_EXCLUDED_MODELS,
+"payroll"]``), not a list without ``auth`` and ``sessions``, because the list replaces the default and would
+expose users, password hashes and sessions.
