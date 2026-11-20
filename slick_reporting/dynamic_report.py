@@ -375,9 +375,12 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
 
         pattern = spec.get("time_series_pattern") or None
         crosstab_field = spec.get("crosstab_field") or None
-        for key, keys in (("time_series_pattern", TIME_SERIES_KEYS), ("crosstab_field", CROSSTAB_KEYS)):
-            if not spec.get(key) and any(spec.get(dependent) for dependent in keys):
-                validator.add_error(key, f"{', '.join(keys)} need a {key}.", code="required")
+        for key, keys, placeholder in (
+            ("time_series_pattern", TIME_SERIES_KEYS, "__time_series__"),
+            ("crosstab_field", CROSSTAB_KEYS, "__crosstab__"),
+        ):
+            if not spec.get(key) and (placeholder in columns or any(spec.get(dependent) for dependent in keys)):
+                validator.add_error(key, f"{placeholder}, {', '.join(keys)} need a {key}.", code="required")
         if pattern:
             if pattern not in TIME_SERIES_DELTAS:
                 validator.add_error("time_series_pattern", f"Use one of {', '.join(sorted(TIME_SERIES_DELTAS))}.")

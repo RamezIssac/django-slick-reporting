@@ -145,6 +145,9 @@ class DynamicReportTest(BaseTestData, TestCase):
         for key, value in (("crosstab_ids", [self.client1.pk]), ("crosstab_columns", [VALUE_SUM])):
             self.assert_spec_error({**base, key: value}, "crosstab_field", "required")
         self.assert_spec_error({**base, "crosstab_compute_remainder": True}, "crosstab_field", "required")
+        placeholder_columns = {"time_series_pattern": "__time_series__", "crosstab_field": "__crosstab__"}
+        for key, placeholder in placeholder_columns.items():
+            self.assert_spec_error({**base, "columns": ["name", placeholder, VALUE_SUM]}, key, "required")
         list_spec = {"report_model": "tests.SimpleSales", "kind": "list", "columns": ["value"]}
         self.assert_spec_error({**list_spec, "crosstab_ids": [self.client1.pk]}, "crosstab_ids", "invalid")
 
