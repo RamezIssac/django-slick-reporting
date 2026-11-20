@@ -1,5 +1,6 @@
 import datetime
 import json
+from unittest.mock import patch
 
 from django.test import RequestFactory, TestCase, override_settings
 
@@ -58,3 +59,23 @@ class ListReportDateRangeTest(BaseTestData, TestCase):
             end_date=datetime.datetime(year, 2, 28),
         )
         self.assertEqual(len(report.get_report_data()), 3)
+
+
+class DefaultDatesAreDynamicTest(TestCase):
+    def test_settings_default_dates_are_computed_on_each_read(self):
+        from slick_reporting import app_settings
+
+        first, later = datetime.datetime(year, 3, 1), datetime.datetime(year, 3, 2)
+        with patch.object(app_settings, "get_start_date", return_value=first), patch.object(
+            app_settings, "get_end_date", return_value=first
+        ):
+            self.assertEqual(app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"], first)
+            self.assertEqual(app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"], first)
+        with patch.object(app_settings, "get_end_date", return_value=later):
+            self.assertEqual(app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"], later)
+
+    @override_settings(SLICK_REPORTING_SETTINGS={"DEFAULT_END_DATE_TIME": datetime.datetime(2020, 1, 1)})
+    def test_user_setting_overrides_the_computed_default(self):
+        from slick_reporting import app_settings
+
+        self.assertEqual(app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"], datetime.datetime(2020, 1, 1))
