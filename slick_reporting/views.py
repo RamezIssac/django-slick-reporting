@@ -580,14 +580,19 @@ class SlickReportingListViewMixin(ReportViewBase):
 
     def get_report_generator(self, queryset=None, for_print=False):
         q_filters, kw_filters = self.get_form_filters(self.form)
+        # A ModelForm built from `filters` has no date range: the generator then uses the default window.
+        get_start_date = getattr(self.form, "get_start_date", None)
+        get_end_date = getattr(self.form, "get_end_date", None)
 
         return self.report_generator_class(
             self.get_report_model(),
-            # start_date=self.form.get_start_date(),
-            # end_date=self.form.get_end_date(),
+            start_date=get_start_date() if get_start_date else None,
+            end_date=get_end_date() if get_end_date else None,
             q_filters=q_filters,
             kwargs_filters=kw_filters,
             date_field=self.date_field,
+            start_date_field_name=self.start_date_field_name,
+            end_date_field_name=self.end_date_field_name,
             main_queryset=queryset,
             print_flag=for_print,
             limit_records=self.limit_records,

@@ -1187,8 +1187,8 @@ class ListViewReportGenerator(ReportGenerator):
         filters = {}
         if self.date_field:
             filters = {
-                f"{self.date_field}__gt": self.start_date,
-                f"{self.date_field}__lte": self.end_date,
+                f"{self.start_date_field_name}__gte": self.start_date,
+                f"{self.end_date_field_name}__lte": self.end_date,
             }
         filters.update(self.kwargs_filters)
 
