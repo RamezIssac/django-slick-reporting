@@ -236,3 +236,34 @@ class CompactResponseTest(BaseTestData, TestCase):
         )
         self.assertEqual(compact["totals"], {"amount": "100.1"})
         self.assertEqual(compact["date_window"], {"start": None, "end": None, "label": None})
+
+
+@override_settings(SLICK_REPORTING_SETTINGS=HEADLESS_SETTINGS)
+class HeadlessEdgeCasesTest(BaseTestData, TestCase):
+    def setUp(self):
+        self.request = RequestFactory().get("/")
+        self.request.user = self.user
+
+    def test_date_only_end_date_covers_the_whole_day(self):
+        SimpleSales.objects.create(
+            doc_date=datetime.datetime(year, 2, 28, 15, 0),
+            client=self.client1,
+            product=self.product1,
+            quantity=1,
+            price=7,
+        )
+        params = {"client_id": [self.client1.pk], "start_date": f"{year}-02-01", "end_date": f"{year}-02-28"}
+        compact = compact_response(ClientTotals.run(self.request, params))
+        self.assertEqual(compact["rows"], [["Client 1", "107"]])
+
+    def test_empty_result(self):
+        compact = compact_response(
+            ClientTotals.run(self.request, {"start_date": "2030-01-01", "end_date": "2030-12-31"})
+        )
+        self.assertEqual((compact["rows"], compact["row_count"], compact["truncated"]), ([], 0, False))
+        self.assertEqual(compact["totals"], {"__total__": "0"})
+
+    def test_order_by_is_not_a_parameter(self):
+        with self.assertRaises(ValidationError) as caught:
+            ClientTotals.run(self.request, {"order_by": "name"})
+        self.assertEqual(caught.exception.error_dict["order_by"][0].code, "unknown_parameter")

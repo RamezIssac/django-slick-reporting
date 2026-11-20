@@ -31,8 +31,9 @@ Running a report view
    ``get_report_results`` still apply.
 
 ``params`` keys are the form field names (``start_date``, ``end_date``, ``<foreign key>_id`` filters,
-``time_series_pattern``, ``crosstab_compute_remainder`` ...), plus ``order_by``.
-Lists become repeated GET values; ``true`` / ``false`` become checkbox values.
+``time_series_pattern``, ``crosstab_compute_remainder`` ...). Lists become repeated GET values;
+``true`` / ``false`` become checkbox values. A date-only ``end_date`` such as ``"2026-03-31"`` covers the
+whole day (``2026-03-31T23:59:59``).
 
 * An unknown key raises ``ValidationError`` with code ``unknown_parameter``.
 * An invalid value raises ``ValidationError``; its ``error_dict`` is the form errors, keyed by field name.
@@ -117,8 +118,8 @@ The keys follow the configuration of the LLM assistant (``run_llm_report_config`
     or a registered computation field name such as ``__total__``. ``Sum`` and ``Avg`` need a numeric field;
     ``Sum`` and ``Count`` columns are summable.
 ``date_field``, ``start_date``, ``end_date``
-    ``date_field`` is a date or datetime field path; the dates are ISO strings. Missing dates take the
-    report defaults.
+    ``date_field`` is a date or datetime field path; the dates are ISO strings and a date-only ``end_date``
+    covers the whole day. Missing dates take the report defaults.
 ``time_series_pattern``, ``time_series_columns``
     ``daily``, ``weekly``, ``bi-weekly``, ``monthly``, ``quarterly``, ``semiannually`` or ``annually``,
     with the computation columns to repeat per period. Needs ``date_field``. At most 120 periods
@@ -134,14 +135,17 @@ The keys follow the configuration of the LLM assistant (``run_llm_report_config`
 
 Validation runs before any query:
 
-* Every model the spec names or traverses (``client__contact__agent`` traverses three) must be in
-  ``allowed_models``, else ``ValidationError`` with code ``model_not_allowed``. ``allowed_models=None``
-  allows every installed model.
+* Every model the spec names or traverses (``client__contact__agent`` traverses three), and every model a
+  registered computation field reads, must be in ``allowed_models``, else ``ValidationError`` with code
+  ``model_not_allowed``. ``allowed_models=None`` allows every installed model.
+* Filter values are checked against their field (``value__gte: "abc"`` is rejected).
+* A report computes at most 500 computation columns (columns, plus time series and crosstab columns
+  repeated per period and value), else code ``too_large``.
 * With a ``request``, ``request.user`` needs the view or change permission on each of those models, else
   ``PermissionDenied``. ``request=None`` skips this check.
 * Unknown keys, unknown fields, unsupported lookups and malformed values raise ``ValidationError``; its
   ``error_dict`` is keyed by spec key, with the codes ``unknown_key``, ``unknown_field``, ``required``,
-  ``too_many_periods``, ``invalid`` or ``invalid_spec``.
+  ``too_many_periods``, ``too_large``, ``invalid`` or ``invalid_spec``.
 
 Note: pass an explicit ``allowed_models`` list when the spec comes from a user or an LLM and not
 ``None``, because ``None`` lets a spec traverse into any installed model the user can view.

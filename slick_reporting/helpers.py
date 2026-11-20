@@ -1,4 +1,5 @@
 import datetime
+import re
 from collections import OrderedDict
 from decimal import Decimal
 
@@ -79,6 +80,7 @@ def user_test_function(report_view, request=None):
     return True
 
 
+DATE_ONLY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 NUMBER_COLUMN_TYPES = {
     "number",
     "AutoField",
@@ -99,6 +101,15 @@ COLUMN_TYPE_ALIASES = {
     "BooleanField": "boolean",
     "NullBooleanField": "boolean",
 }
+
+
+def end_of_day_if_date_only(value):
+    """Turn a date-only end date ("2026-03-31" or a ``date``) into the last second of that day; leave others."""
+    if isinstance(value, str) and DATE_ONLY_PATTERN.match(value.strip()):
+        return f"{value.strip()}T23:59:59"
+    if isinstance(value, datetime.date) and not isinstance(value, datetime.datetime):
+        return datetime.datetime.combine(value, datetime.time(23, 59, 59))
+    return value
 
 
 def normalize_column_type(column_type):
@@ -140,7 +151,7 @@ def compact_response(full_response, max_rows=None):
     """
     columns = [col for col in full_response["columns"] if col.get("visible", True) is not False]
     data = full_response["data"]
-    row_count = len(data[columns[0]["name"]]) if columns else 0
+    row_count = len(data.get(columns[0]["name"], [])) if columns else 0
 
     compact_columns = []
     totals = {}

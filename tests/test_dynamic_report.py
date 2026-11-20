@@ -1,9 +1,13 @@
 import json
 
+import datetime
+
 from django.contrib.auth.models import Permission
+from django.db.models import Sum
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import RequestFactory, TestCase
 
+from slick_reporting.fields import ComputationField
 from slick_reporting.dynamic_report import (
     DYNAMIC_REPORT_SPEC_SCHEMA,
     describe_dynamic_report_models,
@@ -13,7 +17,7 @@ from slick_reporting.generator import ReportGenerator
 from slick_reporting.helpers import compact_response
 from slick_reporting.registry import field_registry
 
-from .models import Client, SimpleSales
+from .models import Client, SalesWithFlag, SimpleSales
 from .tests import BaseTestData, year
 
 ALLOWED = ["tests.SimpleSales", "tests.Client", "tests.Product"]
@@ -176,3 +180,79 @@ class DynamicReportTest(BaseTestData, TestCase):
         self.assertIn("client", sales_fields)
         self.assertNotIn("product", sales_fields)
         json.dumps(catalog)
+
+
+class FlaggedSalesTotal(ComputationField):
+    name = "__flagged_sales_total__"
+    report_model = SalesWithFlag
+    calculation_field = "value"
+    calculation_method = Sum
+
+
+class DynamicReportEdgeCasesTest(BaseTestData, TestCase):
+    def setUp(self):
+        self.request = RequestFactory().get("/")
+        self.request.user = self.user
+
+    def run_spec(self, spec, allowed_models=ALLOWED):
+        return run_dynamic_report(spec, self.request, allowed_models=allowed_models)
+
+    def assert_spec_error(self, spec, key, code, allowed_models=ALLOWED):
+        with self.assertRaises(ValidationError) as caught:
+            self.run_spec(spec, allowed_models)
+        self.assertIn(code, [error.code for error in caught.exception.error_dict[key]])
+
+    def test_date_only_end_date_covers_the_whole_day(self):
+        SimpleSales.objects.create(
+            doc_date=datetime.datetime(year, 2, 28, 15, 0),
+            client=self.client1,
+            product=self.product1,
+            quantity=1,
+            price=7,
+        )
+        spec = {
+            "report_model": "tests.SimpleSales",
+            "columns": [VALUE_SUM],
+            "date_field": "doc_date",
+            "start_date": f"{year}-02-01",
+            "end_date": f"{year}-02-28",
+        }
+        self.assertEqual(compact_response(self.run_spec(spec))["rows"], [["607"]])
+
+    def test_filter_values_are_checked_against_the_field(self):
+        base = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}
+        self.assert_spec_error({**base, "filters": {"value__gte": "abc"}}, "filters", "invalid")
+        self.assert_spec_error({**base, "filters": {"doc_date__gte": "soon"}}, "filters", "invalid")
+        self.assert_spec_error({**base, "filters": {"doc_date__year": "2026"}}, "filters", "invalid")
+        self.assert_spec_error({**base, "filters": {"client_id": "No such client"}}, "spec", "invalid_spec")
+
+    def test_empty_result(self):
+        spec = {
+            "report_model": "tests.SimpleSales",
+            "group_by": "client",
+            "columns": ["name", VALUE_SUM],
+            "filters": {"value__gt": 100000},
+        }
+        compact = compact_response(self.run_spec(spec))
+        self.assertEqual((compact["rows"], compact["row_count"], compact["totals"]), ([], 0, {"value_sum": "0"}))
+
+    def test_registered_field_reading_another_model_is_checked(self):
+        field_registry.register(FlaggedSalesTotal)
+        self.addCleanup(field_registry.unregister, FlaggedSalesTotal)
+        spec = {"report_model": "tests.SimpleSales", "columns": ["__flagged_sales_total__"]}
+        self.assert_spec_error(spec, "columns", "model_not_allowed")
+        self.assertTrue(self.run_spec(spec, allowed_models=ALLOWED + ["tests.SalesWithFlag"])["data"])
+
+    def test_computed_column_cap(self):
+        spec = {
+            "report_model": "tests.SimpleSales",
+            "date_field": "doc_date",
+            "start_date": f"{year}-01-01",
+            "end_date": f"{year}-12-31",
+            "time_series_pattern": "monthly",
+            "time_series_columns": [VALUE_SUM],
+            "crosstab_field": "client",
+            "crosstab_ids": list(range(1, 51)),
+            "crosstab_columns": [VALUE_SUM],
+        }
+        self.assert_spec_error(spec, "spec", "too_large")

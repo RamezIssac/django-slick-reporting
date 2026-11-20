@@ -29,6 +29,7 @@ from .generator import (
     ReportGenerator,
     ReportGeneratorAPI,
 )
+from .helpers import end_of_day_if_date_only
 
 
 def dictsort(value, arg, desc=False):
@@ -65,7 +66,7 @@ class ExportToCSV:
 
     def get_response(self):
         response = HttpResponse(content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = "attachment; filename={filename}.csv".format(filename=self.get_filename())
+        response["Content-Disposition"] = f"attachment; filename={self.get_filename()}.csv"
         # response.write("\ufeff")  # UTF-8 BOM for correct Arabic/non-ASCII rendering in Excel
         writer = csv.writer(response)
         for rows in self.get_rows():
@@ -107,9 +108,7 @@ class ExportToStreamingCSV(ExportToCSV):
         return StreamingHttpResponse(
             rows_with_bom(),
             content_type="text/csv; charset=utf-8",
-            headers={
-                "Content-Disposition": 'attachment; filename="{filename}.csv"'.format(filename=self.get_filename())
-            },
+            headers={"Content-Disposition": f'attachment; filename="{self.get_filename()}.csv"'},
         )
 
 
@@ -478,10 +477,9 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         """
         Run the report without rendering and return its full response (as ``get_report_results()``).
 
-        ``params`` holds JSON values keyed by form field name (plus ``order_by`` and ``extra_params``);
-        omitted fields take their initial value, computed at call time. Raises ``ValidationError``
-        (``error_dict`` keyed by parameter) for unknown or invalid params, and ``PermissionDenied``
-        when ``check_access`` is set and ``test_func()`` fails.
+        ``params`` maps form field names (and ``extra_params`` names) to JSON values; omitted fields take their
+        initial value computed at call time, and a date-only ``end_date`` covers its whole day. Unknown or
+        invalid params raise ``ValidationError`` keyed by parameter, a failed ``test_func()`` ``PermissionDenied``.
         """
         params = dict(params or {})
         headless_request = copy.copy(request)
@@ -496,13 +494,15 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         form_class = view.get_form_class()
         form_kwargs = view.get_form_kwargs()
         unbound_form = form_class(**form_kwargs)
-        known_params = set(unbound_form.fields) | set(view.extra_params or {}) | {"order_by"}
+        known_params = set(unbound_form.fields) | set(view.extra_params or {})
         unknown = sorted(set(params) - known_params)
         if unknown:
             raise ValidationError(
                 {name: ValidationError(_("Unknown parameter."), code="unknown_parameter") for name in unknown}
             )
 
+        if "end_date" in params:
+            params["end_date"] = end_of_day_if_date_only(params["end_date"])
         query = headless_request.GET
         for name, field in unbound_form.fields.items():
             value = params.pop(name) if name in params else unbound_form.get_initial_for_field(field, name)

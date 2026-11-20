@@ -20,7 +20,7 @@ from django.db.models import Model
 
 from .app_settings import get_end_date, get_start_date
 from .generator import TIME_SERIES_DELTAS, ListViewReportGenerator, ReportGenerator
-from .helpers import NUMBER_COLUMN_TYPES
+from .helpers import NUMBER_COLUMN_TYPES, end_of_day_if_date_only
 from .llm.executor import _build_computation_field, prepare_filters
 from .llm.introspection import REPORTABLE_METHODS, _model_to_catalog
 from .registry import field_registry
@@ -33,6 +33,7 @@ __all__ = [
 
 MAX_TIME_SERIES_PERIODS = 120
 MAX_CROSSTAB_IDS = 50
+MAX_COMPUTED_COLUMNS = 500
 FILTER_LOOKUPS = {
     "exact",
     "iexact",
@@ -53,6 +54,7 @@ FILTER_LOOKUPS = {
     "month",
     "day",
 }
+COERCED_LOOKUPS = {"exact", "in", "gt", "gte", "lt", "lte", "range"}
 SUMMABLE_METHODS = {"Sum", "Count"}
 NUMERIC_ONLY_METHODS = {"Sum", "Avg"}
 COLUMN_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -98,7 +100,11 @@ DYNAMIC_REPORT_SPEC_SCHEMA = {
         },
         "date_field": {"type": "string", "description": "Date or datetime field path used by the date range."},
         "start_date": {"type": "string", "format": "date-time"},
-        "end_date": {"type": "string", "format": "date-time"},
+        "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO date or datetime; a date-only value covers its whole day.",
+        },
         "time_series_pattern": {"enum": sorted(TIME_SERIES_DELTAS)},
         "time_series_columns": {"type": "array", "items": _computation_column_schema},
         "crosstab_field": {"type": "string", "description": "Field path on report_model to pivot on."},
@@ -198,7 +204,17 @@ class _SpecValidator:
             if column not in field_registry.get_all_report_fields_names():
                 self.add_error(key, f"'{column}' is not a registered computation field.", code="unknown_field")
                 return None
-            self.resolve_path(report_model, field_registry.get_field_by_name(column).calculation_field, key)
+            pending, seen = [field_registry.get_field_by_name(column)], set()
+            while pending:
+                klass = pending.pop()
+                seen.add(klass)
+                # A registered field may read its own model, which must pass the same checks.
+                own_queryset = getattr(klass, "queryset", None)
+                field_model = klass.report_model or (own_queryset.model if own_queryset is not None else report_model)
+                if field_model is not report_model and not self.check_model(field_model, key):
+                    return None
+                self.resolve_path(field_model, klass.calculation_field, key)
+                pending.extend(required for required in klass._get_required_classes() if required not in seen)
             return column
         if not isinstance(column, dict):
             self.add_error(key, f"Expected a computation object, got {column!r}.")
@@ -236,6 +252,8 @@ class _SpecValidator:
         value = self.spec.get(key)
         if value in (None, ""):
             return None
+        if key == "end_date":
+            value = end_of_day_if_date_only(value)
         try:
             return forms.DateTimeField().clean(value)
         except ValidationError as error:
@@ -251,14 +269,25 @@ class _SpecValidator:
             path, _, lookup = name.rpartition("__")
             if lookup not in FILTER_LOOKUPS or not path:
                 path, lookup = name, "exact"
-            if self.resolve_path(report_model, path, "filters") is None:
+            field = self.resolve_path(report_model, path, "filters")
+            if field is None:
                 continue
+            values = value if isinstance(value, list) else [value]
             if lookup == "range" and not (isinstance(value, list) and len(value) == 2):
                 self.add_error("filters", f"'{name}' takes a list of two values.")
             elif lookup == "isnull" and not isinstance(value, bool):
                 self.add_error("filters", f"'{name}' takes true or false.")
             elif lookup not in ("in", "range") and isinstance(value, (list, dict)):
                 self.add_error("filters", f"'{name}' takes a single value.")
+            elif lookup in ("year", "month", "day") and not all(isinstance(item, int) for item in values):
+                self.add_error("filters", f"'{name}' takes an integer.")
+            elif lookup in COERCED_LOOKUPS and not field.is_relation:
+                # Relations keep their values: prepare_filters() resolves labels to ids.
+                for item in values:
+                    try:
+                        field.to_python(item)
+                    except ValidationError:
+                        self.add_error("filters", f"{item!r} is not a valid value for '{path}'.")
         return filters
 
 
@@ -305,6 +334,7 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
         "end_date": end_date,
         "kwargs_filters": filters,
     }
+    series_periods = 1
     columns = spec.get("columns") or []
     if not isinstance(columns, list):
         validator.add_error("columns", "Expected a list.")
@@ -351,6 +381,7 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
                 period_start, periods = start_date, 0
                 while period_start < end_date and periods <= max_time_series_periods:
                     period_start, periods = period_start + TIME_SERIES_DELTAS[pattern], periods + 1
+                series_periods = periods
                 if periods > max_time_series_periods:
                     validator.add_error(
                         "time_series_pattern",
@@ -378,6 +409,17 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
                 crosstab_columns=validator.computations(report_model, "crosstab_columns", required=True),
             )
 
+    if not validator.errors:
+        crosstab_width = len(config.get("crosstab_ids", [])) + int(bool(config.get("crosstab_compute_remainder")))
+        computed = (
+            len(config.get("columns", []))
+            + series_periods * len(config.get("time_series_columns", []))
+            + series_periods * crosstab_width * len(config.get("crosstab_columns", []))
+        )
+        if computed > MAX_COMPUTED_COLUMNS:
+            validator.add_error(
+                "spec", f"The report would compute {computed} columns, above {MAX_COMPUTED_COLUMNS}.", code="too_large"
+            )
     if validator.errors:
         raise ValidationError(validator.errors)
     return kind, config
@@ -387,10 +429,8 @@ def run_dynamic_report(spec, request, allowed_models=None, max_time_series_perio
     """
     Validate ``spec`` (see ``DYNAMIC_REPORT_SPEC_SCHEMA``) and run it; return the report full response.
 
-    ``allowed_models`` lists the models (classes or 'app_label.ModelName') the spec may read or traverse, None
-    allows every installed model. With a ``request``, ``request.user`` needs the view (or change) permission on
-    each of those models, else ``PermissionDenied``; pass ``request=None`` to skip that check. A bad spec, or a
-    model outside ``allowed_models``, raises ``ValidationError`` with an ``error_dict`` keyed by spec key.
+    A bad spec or a model outside ``allowed_models`` raises ``ValidationError`` keyed by spec key. A missing view
+    permission of ``request.user`` raises ``PermissionDenied`` (``request=None`` skips that check).
     """
     kind, config = _clean_spec(spec, request, allowed_models, max_time_series_periods)
     report_model = config["report_model"]
@@ -410,6 +450,11 @@ def run_dynamic_report(spec, request, allowed_models=None, max_time_series_perio
         )
     except (FieldDoesNotExist, FieldError, ImproperlyConfigured, KeyError, ValueError, TypeError) as error:
         raise ValidationError({"spec": ValidationError(str(error), code="invalid_spec")}) from error
+    except ValidationError as error:
+        # A value the ORM rejects while querying arrives without an error_dict.
+        if hasattr(error, "error_dict"):
+            raise
+        raise ValidationError({"filters": error.error_list}) from error
 
 
 def describe_dynamic_report_models(request=None, allowed_models=None):
