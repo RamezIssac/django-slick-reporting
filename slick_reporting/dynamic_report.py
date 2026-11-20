@@ -287,6 +287,10 @@ class _SpecValidator:
         return filters
 
 
+TIME_SERIES_KEYS = ("time_series_columns",)
+CROSSTAB_KEYS = ("crosstab_ids", "crosstab_columns", "crosstab_compute_remainder")
+
+
 def _clean_spec(spec, request, allowed_models, max_time_series_periods):
     """Validate ``spec`` and return the keyword arguments of the report generator."""
     if not isinstance(spec, dict):
@@ -337,7 +341,7 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
         columns = []
 
     if kind == "list":
-        for key in ("group_by", "time_series_pattern", "time_series_columns", "crosstab_field", "crosstab_columns"):
+        for key in ("group_by", "time_series_pattern", "crosstab_field", *TIME_SERIES_KEYS, *CROSSTAB_KEYS):
             if spec.get(key):
                 validator.add_error(key, "A 'list' report takes columns, dates and filters only.")
         if not columns:
@@ -370,6 +374,10 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
         config.update(group_by=group_by, columns=cleaned_columns)
 
         pattern = spec.get("time_series_pattern") or None
+        crosstab_field = spec.get("crosstab_field") or None
+        for key, keys in (("time_series_pattern", TIME_SERIES_KEYS), ("crosstab_field", CROSSTAB_KEYS)):
+            if not spec.get(key) and any(spec.get(dependent) for dependent in keys):
+                validator.add_error(key, f"{', '.join(keys)} need a {key}.", code="required")
         if pattern:
             if pattern not in TIME_SERIES_DELTAS:
                 validator.add_error("time_series_pattern", f"Use one of {', '.join(sorted(TIME_SERIES_DELTAS))}.")
@@ -391,7 +399,6 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
                 time_series_columns=validator.computations(report_model, "time_series_columns", required=True),
             )
 
-        crosstab_field = spec.get("crosstab_field") or None
         if crosstab_field:
             validator.resolve_path(report_model, crosstab_field, "crosstab_field")
             crosstab_ids = spec.get("crosstab_ids") or []

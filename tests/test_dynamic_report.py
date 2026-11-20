@@ -139,6 +139,15 @@ class DynamicReportTest(BaseTestData, TestCase):
         self.assert_spec_error({"report_model": "tests.Nope"}, "report_model", "invalid")
         self.assert_spec_error({**base, "kind": "list", "columns": ["value"]}, "group_by", "invalid")
 
+    def test_series_and_crosstab_keys_need_their_driving_key(self):
+        base = {"report_model": "tests.SimpleSales", "group_by": "client", "columns": ["name", VALUE_SUM]}
+        self.assert_spec_error({**base, "time_series_columns": [VALUE_SUM]}, "time_series_pattern", "required")
+        for key, value in (("crosstab_ids", [self.client1.pk]), ("crosstab_columns", [VALUE_SUM])):
+            self.assert_spec_error({**base, key: value}, "crosstab_field", "required")
+        self.assert_spec_error({**base, "crosstab_compute_remainder": True}, "crosstab_field", "required")
+        list_spec = {"report_model": "tests.SimpleSales", "kind": "list", "columns": ["value"]}
+        self.assert_spec_error({**list_spec, "crosstab_ids": [self.client1.pk]}, "crosstab_ids", "invalid")
+
     def test_time_series_period_cap(self):
         spec = {
             "report_model": "tests.SimpleSales",
