@@ -32,12 +32,16 @@ Running a report view
 
 ``params`` keys are the form field names (``start_date``, ``end_date``, ``<foreign key>_id`` filters,
 ``time_series_pattern``, ``crosstab_compute_remainder`` ...). Lists become repeated GET values;
-``true`` / ``false`` become checkbox values. A date-only ``end_date`` such as ``"2026-03-31"`` covers the
-whole day (``2026-03-31T23:59:59``).
+``true`` / ``false`` become checkbox values. When ``end_date`` is a ``DateTimeField``, a date-only value such
+as ``"2026-03-31"`` covers the whole day (``2026-03-31T23:59:59``). A form declaring ``start_date`` /
+``end_date`` as ``DateField`` receives plain dates.
 
 * An unknown key raises ``ValidationError`` with code ``unknown_parameter``.
 * An invalid value raises ``ValidationError``; its ``error_dict`` is the form errors, keyed by field name.
 * When ``check_access`` is set and ``test_func()`` fails, it raises ``PermissionDenied``.
+
+Note: keep ``check_access=True`` (the default) when the caller exposes reports to users, and pass ``False``
+only from trusted server code, because ``False`` skips the report's view permission check.
 
 A view that reads GET parameters outside its form declares them in ``extra_params``, a dict of JSON Schema
 properties. ``run()`` accepts those names and passes them through ``request.GET``:
@@ -137,15 +141,15 @@ Validation runs before any query:
 
 * Every model the spec names or traverses (``client__contact__agent`` traverses three), and every model a
   registered computation field reads, must be in ``allowed_models``, else ``ValidationError`` with code
-  ``model_not_allowed``. ``allowed_models=None`` allows every installed model.
+  ``model_not_allowed``. ``allowed_models=None`` means the models ``request.user`` may view.
 * Filter values are checked against their field (``value__gte: "abc"`` is rejected).
 * A report computes at most 500 computation columns (columns, plus time series and crosstab columns
   repeated per period and value), else code ``too_large``.
-* With a ``request``, ``request.user`` needs the view or change permission on each of those models, else
-  ``PermissionDenied``. ``request=None`` skips this check.
+* ``request.user`` needs the view or change permission on each of those models, else ``PermissionDenied``.
+  A ``request`` of ``None`` or without a ``user`` raises ``PermissionDenied`` too.
 * Unknown keys, unknown fields, unsupported lookups and malformed values raise ``ValidationError``; its
   ``error_dict`` is keyed by spec key, with the codes ``unknown_key``, ``unknown_field``, ``required``,
   ``too_many_periods``, ``too_large``, ``invalid`` or ``invalid_spec``.
 
 Note: pass an explicit ``allowed_models`` list when the spec comes from a user or an LLM and not
-``None``, because ``None`` lets a spec traverse into any installed model the user can view.
+``None``, because ``None`` lets a spec traverse into every installed model the user can view.

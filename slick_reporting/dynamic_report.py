@@ -141,8 +141,9 @@ class _SpecValidator:
 
     def __init__(self, spec, request, allowed_models):
         self.spec = spec
-        self.user = getattr(request, "user", None) if request is not None else None
-        self.check_permissions = request is not None
+        self.user = getattr(request, "user", None)
+        if self.user is None:
+            raise PermissionDenied("A request with a user is required.")
         self.allowed_models = None
         if allowed_models is not None:
             self.allowed_models = set()
@@ -160,17 +161,12 @@ class _SpecValidator:
         if self.allowed_models is not None and model not in self.allowed_models:
             self.add_error(key, f"Model {_label(model)} is not available for reports.", code="model_not_allowed")
             return False
-        if self.check_permissions:
-            opts = model._meta
-            user = self.user
-            if not (
-                user
-                and (
-                    user.has_perm(f"{opts.app_label}.view_{opts.model_name}")
-                    or user.has_perm(f"{opts.app_label}.change_{opts.model_name}")
-                )
-            ):
-                raise PermissionDenied(f"No view permission on {_label(model)}.")
+        opts = model._meta
+        if not (
+            self.user.has_perm(f"{opts.app_label}.view_{opts.model_name}")
+            or self.user.has_perm(f"{opts.app_label}.change_{opts.model_name}")
+        ):
+            raise PermissionDenied(f"No view permission on {_label(model)}.")
         return True
 
     def resolve_path(self, model, path, key):
@@ -431,8 +427,8 @@ def run_dynamic_report(spec, request, allowed_models=None, max_time_series_perio
     """
     Validate ``spec`` (see ``DYNAMIC_REPORT_SPEC_SCHEMA``) and run it; return the report full response.
 
-    A bad spec or a model outside ``allowed_models`` raises ``ValidationError`` keyed by spec key. A missing view
-    permission of ``request.user`` raises ``PermissionDenied`` (``request=None`` skips that check).
+    A bad spec or a model outside ``allowed_models`` raises ``ValidationError`` keyed by spec key. A missing
+    ``request.user`` or a missing view permission of that user raises ``PermissionDenied``.
     """
     kind, config = _clean_spec(spec, request, allowed_models, max_time_series_periods)
     report_model = config["report_model"]
@@ -459,11 +455,12 @@ def run_dynamic_report(spec, request, allowed_models=None, max_time_series_perio
         raise ValidationError({"filters": error.error_list}) from error
 
 
-def describe_dynamic_report_models(request=None, allowed_models=None):
+def describe_dynamic_report_models(request, allowed_models=None):
     """
     Describe the models a spec may use: fields with their types and relations, in the shape of the llm catalog.
 
-    Relations to models outside ``allowed_models`` or without the user's view permission are left out.
+    Only models the user may view (narrowed by ``allowed_models`` when given) are listed, relations to other
+    models are left out.
     """
     validator = _SpecValidator({}, request, allowed_models)
     candidates = validator.allowed_models if allowed_models is not None else apps.get_models()

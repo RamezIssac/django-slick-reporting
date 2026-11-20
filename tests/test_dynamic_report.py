@@ -166,6 +166,24 @@ class DynamicReportTest(BaseTestData, TestCase):
         self.request.user = type(self.limited_user).objects.get(pk=self.limited_user.pk)
         self.assertEqual(len(self.run_spec(spec)["data"]["name"]), 3)
 
+    def test_request_with_a_user_is_required(self):
+        spec = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}
+        for request in (None, RequestFactory().get("/")):
+            with self.assertRaises(PermissionDenied):
+                run_dynamic_report(spec, request)
+            with self.assertRaises(PermissionDenied):
+                describe_dynamic_report_models(request)
+
+    def test_default_allowed_models_are_the_ones_the_user_may_view(self):
+        self.limited_user.user_permissions.add(Permission.objects.get(codename="view_simplesales"))
+        self.request.user = type(self.limited_user).objects.get(pk=self.limited_user.pk)
+        catalog = describe_dynamic_report_models(self.request)
+        self.assertEqual([entry["identifier"] for entry in catalog], ["tests.SimpleSales"])
+        response = run_dynamic_report({"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}, self.request)
+        self.assertEqual(response["data"]["value_sum"], [SimpleSales.objects.aggregate(total=Sum("value"))["total"]])
+        with self.assertRaises(PermissionDenied):
+            run_dynamic_report({"report_model": "tests.Client"}, self.request)
+
     def test_runs_leave_the_field_registry_unchanged(self):
         names = field_registry.get_all_report_fields_names()
         for _ in range(3):

@@ -478,8 +478,9 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         Run the report without rendering and return its full response (as ``get_report_results()``).
 
         ``params`` maps form field names (and ``extra_params`` names) to JSON values; omitted fields take their
-        initial value computed at call time, and a date-only ``end_date`` covers its whole day. Unknown or
-        invalid params raise ``ValidationError`` keyed by parameter, a failed ``test_func()`` ``PermissionDenied``.
+        initial value computed at call time, and a date-only ``end_date`` on a DateTimeField covers its whole day.
+        Unknown or invalid params raise ``ValidationError`` keyed by parameter, a failed ``test_func()``
+        ``PermissionDenied``; keep ``check_access=True`` when exposing reports to users.
         """
         params = dict(params or {})
         headless_request = copy.copy(request)
@@ -501,11 +502,13 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
                 {name: ValidationError(_("Unknown parameter."), code="unknown_parameter") for name in unknown}
             )
 
-        if "end_date" in params:
+        if "end_date" in params and isinstance(unbound_form.fields.get("end_date"), forms.DateTimeField):
             params["end_date"] = end_of_day_if_date_only(params["end_date"])
         query = headless_request.GET
         for name, field in unbound_form.fields.items():
             value = params.pop(name) if name in params else unbound_form.get_initial_for_field(field, name)
+            if isinstance(field, forms.DateField) and isinstance(value, datetime.datetime):
+                value = value.date()
             _set_query_value(query, unbound_form.add_prefix(name), value)
         for name, value in params.items():
             _set_query_value(query, name, value)

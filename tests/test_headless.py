@@ -3,9 +3,11 @@ import json
 from decimal import Decimal
 from unittest.mock import patch
 
+from django import forms
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import RequestFactory, TestCase, override_settings
 
+from slick_reporting.forms import BaseReportForm
 from slick_reporting.generator import ListViewReportGenerator, ReportGenerator
 from slick_reporting.helpers import compact_response
 from slick_reporting.views import ListReportView, ReportView
@@ -100,6 +102,24 @@ class ClientTotalsScopedByGetParam(ClientTotals):
         return [row for row in data if row["__total__"] >= minimum]
 
 
+class DateOnlyFilterForm(BaseReportForm, forms.Form):
+    start_date = forms.DateField(required=False)
+    end_date = forms.DateField(required=False)
+
+    def get_filters(self):
+        return [], {}
+
+    def get_start_date(self):
+        return datetime.datetime.combine(self.cleaned_data["start_date"], datetime.time.min)
+
+    def get_end_date(self):
+        return datetime.datetime.combine(self.cleaned_data["end_date"], datetime.time.max)
+
+
+class ClientTotalsWithDateOnlyForm(ClientTotals):
+    form_class = DateOnlyFilterForm
+
+
 @override_settings(SLICK_REPORTING_SETTINGS=HEADLESS_SETTINGS)
 class HeadlessRunTest(BaseTestData, TestCase):
     def setUp(self):
@@ -156,6 +176,13 @@ class HeadlessRunTest(BaseTestData, TestCase):
         with self.assertRaises(PermissionDenied):
             ClientTotals.run(self.request)
         self.assertTrue(self.rows(ClientTotals.run(self.request, check_access=False)))
+
+    def test_date_field_form(self):
+        rows = self.rows(ClientTotalsWithDateOnlyForm.run(self.request))
+        self.assertEqual([row["__total__"] for row in rows], [300, 600, 900])
+        params = {"start_date": f"{year}-02-01", "end_date": f"{year}-02-28"}
+        rows = self.rows(ClientTotalsWithDateOnlyForm.run(self.request, params))
+        self.assertEqual([row["__total__"] for row in rows], [100, 200, 300])
 
     def test_default_dates_are_computed_at_call_time(self):
         later = datetime.datetime(year, 2, 28, 23, 59, 59)
