@@ -127,10 +127,12 @@ The keys follow the configuration of the LLM assistant (``run_llm_report_config`
 ``time_series_pattern``, ``time_series_columns``
     ``daily``, ``weekly``, ``bi-weekly``, ``monthly``, ``quarterly``, ``semiannually`` or ``annually``,
     with the computation columns to repeat per period. Needs ``date_field``. At most 120 periods
-    (``max_time_series_periods``).
+    (``max_time_series_periods``). ``time_series_columns`` or a ``__time_series__`` column without
+    ``time_series_pattern`` raises code ``required``.
 ``crosstab_field``, ``crosstab_ids``, ``crosstab_columns``, ``crosstab_compute_remainder``
     The field path to pivot on, up to 50 of its values, the computation columns per value, and whether to
-    add a column for all other values (default ``false``).
+    add a column for all other values (default ``false``). Any of these keys or a ``__crosstab__`` column
+    without ``crosstab_field`` raises code ``required``.
 ``filters``
     ``{"<field path>[__<lookup>]": value}``. Lookups: ``exact``, ``iexact``, ``in``, ``gt``, ``gte``, ``lt``,
     ``lte``, ``range``, ``isnull``, ``contains``, ``icontains``, ``startswith``, ``istartswith``, ``endswith``,

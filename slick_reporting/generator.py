@@ -670,9 +670,7 @@ class ReportGenerator(ReportGeneratorAPI):
 
         if group_by:
             try:
-                group_by_field = next(
-                    x for x in report_model._meta.get_fields() if x.name == group_by.split("__")[0]
-                )
+                group_by_field = next(x for x in report_model._meta.get_fields() if x.name == group_by.split("__")[0])
             except StopIteration:
                 raise ImproperlyConfigured(
                     f"ReportView {caller}: Could not find the group_by field: `{group_by}` in "
