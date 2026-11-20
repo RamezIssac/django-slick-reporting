@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+from typing import ClassVar
 from warnings import warn
 
-from django.db.models import Sum, Q
+from django.db.models import Q, Sum
 from django.template.defaultfilters import date as date_filter
 from django.utils.translation import gettext_lazy as _
 
 from .registry import field_registry
 
 
-class ComputationField(object):
+class ComputationField:
     """
     Computation field responsible for making the calculation unit
     """
@@ -72,7 +73,7 @@ class ComputationField(object):
         """
         if not cls.name:
             raise ValueError(f"ReportField {cls} must have a name")
-        return super(ComputationField, cls).__new__(cls)
+        return super().__new__(cls)
 
     @classmethod
     def create(cls, method, field, name=None, verbose_name=None, is_summable=True, number_format=None):
@@ -118,7 +119,7 @@ class ComputationField(object):
         group_by=None,
         group_by_custom_querysets=None,
     ):
-        super(ComputationField, self).__init__()
+        super().__init__()
         self.date_field = date_field
         self.report_model = self.report_model or report_model
         self.queryset = self.queryset or queryset
@@ -193,9 +194,9 @@ class ComputationField(object):
     def prepare(
         self,
         q_filters: list | object = None,
-        kwargs_filters: dict = None,
+        kwargs_filters: dict | None = None,
         main_queryset=None,
-        group_by: str = None,
+        group_by: str | None = None,
         prevent_group_by=None,
         **kwargs,
     ):
@@ -312,7 +313,7 @@ class ComputationField(object):
 
     def extract_data(self, prepared_results, current_obj):
         group_by = "" if self.prevent_group_by else (self.group_by or self.group_by_custom_querysets)
-        annotation = "__".join([self.calculation_field.lower(), self.calculation_method.name.lower()])
+        annotation = f"{self.calculation_field.lower()}__{self.calculation_method.name.lower()}"
 
         cached_debit, cached_credit = prepared_results
 
@@ -322,7 +323,7 @@ class ComputationField(object):
             value = 0
             if results:
                 if not group_by:
-                    x = list(results.keys())[0]
+                    x = next(iter(results.keys()))
                     value = results[x]
                 elif self.group_by_custom_querysets:
                     value = results[int(current_obj)][annotation]
@@ -396,9 +397,9 @@ class FirstBalanceField(ComputationField):
     def prepare(
         self,
         q_filters: list | object = None,
-        kwargs_filters: dict = None,
+        kwargs_filters: dict | None = None,
         main_queryset=None,
-        group_by: str = None,
+        group_by: str | None = None,
         prevent_group_by=None,
         **kwargs,
     ):
@@ -407,7 +408,7 @@ class FirstBalanceField(ComputationField):
             from_date_value = extra_filters.get(f"{self.date_field}__gte")
             extra_filters.pop(f"{self.date_field}__gte", None)
             extra_filters[f"{self.date_field}__lt"] = from_date_value
-        return super(FirstBalanceField, self).prepare(
+        return super().prepare(
             q_filters, kwargs_filters, main_queryset, group_by, prevent_group_by, **kwargs
         )
 
@@ -423,7 +424,7 @@ field_registry.register(FirstBalanceField)
 class TotalReportField(ComputationField):
     name = "__total__"
     verbose_name = _("Sum of value")
-    requires = ["__debit__", "__credit__"]
+    requires: ClassVar[list] = ["__debit__", "__credit__"]
 
 
 field_registry.register(TotalReportField)
@@ -432,7 +433,7 @@ field_registry.register(TotalReportField)
 class BalanceReportField(ComputationField):
     name = "__balance__"
     verbose_name = _("Closing Total")
-    requires = ["__fb__"]
+    requires: ClassVar[list] = ["__fb__"]
 
     def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
         result = super().resolve(prepared_results, required_computation_results, current_pk, current_row)
@@ -445,7 +446,7 @@ field_registry.register(BalanceReportField)
 
 
 class PercentageToTotalBalance(ComputationField):
-    requires = [BalanceReportField]
+    requires: ClassVar[list] = [BalanceReportField]
     name = "__percent_to_total_balance__"
     verbose_name = _("%")
 
@@ -461,7 +462,7 @@ class CreditReportField(ComputationField):
     verbose_name = _("Credit")
 
     def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
-        debit_value, credit_value = self.extract_data(prepared_results, current_pk)
+        _debit_value, credit_value = self.extract_data(prepared_results, current_pk)
         return credit_value
 
 
@@ -474,7 +475,7 @@ class DebitReportField(ComputationField):
     verbose_name = _("Debit")
 
     def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
-        debit_value, credit_value = self.extract_data(prepared_results, current_pk)
+        debit_value, _credit_value = self.extract_data(prepared_results, current_pk)
         return debit_value
 
 
@@ -486,7 +487,7 @@ class CreditQuantityReportField(ComputationField):
     is_summable = False
 
     def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
-        debit_value, credit_value = self.extract_data(prepared_results, current_pk)
+        _debit_value, credit_value = self.extract_data(prepared_results, current_pk)
         return credit_value
 
 
@@ -498,7 +499,7 @@ class DebitQuantityReportField(ComputationField):
     is_summable = False
 
     def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:
-        debit_value, credit_value = self.extract_data(prepared_results, current_pk)
+        debit_value, _credit_value = self.extract_data(prepared_results, current_pk)
         return debit_value
 
 
@@ -526,7 +527,7 @@ class BalanceQTYReportField(ComputationField):
     name = "__balance_quantity__"
     verbose_name = _("Closing QTY")
     calculation_field = "quantity"
-    requires = ["__fb_quantity__"]
+    requires: ClassVar[list] = ["__fb_quantity__"]
     is_summable = False
 
     def resolve(self, prepared_results, required_computation_results: dict, current_pk, current_row=None) -> float:

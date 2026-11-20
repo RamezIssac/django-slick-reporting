@@ -25,8 +25,9 @@
 
         function normalStackedTooltipFormatter() {
 
-            var tooltip = '<small>' + this.x + '</small><table>' +
-                '<tr><td style="color: ' + this.series.color + '">' + this.series.name + ': </td> <td style="text-align: right"><b>' + this.point.y + ' </b></td></tr>' +
+            var escapeHtml = $.slick_reporting.escapeHtml;
+            var tooltip = '<small>' + escapeHtml(this.x) + '</small><table>' +
+                '<tr><td style="color: ' + this.series.color + '">' + escapeHtml(this.series.name) + ': </td> <td style="text-align: right"><b>' + this.point.y + ' </b></td></tr>' +
                 '<tr><td style="color: ' + this.series.color + '">{pertoTotal}:</td><td style="text-align: right"><b>' + this.point.percentage.toFixed(2) + ' %</b></td></tr>' +
                 '<tr><td> {Total}:</td><td style="text-align: right"><b>' + this.point.stackTotal + '<b></td></tr>' +
                 '</table>';
@@ -257,12 +258,15 @@
                 })
             })
 
-            response.data.forEach(function (elem, index) {
+            let rowCount = $.slick_reporting.getReportRowCount(response);
+            let titleValues = response.data[chartOptions.title_source] || [];
+            let dataValues = response.data[chartOptions.data_source] || [];
+            for (let i = 0; i < rowCount; i++) {
                 series.push({
-                    'name': elem[chartOptions.title_source],
-                    'data': [elem[chartOptions.data_source]]
+                    'name': titleValues[i],
+                    'data': [dataValues[i]]
                 })
-            })
+            }
             return {
                 'categories': categories,
                 'titles': categories,
@@ -283,25 +287,28 @@
                 })
             })
             if (!chartOptions.plot_total) {
-                response.data.forEach(function (elem, index) {
+                let rowCount = $.slick_reporting.getReportRowCount(response);
+                let titleValues = response.data[chartOptions.title_source] || [];
+                for (let r = 0; r < rowCount; r++) {
                     Object.keys(data_sources).forEach(function (series_cols, index) {
                         let data = []
                         data_sources[series_cols].forEach(function (col, index) {
-                            data.push(elem[col])
+                            let colValues = response.data[col] || [];
+                            data.push(colValues[r])
                         })
                         series.push({
-                            'name': elem[chartOptions.title_source],
+                            'name': titleValues[r],
                             'data': data
                         })
                     })
-                })
+                }
             } else {
                 let all_column_to_be_summed = []
                 let data = []
                 Object.keys(data_sources).forEach(function (series_cols, index) {
                     all_column_to_be_summed = all_column_to_be_summed.concat(data_sources[series_cols]);
                 })
-                let totalValues = $.slick_reporting.calculateTotalOnObjectArray(response.data, all_column_to_be_summed)
+                let totalValues = $.slick_reporting.calculateTotalOnColumnArray(response.data, all_column_to_be_summed)
 
                 Object.keys(data_sources).forEach(function (series_cols, index) {
 
@@ -345,24 +352,27 @@
                 })
             })
             if (!chartOptions.plot_total) {
-                response.data.forEach(function (elem, index) {
+                let rowCount = $.slick_reporting.getReportRowCount(response);
+                let titleValues = response.data[chartOptions.title_source] || [];
+                for (let r = 0; r < rowCount; r++) {
                     Object.keys(data_sources).forEach(function (series_cols, index) {
                         let data = []
                         data_sources[series_cols].forEach(function (col, index) {
-                            data.push(elem[col])
+                            let colValues = response.data[col] || [];
+                            data.push(colValues[r])
                         })
                         series.push({
-                            'name': elem[chartOptions.title_source],
+                            'name': titleValues[r],
                             'data': data
                         })
                     })
-                })
+                }
             } else {
                 let all_column_to_be_summed = []
                 Object.keys(data_sources).forEach(function (series_cols, index) {
                     all_column_to_be_summed = all_column_to_be_summed.concat(data_sources[series_cols]);
                 })
-                let totalValues = $.slick_reporting.calculateTotalOnObjectArray(response.data, all_column_to_be_summed)
+                let totalValues = $.slick_reporting.calculateTotalOnColumnArray(response.data, all_column_to_be_summed)
 
                 Object.keys(data_sources).forEach(function (series_cols, index) {
                     data_sources[series_cols].forEach(function (col, index) {

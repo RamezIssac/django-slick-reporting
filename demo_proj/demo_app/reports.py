@@ -724,8 +724,9 @@ class HighChartExample(TimeSeriesReport):
 class ProductSalesApexChart(ReportView):
     report_title = _("Product Sales Apex Charts")
     report_description = _(
-        "Demonstrates the ApexCharts engine with a custom template and "
-        "a custom JS entry point (displayChartCustomEntryPoint) for fully bespoke chart initialisation.")
+        "ApexCharts isn't a built-in engine like Highcharts/Chart.js — this report shows how to plug in "
+        "any JS charting library as a custom chart_engine (registered in SLICK_REPORTING_SETTINGS['CHARTS']), "
+        "with a custom JS entry point (displayChartCustomEntryPoint) for fully bespoke chart initialisation.")
     report_model = SalesTransaction
     date_field = "date"
     group_by = "product"

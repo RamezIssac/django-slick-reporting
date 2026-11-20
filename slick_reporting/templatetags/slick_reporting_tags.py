@@ -1,8 +1,8 @@
 from django import template
-from django.template.loader import get_template
 from django.forms import Media
+from django.template.loader import get_template
 from django.templatetags.static import static
-from django.urls import reverse, resolve
+from django.urls import resolve, reverse
 from django.utils.safestring import mark_safe
 
 from ..app_settings import SLICK_REPORTING_JQUERY_URL, SLICK_REPORTING_SETTINGS, get_media

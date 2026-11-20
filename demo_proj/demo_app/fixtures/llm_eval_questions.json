@@ -1,0 +1,56 @@
+{
+  "questions": [
+    {
+      "id": "product-total-year",
+      "question": "What are the total sales per product this year?",
+      "checks": {
+        "report_model": "demo_app.SalesTransaction",
+        "group_by": "product",
+        "metric_field": "value",
+        "aggregation": "Sum",
+        "answer_contains": "Product 1"
+      }
+    },
+    {
+      "id": "country-total",
+      "question": "Show the total sales value grouped by client country.",
+      "checks": {
+        "report_model": "demo_app.SalesTransaction",
+        "group_by": "client__country",
+        "metric_field": "value",
+        "aggregation": "Sum"
+      }
+    },
+    {
+      "id": "monthly-trend",
+      "question": "How did sales of Product 1 evolve month by month?",
+      "checks": {
+        "report_model": "demo_app.SalesTransaction",
+        "group_by": "product",
+        "time_series_pattern": "monthly",
+        "metric_field": "value",
+        "aggregation": "Sum"
+      }
+    },
+    {
+      "id": "quantity-product-2",
+      "question": "What is the total quantity sold for Product 2?",
+      "checks": {
+        "report_model": "demo_app.SalesTransaction",
+        "group_by": "product",
+        "metric_field": "quantity",
+        "aggregation": "Sum"
+      }
+    },
+    {
+      "id": "top-client-product-1",
+      "question": "Which client bought the most of Product 1 by value?",
+      "checks": {
+        "report_model": "demo_app.SalesTransaction",
+        "group_by": "client",
+        "metric_field": "value",
+        "aggregation": "Sum"
+      }
+    }
+  ]
+}

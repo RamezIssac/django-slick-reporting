@@ -12,16 +12,22 @@
 
     function constructTable(css_class, cols, cols_names, add_footer, total_verbose, total_fields, data) {
         // Construct an HTML table , header and footer , without a body as it is filled by th datatable.net plugin
+        // `data` is the columnar response data: an object mapping each column name to an array of values (one per row)
         cols = typeof cols != 'undefined' ? cols : false;
         cols_names = typeof cols_names != 'undefined' ? cols_names : cols;
 
-        let return_val = `<table class="${css_class}"> <thead><tr>`;
-        let header_th = '';
-        let footer_th = '';
+        let $table = $('<table>').addClass(css_class);
+        let $headerRow = $('<tr>');
+        let $footerCells = [];
         let footer_colspan = 0;
         let stop_colspan_detection = false;
-        let totals_container = $.slick_reporting.calculateTotalOnObjectArray(data, total_fields);
-        if (data.length <= 1) {
+        let totals_container = $.slick_reporting.calculateTotalOnColumnArray(data, total_fields);
+        let rowCount = 0;
+        if (cols && cols.length > 0) {
+            let firstColValues = data[cols[0].name];
+            rowCount = firstColValues ? firstColValues.length : 0;
+        }
+        if (rowCount <= 1) {
             add_footer = false;
         }
 
@@ -34,7 +40,7 @@
 
         for (let i = 0; i < cols.length; i++) {
             let col_name = cols[i].name;
-            header_th += `<th data-id="${col_name}">${cols_names[i]}</th>`;
+            $headerRow.append($('<th>').attr('data-id', col_name).text(cols_names[i]));
             if (total_fields.indexOf(col_name) !== -1) {
                 stop_colspan_detection = true;
             }
@@ -50,15 +56,16 @@
                         column_total = $.slick_reporting.formatNumber(column_total, fmt);
                     }
                 }
-                footer_th += `<th data-id="${col_name}">${column_total}</th>`;
+                $footerCells.push($('<th>').attr('data-id', col_name).text(column_total));
             }
         }
-        let footer = '';
+        $table.append($('<thead>').append($headerRow));
         if (add_footer && stop_colspan_detection) {
-            footer = '<tfoot><tr class="tr-totals active"><th colspan="' + footer_colspan + '" style="text-align:left">' + total_verbose + '</th>' + footer_th + '</tr></tfoot>';
+            let $totalLabel = $('<th>').attr('colspan', footer_colspan).css('text-align', 'left').text(total_verbose);
+            let $footerRow = $('<tr class="tr-totals active">').append($totalLabel).append($footerCells);
+            $table.append($('<tfoot>').append($footerRow));
         }
-        return_val = return_val + header_th + `</tr> </thead>${footer}</table>`;
-        return return_val;
+        return $table.prop('outerHTML');
     }
 
 
@@ -103,7 +110,8 @@
             let col_data = {
                 "data": server_data['name'],
                 'visible': server_data['visible'],
-                'title': server_data['verbose_name']
+                // DataTables writes cells as HTML; render.text() escapes them. The title comes from the escaped <th>.
+                'render': $.fn.dataTable.render.text()
             };
 
             if (server_data['type'] === 'number') {
@@ -137,7 +145,7 @@
         let ordering = typeof (extraOptions.ordering) == 'undefined' ? true : extraOptions.ordering;
         let info = typeof (extraOptions.info) == 'undefined' ? true : extraOptions.info;
         let searching = typeof (extraOptions.searching) == 'undefined' ? true : extraOptions.searching;
-        if (data.data.length === 0) dom = '<"mb-20"t>';
+        if ($.slick_reporting.getReportRowCount(data) === 0) dom = '<"mb-20"t>';
 
         let datatableOptions = $.extend({}, extraOptions['datatableOptions']);
 
@@ -149,7 +157,8 @@
 
         datatableOptions.sorting = [];
         datatableOptions.processing = true;
-        datatableOptions.data = data['data'];
+        // datatables.net expects row-oriented data; convert the columnar response data
+        datatableOptions.data = $.slick_reporting.dataToRows(data);
         datatableOptions.columns = getDatatableColumns(data);
         datatableOptions.initComplete = function (settings, json) {
             setTimeout(function () {
