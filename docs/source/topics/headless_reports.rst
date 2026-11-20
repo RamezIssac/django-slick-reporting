@@ -41,7 +41,7 @@ as ``"2026-03-31"`` covers the whole day (``2026-03-31T23:59:59``). A form decla
 * When ``check_access`` is set and ``test_func()`` fails, it raises ``PermissionDenied``.
 
 Note: keep ``check_access=True`` (the default) when the caller exposes reports to users, and pass ``False``
-only from trusted server code, because ``False`` skips the report's view permission check.
+only from server code that enforces the report's view permission itself, because ``False`` skips ``test_func()``.
 
 A view that reads GET parameters outside its form declares them in ``extra_params``, a dict of JSON Schema
 properties. ``run()`` accepts those names and passes them through ``request.GET``:
@@ -84,13 +84,14 @@ Compact output
 Dynamic reports from a JSON spec
 --------------------------------
 
-``run_dynamic_report(spec, request, allowed_models=None)`` validates ``spec`` and returns the report full
-response, ready for ``compact_response()``. ``DYNAMIC_REPORT_SPEC_SCHEMA`` is the JSON Schema of the spec,
+``run_dynamic_report(spec, request, allowed_models, base_querysets=None)`` validates ``spec`` and returns the
+report full response, ready for ``compact_response()``. ``DYNAMIC_REPORT_SPEC_SCHEMA`` is the JSON Schema of the spec,
 and ``describe_dynamic_report_models(request, allowed_models)`` lists the usable models and fields in the
 shape of the LLM assistant catalog.
 
 .. code-block:: python
 
+    from sales.models import Client
     from slick_reporting.dynamic_report import run_dynamic_report
 
     spec = {
@@ -102,7 +103,20 @@ shape of the LLM assistant catalog.
         "end_date": "2026-03-31T23:59:59",
         "filters": {"product__category": "small"},
     }
-    full_response = run_dynamic_report(spec, request, allowed_models=["sales.SalesTransaction", "sales.Client"])
+    full_response = run_dynamic_report(
+        spec,
+        request,
+        allowed_models=["sales.SalesTransaction", "sales.Client"],
+        base_querysets={"sales.Client": Client.objects.filter(branch=request.user.branch)},
+    )
+
+``base_querysets`` maps a model (class or ``app_label.ModelName``) to the queryset its rows come from:
+
+* The ``report_model`` entry is the report's main queryset: only its rows are listed, grouped and summed.
+* An entry for a model the spec traverses (``group_by``, ``filters``, ``crosstab_field``, ``date_field``, plain
+  columns through ``group_by``, computation field paths) adds ``<relation path>__in=<queryset>`` to the main
+  queryset. With the example above, sales of clients outside the queryset are left out of every column.
+* A value that is not a ``QuerySet`` of its model raises ``ImproperlyConfigured``.
 
 The keys follow the configuration of the LLM assistant (``run_llm_report_config``):
 
@@ -143,15 +157,14 @@ Validation runs before any query:
 
 * Every model the spec names or traverses (``client__contact__agent`` traverses three), and every model a
   registered computation field reads, must be in ``allowed_models``, else ``ValidationError`` with code
-  ``model_not_allowed``. ``allowed_models=None`` means the models ``request.user`` may view.
+  ``model_not_allowed``. ``allowed_models`` is required; ``None`` raises ``ImproperlyConfigured``.
 * Filter values are checked against their field (``value__gte: "abc"`` is rejected).
 * A report computes at most 500 computation columns (columns, plus time series and crosstab columns
   repeated per period and value), else code ``too_large``.
 * ``request.user`` needs the view or change permission on each of those models, else ``PermissionDenied``.
   A ``request`` of ``None`` or without a ``user`` raises ``PermissionDenied`` too.
-* Unknown keys, unknown fields, unsupported lookups and malformed values raise ``ValidationError``; its
-  ``error_dict`` is keyed by spec key, with the codes ``unknown_key``, ``unknown_field``, ``required``,
-  ``too_many_periods``, ``too_large``, ``invalid`` or ``invalid_spec``.
-
-Note: pass an explicit ``allowed_models`` list when the spec comes from a user or an LLM and not
-``None``, because ``None`` lets a spec traverse into every installed model the user can view.
+* Column names are unique within ``columns``, ``time_series_columns`` and ``crosstab_columns``, else code
+  ``invalid``.
+* Unknown keys, unknown fields, unsupported lookups and malformed or wrongly typed values raise
+  ``ValidationError``; its ``error_dict`` is keyed by spec key, with the codes ``unknown_key``,
+  ``unknown_field``, ``required``, ``too_many_periods``, ``too_large``, ``invalid`` or ``invalid_spec``.

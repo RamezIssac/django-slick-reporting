@@ -4,7 +4,7 @@ import datetime
 
 from django.contrib.auth.models import Permission
 from django.db.models import Sum
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.test import RequestFactory, TestCase
 
 from slick_reporting.fields import ComputationField
@@ -182,19 +182,75 @@ class DynamicReportTest(BaseTestData, TestCase):
         spec = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}
         for request in (None, RequestFactory().get("/")):
             with self.assertRaises(PermissionDenied):
-                run_dynamic_report(spec, request)
+                run_dynamic_report(spec, request, ALLOWED)
             with self.assertRaises(PermissionDenied):
-                describe_dynamic_report_models(request)
+                describe_dynamic_report_models(request, ALLOWED)
 
-    def test_default_allowed_models_are_the_ones_the_user_may_view(self):
+    def test_allowed_models_are_required_and_narrowed_to_viewable_ones(self):
+        spec = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}
+        with self.assertRaises(ImproperlyConfigured):
+            run_dynamic_report(spec, self.request, None)
+        with self.assertRaises(ImproperlyConfigured):
+            describe_dynamic_report_models(self.request, None)
         self.limited_user.user_permissions.add(Permission.objects.get(codename="view_simplesales"))
         self.request.user = type(self.limited_user).objects.get(pk=self.limited_user.pk)
-        catalog = describe_dynamic_report_models(self.request)
+        catalog = describe_dynamic_report_models(self.request, ALLOWED)
         self.assertEqual([entry["identifier"] for entry in catalog], ["tests.SimpleSales"])
-        response = run_dynamic_report({"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}, self.request)
+        response = run_dynamic_report(spec, self.request, ALLOWED)
         self.assertEqual(response["data"]["value_sum"], [SimpleSales.objects.aggregate(total=Sum("value"))["total"]])
         with self.assertRaises(PermissionDenied):
-            run_dynamic_report({"report_model": "tests.Client"}, self.request)
+            run_dynamic_report({"report_model": "tests.Client"}, self.request, ALLOWED)
+
+    def test_wrongly_typed_values_are_invalid_on_their_key(self):
+        base = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}
+        self.assert_spec_error({**base, "filters": {"doc_date__gte": 20260101}}, "filters", "invalid")
+        self.assert_spec_error({**base, "filters": {"doc_date__range": [1, 2]}}, "filters", "invalid")
+        self.assert_spec_error({**base, "date_field": "doc_date", "start_date": 2026}, "start_date", "invalid")
+        self.assert_spec_error({"report_model": 5}, "report_model", "invalid")
+        series = {**base, "date_field": "doc_date", "time_series_columns": [VALUE_SUM]}
+        self.assert_spec_error({**series, "time_series_pattern": ["monthly"]}, "time_series_pattern", "invalid")
+        self.assert_spec_error({**base, "columns": [{"method": ["Sum"], "field": "value"}]}, "columns", "invalid")
+        self.assert_spec_error(
+            {**base, "columns": [{"method": "Sum", "field": "value", "name": 5}]}, "columns", "invalid"
+        )
+
+    def test_column_names_must_be_unique(self):
+        base = {"report_model": "tests.SimpleSales", "group_by": "client"}
+        max_value = {"method": "Max", "field": "value", "name": "value_sum"}
+        self.assert_spec_error({**base, "columns": ["name", VALUE_SUM, max_value]}, "columns", "invalid")
+        name_sum = {**VALUE_SUM, "name": "name"}
+        self.assert_spec_error({**base, "columns": ["name", name_sum]}, "columns", "invalid")
+        series = {"date_field": "doc_date", "time_series_pattern": "monthly", "columns": ["name", VALUE_SUM]}
+        spec = {**base, **series, "time_series_columns": [VALUE_SUM, max_value]}
+        self.assert_spec_error(spec, "time_series_columns", "invalid")
+        spec = {**base, "columns": ["name"], "crosstab_field": "product", "crosstab_columns": [VALUE_SUM, max_value]}
+        self.assert_spec_error(spec, "crosstab_columns", "invalid")
+        list_spec = {"report_model": "tests.SimpleSales", "kind": "list", "columns": ["value", "value"]}
+        self.assert_spec_error(list_spec, "columns", "invalid")
+
+    def test_base_queryset_of_the_report_model_scopes_rows_and_totals(self):
+        scoped = {SimpleSales: SimpleSales.objects.filter(client=self.client1)}
+        spec = {"report_model": "tests.SimpleSales", "group_by": "client", "columns": ["name", VALUE_SUM]}
+        compact = compact_response(self.run_spec(spec, base_querysets=scoped))
+        self.assertEqual(compact["rows"], [["Client 1", "300"]])
+        self.assertEqual(compact["totals"], {"value_sum": "300"})
+        list_spec = {"report_model": "tests.SimpleSales", "kind": "list", "columns": ["value"]}
+        self.assertEqual(compact_response(self.run_spec(list_spec, base_querysets=scoped))["row_count"], 3)
+
+    def test_base_queryset_of_a_traversed_relation_scopes_the_report(self):
+        scoped = {"tests.Client": Client.objects.exclude(pk=self.client3.pk)}
+        spec = {"report_model": "tests.SimpleSales", "group_by": "client", "columns": ["name", VALUE_SUM]}
+        compact = compact_response(self.run_spec(spec, base_querysets=scoped))
+        self.assertEqual(compact["rows"], [["Client 1", "300"], ["Client 2", "600"]])
+        spec = {
+            "report_model": "tests.SimpleSales",
+            "columns": [VALUE_SUM],
+            "filters": {"client__name__startswith": "C"},
+        }
+        self.assertEqual(compact_response(self.run_spec(spec))["totals"], {"value_sum": "1800"})
+        self.assertEqual(compact_response(self.run_spec(spec, base_querysets=scoped))["totals"], {"value_sum": "900"})
+        with self.assertRaises(ImproperlyConfigured):
+            self.run_spec(spec, base_querysets={Client: SimpleSales.objects.all()})
 
     def test_runs_leave_the_field_registry_unchanged(self):
         names = field_registry.get_all_report_fields_names()

@@ -16,7 +16,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.db.models import Model
+from django.db.models import Model, QuerySet
 
 from .app_settings import get_end_date, get_start_date
 from .generator import TIME_SERIES_DELTAS, ListViewReportGenerator, ReportGenerator
@@ -128,7 +128,7 @@ def _resolve_model(identifier):
         return identifier
     try:
         return apps.get_model(identifier)
-    except (LookupError, ValueError, TypeError):
+    except (LookupError, ValueError, TypeError, AttributeError):
         return None
 
 
@@ -144,21 +144,22 @@ class _SpecValidator:
         self.user = getattr(request, "user", None)
         if self.user is None:
             raise PermissionDenied("A request with a user is required.")
-        self.allowed_models = None
-        if allowed_models is not None:
-            self.allowed_models = set()
-            for identifier in allowed_models:
-                model = _resolve_model(identifier)
-                if model is None:
-                    raise ImproperlyConfigured(f"allowed_models: could not resolve {identifier!r}")
-                self.allowed_models.add(model)
+        if allowed_models is None:
+            raise ImproperlyConfigured("allowed_models is required: pass the models a spec may use.")
+        self.allowed_models = set()
+        for identifier in allowed_models:
+            model = _resolve_model(identifier)
+            if model is None:
+                raise ImproperlyConfigured(f"allowed_models: could not resolve {identifier!r}")
+            self.allowed_models.add(model)
+        self.relations = {}
         self.errors = {}
 
     def add_error(self, key, message, code="invalid"):
         self.errors.setdefault(key, []).append(ValidationError(message, code=code))
 
     def check_model(self, model, key):
-        if self.allowed_models is not None and model not in self.allowed_models:
+        if model not in self.allowed_models:
             self.add_error(key, f"Model {_label(model)} is not available for reports.", code="model_not_allowed")
             return False
         opts = model._meta
@@ -169,8 +170,12 @@ class _SpecValidator:
             raise PermissionDenied(f"No view permission on {_label(model)}.")
         return True
 
-    def resolve_path(self, model, path, key):
-        """Return the concrete field at the end of ``path``, or None after recording an error."""
+    def resolve_path(self, model, path, key, prefix=""):
+        """
+        Return the concrete field at the end of ``path``, or None after recording an error.
+
+        With a ``prefix`` (the path from the report model to ``model``), traversed relations land in ``relations``.
+        """
         if not isinstance(path, str) or not path:
             self.add_error(key, f"Expected a field path, got {path!r}.")
             return None
@@ -184,6 +189,8 @@ class _SpecValidator:
             related_model = getattr(field, "related_model", None)
             if related_model is not None and not self.check_model(related_model, key):
                 return None
+            if related_model is not None and prefix is not None:
+                self.relations[prefix + "__".join(parts[: index + 1])] = related_model
             if index < len(parts) - 1:
                 if related_model is None:
                     self.add_error(key, f"'{part}' in '{path}' is not a relation.", code="unknown_field")
@@ -209,7 +216,8 @@ class _SpecValidator:
                 field_model = klass.report_model or (own_queryset.model if own_queryset is not None else report_model)
                 if field_model is not report_model and not self.check_model(field_model, key):
                     return None
-                self.resolve_path(field_model, klass.calculation_field, key)
+                prefix = "" if field_model is report_model else None
+                self.resolve_path(field_model, klass.calculation_field, key, prefix)
                 pending.extend(required for required in klass._get_required_classes() if required not in seen)
             return column
         if not isinstance(column, dict):
@@ -220,7 +228,7 @@ class _SpecValidator:
             self.add_error(key, f"Unknown computation keys: {', '.join(sorted(unknown))}.")
             return None
         method = column.get("method")
-        if method not in REPORTABLE_METHODS:
+        if not isinstance(method, str) or method not in REPORTABLE_METHODS:
             self.add_error(key, f"Unknown method {method!r}; use one of {', '.join(sorted(REPORTABLE_METHODS))}.")
             return None
         field = self.resolve_path(report_model, column.get("field"), key)
@@ -230,7 +238,7 @@ class _SpecValidator:
             self.add_error(key, f"{method} needs a numeric field; '{column['field']}' is not numeric.")
             return None
         name = column.get("name") or f"{method.lower()}__{column['field']}"
-        if not COLUMN_NAME_PATTERN.match(name):
+        if not isinstance(name, str) or not COLUMN_NAME_PATTERN.match(name):
             self.add_error(key, f"Column name {name!r} must be a Python identifier.")
             return None
         return {**column, "name": name, "is_summable": method in SUMMABLE_METHODS}
@@ -242,19 +250,31 @@ class _SpecValidator:
             return []
         if required and not columns:
             self.add_error(key, "At least one computation column is required.", code="required")
-        return [self.computation(report_model, column, key) for column in columns]
+        cleaned = [self.computation(report_model, column, key) for column in columns]
+        self.check_unique_names(cleaned, key)
+        return cleaned
+
+    def check_unique_names(self, columns, key):
+        seen = set()
+        for column in columns:
+            name = column["name"] if isinstance(column, dict) else column
+            if name in (None, "__time_series__", "__crosstab__"):
+                continue
+            if name in seen:
+                self.add_error(key, f"Column name {name!r} is used more than once.")
+            seen.add(name)
 
     def date(self, key):
         value = self.spec.get(key)
         if value in (None, ""):
             return None
-        if key == "end_date":
-            value = end_of_day_if_date_only(value)
         try:
-            return forms.DateTimeField().clean(value)
+            return forms.DateTimeField().clean(end_of_day_if_date_only(value) if key == "end_date" else value)
         except ValidationError as error:
             self.errors.setdefault(key, []).extend(error.error_list)
-            return None
+        except (TypeError, ValueError, AttributeError):
+            self.add_error(key, f"Expected an ISO date or datetime, got {value!r}.")
+        return None
 
     def filters(self, report_model):
         filters = self.spec.get("filters") or {}
@@ -282,7 +302,7 @@ class _SpecValidator:
                 for item in values:
                     try:
                         field.to_python(item)
-                    except ValidationError:
+                    except (ValidationError, TypeError, ValueError, AttributeError):
                         self.add_error("filters", f"{item!r} is not a valid value for '{path}'.")
         return filters
 
@@ -351,6 +371,7 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
                 validator.add_error("columns", f"A 'list' report takes field paths only, got {column!r}.")
             else:
                 validator.resolve_path(report_model, column, "columns")
+        validator.check_unique_names([column for column in columns if isinstance(column, str)], "columns")
         config["columns"] = columns
     else:
         group_by = spec.get("group_by") or None
@@ -367,10 +388,12 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
             elif is_plain:
                 # A rejected group_by already carries the error; its columns cannot be resolved.
                 if group_by_field is not None:
-                    validator.resolve_path(column_model, column, "columns")
+                    prefix = f"{group_by}__" if column_model is not report_model else ""
+                    validator.resolve_path(column_model, column, "columns", prefix)
                 cleaned_columns.append(column)
             else:
                 cleaned_columns.append(validator.computation(report_model, column, "columns"))
+        validator.check_unique_names(cleaned_columns, "columns")
         config.update(group_by=group_by, columns=cleaned_columns)
 
         pattern = spec.get("time_series_pattern") or None
@@ -382,7 +405,7 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
             if not spec.get(key) and (placeholder in columns or any(spec.get(dependent) for dependent in keys)):
                 validator.add_error(key, f"{placeholder}, {', '.join(keys)} need a {key}.", code="required")
         if pattern:
-            if pattern not in TIME_SERIES_DELTAS:
+            if not isinstance(pattern, str) or pattern not in TIME_SERIES_DELTAS:
                 validator.add_error("time_series_pattern", f"Use one of {', '.join(sorted(TIME_SERIES_DELTAS))}.")
             elif not date_field:
                 validator.add_error("date_field", "A time series needs a date_field.", code="required")
@@ -430,19 +453,36 @@ def _clean_spec(spec, request, allowed_models, max_time_series_periods):
             )
     if validator.errors:
         raise ValidationError(validator.errors)
-    return kind, config
+    return kind, config, validator.relations
 
 
-def run_dynamic_report(spec, request, allowed_models=None, max_time_series_periods=MAX_TIME_SERIES_PERIODS):
+def _resolve_base_querysets(base_querysets):
+    scopes = {}
+    for identifier, queryset in (base_querysets or {}).items():
+        model = _resolve_model(identifier)
+        if model is None or not isinstance(queryset, QuerySet) or queryset.model is not model:
+            raise ImproperlyConfigured(f"base_querysets: {identifier!r} needs a QuerySet of that model.")
+        scopes[model] = queryset
+    return scopes
+
+
+def run_dynamic_report(
+    spec, request, allowed_models, base_querysets=None, max_time_series_periods=MAX_TIME_SERIES_PERIODS
+):
     """
-    Validate ``spec`` (see ``DYNAMIC_REPORT_SPEC_SCHEMA``) and run it; return the report full response.
-
-    A bad spec or a model outside ``allowed_models`` raises ``ValidationError`` keyed by spec key. A missing
-    ``request.user`` or a missing view permission of that user raises ``PermissionDenied``.
+    Validate ``spec`` (see ``DYNAMIC_REPORT_SPEC_SCHEMA``) against ``allowed_models`` and run it; return the full
+    response. ``base_querysets`` maps a model to the queryset its rows come from, also when the spec reaches it
+    through a relation. A bad spec raises ``ValidationError`` keyed by spec key, a missing permission
+    ``PermissionDenied``.
     """
-    kind, config = _clean_spec(spec, request, allowed_models, max_time_series_periods)
+    scopes = _resolve_base_querysets(base_querysets)
+    kind, config, relations = _clean_spec(spec, request, allowed_models, max_time_series_periods)
     report_model = config["report_model"]
     try:
+        main_queryset = scopes.get(report_model, report_model._default_manager.all())
+        config["main_queryset"] = main_queryset.filter(
+            **{f"{path}__in": scopes[model] for path, model in relations.items() if model in scopes}
+        )
         q_filters, config["kwargs_filters"] = prepare_filters(report_model, config["kwargs_filters"])
         for key in ("columns", "time_series_columns", "crosstab_columns"):
             if key in config:
@@ -465,15 +505,14 @@ def run_dynamic_report(spec, request, allowed_models=None, max_time_series_perio
         raise ValidationError({"filters": error.error_list}) from error
 
 
-def describe_dynamic_report_models(request, allowed_models=None):
+def describe_dynamic_report_models(request, allowed_models):
     """
     Describe the models a spec may use: fields with their types and relations, in the shape of the llm catalog.
 
-    Only models the user may view (narrowed by ``allowed_models`` when given) are listed, relations to other
-    models are left out.
+    Only the ``allowed_models`` the user may view are listed, relations to other models are left out.
     """
     validator = _SpecValidator({}, request, allowed_models)
-    candidates = validator.allowed_models if allowed_models is not None else apps.get_models()
+    candidates = validator.allowed_models
 
     def usable(model):
         try:

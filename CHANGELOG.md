@@ -14,10 +14,11 @@ All notable changes to this project will be documented in this file.
   `truncated` and `date_window`, with Decimal-safe strings and `null` for empty cells.
 - **Dynamic reports from a JSON spec**: `slick_reporting.dynamic_report.run_dynamic_report(spec, request,
   allowed_models)` runs an aggregate, time series, crosstab or list report from the keys of the LLM
-  assistant config, after checking every model and field path against `allowed_models` and the user's view
-  permission (`allowed_models=None` means the models the user may view; a request with a user is
-  required). `DYNAMIC_REPORT_SPEC_SCHEMA` documents the spec; `describe_dynamic_report_models(request)`
-  lists the usable models and fields. See the "Running Reports Without a Page" topic.
+  assistant config, after checking every model and field path against the required `allowed_models` and the
+  user's view permission (a request with a user is required). `base_querysets={Model: queryset}` scopes the
+  report model's rows and every relation the spec traverses. `DYNAMIC_REPORT_SPEC_SCHEMA` documents the spec;
+  `describe_dynamic_report_models(request, allowed_models)` lists the usable models and fields. See the
+  "Running Reports Without a Page" topic.
 - **Datatable number formatting** — numeric columns in the datatable can now be displayed
   with locale-aware thousands separators and configurable decimal places.
   Raw values are kept in the JSON response so DataTables sorting and footer summation
