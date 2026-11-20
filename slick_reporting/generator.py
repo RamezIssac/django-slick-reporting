@@ -3,6 +3,7 @@ import logging
 from dataclasses import dataclass
 from inspect import isclass
 
+from dateutil.relativedelta import relativedelta
 from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured
 from django.db.models import ForeignKey, Q
 from django.utils.translation import gettext as _
@@ -14,6 +15,17 @@ from .helpers import get_field_from_query_text
 from .registry import field_registry
 
 logger = logging.getLogger(__name__)
+
+TIME_SERIES_DELTAS = {
+    "daily": datetime.timedelta(days=1),
+    "weekly": relativedelta(weeks=1),
+    "bi-weekly": relativedelta(weeks=2),
+    "monthly": relativedelta(months=1),
+    "quarterly": relativedelta(months=3),
+    "semiannually": relativedelta(months=6),
+    "annually": relativedelta(years=1),
+}
+"""The period length of each built-in time_series_pattern ("custom" reads time_series_custom_dates)."""
 
 
 @dataclass
@@ -871,31 +883,17 @@ class ReportGenerator(ReportGeneratorAPI):
         return self.time_series_custom_dates or []
 
     def _get_time_series_dates(self, series=None, start_date=None, end_date=None):
-        from dateutil.relativedelta import relativedelta
-
         series = series or self.time_series_pattern
         start_date = start_date or self.start_date
         end_date = end_date or self.end_date
         _values = []
 
         if series:
-            if series == "daily":
-                time_delta = datetime.timedelta(days=1)
-            elif series == "weekly":
-                time_delta = relativedelta(weeks=1)
-            elif series == "bi-weekly":
-                time_delta = relativedelta(weeks=2)
-            elif series == "monthly":
-                time_delta = relativedelta(months=1)
-            elif series == "quarterly":
-                time_delta = relativedelta(months=3)
-            elif series == "semiannually":
-                time_delta = relativedelta(months=6)
-            elif series == "annually":
-                time_delta = relativedelta(years=1)
-            elif series == "custom":
+            if series == "custom":
                 return self.get_custom_time_series_dates()
-            else:
+            try:
+                time_delta = TIME_SERIES_DELTAS[series]
+            except KeyError:
                 raise NotImplementedError(f'"{series}" is not implemented for time_series_pattern')
 
             done = False

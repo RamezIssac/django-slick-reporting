@@ -1,3 +1,4 @@
+import copy
 import csv
 import datetime
 import warnings
@@ -6,11 +7,13 @@ import simplejson as json
 from django import forms
 from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
-from django.db.models import Q
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Model, Q, QuerySet
 from django.forms import modelform_factory
-from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
+from django.http import HttpResponse, JsonResponse, QueryDict, StreamingHttpResponse
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
+from django.utils.translation import gettext_lazy as _
 from django.views.generic import FormView
 
 from .app_settings import SLICK_REPORTING_SETTINGS, get_access_function, get_end_date, get_start_date
@@ -34,6 +37,26 @@ def dictsort(value, arg, desc=False):
     the argument.
     """
     return sorted(value, key=lambda x: x[arg], reverse=desc)
+
+
+def _query_value(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, Model):
+        return str(value.pk)
+    if isinstance(value, (datetime.date, datetime.time)):
+        return value.isoformat()
+    return str(value)
+
+
+def _set_query_value(query, key, value):
+    """Store a JSON-like value in a QueryDict as a form would submit it; None and empty values are skipped."""
+    if isinstance(value, QuerySet):
+        value = list(value)
+    if isinstance(value, (list, tuple, set)):
+        query.setlist(key, [_query_value(item) for item in value])
+    elif value is not None and value != "":
+        query[key] = _query_value(value)
 
 
 class ExportToCSV:
@@ -148,6 +171,10 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
     template_name = "slick_reporting/report.html"
 
     export_actions = None
+
+    extra_params = None
+    """A dict of GET parameters the view reads outside its form, mapping each name to a JSON Schema property.
+    ``run()`` accepts these names and passes them through ``request.GET``."""
 
     def test_func(self):
         access_function = get_access_function()
@@ -445,6 +472,48 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
             default_chart_title=self.report_title,
             default_chart_engine=self.chart_engine,
         )
+
+    @classmethod
+    def run(cls, request, params=None, check_access=True, **initkwargs):
+        """
+        Run the report without rendering and return its full response (as ``get_report_results()``).
+
+        ``params`` holds JSON values keyed by form field name (plus ``order_by`` and ``extra_params``);
+        omitted fields take their initial value, computed at call time. Raises ``ValidationError``
+        (``error_dict`` keyed by parameter) for unknown or invalid params, and ``PermissionDenied``
+        when ``check_access`` is set and ``test_func()`` fails.
+        """
+        params = dict(params or {})
+        headless_request = copy.copy(request)
+        headless_request.method = "GET"
+        headless_request.GET = QueryDict(mutable=True)
+        headless_request.POST = QueryDict()
+        view = cls(**initkwargs)
+        view.setup(headless_request)
+        if check_access and not view.test_func():
+            raise PermissionDenied
+
+        form_class = view.get_form_class()
+        form_kwargs = view.get_form_kwargs()
+        unbound_form = form_class(**form_kwargs)
+        known_params = set(unbound_form.fields) | set(view.extra_params or {}) | {"order_by"}
+        unknown = sorted(set(params) - known_params)
+        if unknown:
+            raise ValidationError(
+                {name: ValidationError(_("Unknown parameter."), code="unknown_parameter") for name in unknown}
+            )
+
+        query = headless_request.GET
+        for name, field in unbound_form.fields.items():
+            value = params.pop(name) if name in params else unbound_form.get_initial_for_field(field, name)
+            _set_query_value(query, unbound_form.add_prefix(name), value)
+        for name, value in params.items():
+            _set_query_value(query, name, value)
+
+        view.form = form_class(**{**form_kwargs, "data": query})
+        if not view.form.is_valid():
+            raise ValidationError(view.form.errors.as_data())
+        return view.get_report_results()
 
     @classmethod
     def get_metadata(cls, generator):
