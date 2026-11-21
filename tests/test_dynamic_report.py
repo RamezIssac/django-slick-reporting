@@ -272,19 +272,46 @@ class DynamicReportTest(BaseTestData, TestCase):
         with self.assertRaises(ImproperlyConfigured):
             self.run_spec(spec, base_querysets={Client: SimpleSales.objects.all()})
 
-    def test_scope_on_a_reverse_relation_adds_no_rows(self):
-        everything = {SimpleSales: SimpleSales.objects.all()}
+    def test_partial_scope_sums_only_in_scope_rows(self):
+        SimpleSales.objects.create(
+            doc_date=datetime.datetime(year, 1, 3), client=self.client1, product=self.product2, quantity=5, price=10
+        )
+        scoped = {Product: Product.objects.filter(pk=self.product1.pk)}
         spec = {
-            "report_model": "tests.Client",
-            "kind": "list",
-            "columns": ["name"],
-            "filters": {"simplesales__value": 100},
+            "report_model": "tests.SimpleSales",
+            "group_by": "client",
+            "columns": ["name", VALUE_SUM],
+            "filters": {"product__name__startswith": "Product"},
         }
-        unscoped = compact_response(self.run_spec(spec))
-        self.assertEqual(compact_response(self.run_spec(spec, base_querysets=everything)), unscoped)
-        spec = {**spec, "kind": "aggregate", "columns": [{"method": "Count", "field": "id", "name": "clients"}]}
-        unscoped = compact_response(self.run_spec(spec))
-        self.assertEqual(compact_response(self.run_spec(spec, base_querysets=everything)), unscoped)
+        compact = compact_response(self.run_spec(spec, base_querysets=scoped))
+        # The fixture sales are all product1; the added product2 sale of 5 x 10 is out of scope.
+        self.assertEqual(compact["rows"], [["Client 1", "300"], ["Client 2", "600"], ["Client 3", "900"]])
+        self.assertEqual(compact["totals"], {"value_sum": "1800"})
+
+    def test_reverse_path_into_a_scoped_model_is_rejected(self):
+        scoped = {SimpleSales: SimpleSales.objects.filter(product=self.product1)}
+        base = {"report_model": "tests.Client"}
+        sales_sum = {"method": "Sum", "field": "simplesales__value", "name": "sales"}
+        count = {"method": "Count", "field": "id", "name": "clients"}
+        for spec, key in (
+            ({**base, "columns": [sales_sum]}, "columns"),
+            ({**base, "columns": [count], "filters": {"simplesales__product__name": "Product 2"}}, "filters"),
+            ({**base, "columns": [count], "date_field": "simplesales__doc_date"}, "date_field"),
+            ({**base, "group_by": "simplesales", "columns": [count]}, "group_by"),
+        ):
+            self.assert_spec_error(spec, key, "model_not_allowed", base_querysets=scoped)
+        products = {Product: Product.objects.filter(pk=self.product1.pk)}
+        spec = {**base, "columns": [count], "crosstab_field": "simplesales__product", "crosstab_columns": [count]}
+        self.assert_spec_error(spec, "crosstab_field", "model_not_allowed", base_querysets=products)
+        self.assertEqual(compact_response(self.run_spec({**base, "columns": [sales_sum]}))["totals"], {"sales": "1800"})
+
+    def test_excluded_app_labels_must_exist(self):
+        spec = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}
+        for excluded in (["auht", "sessions"], None):
+            with self.assertRaises(ImproperlyConfigured):
+                run_dynamic_report(spec, self.request, excluded_models=excluded)
+            with self.assertRaises(ImproperlyConfigured):
+                describe_dynamic_report_models(self.request, excluded_models=excluded)
 
     def test_rows_with_a_null_relation_stay_in_scope(self):
         no_contact = Client.objects.create(name="Client 4", sex="MALE")

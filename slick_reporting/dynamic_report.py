@@ -141,15 +141,24 @@ def _label(model):
 class _SpecValidator:
     """Collects the errors of one spec, keyed by spec key."""
 
-    def __init__(self, spec, request, allowed_models, excluded_models):
+    def __init__(self, spec, request, allowed_models, excluded_models, scoped_models=()):
         self.spec = spec
         self.user = getattr(request, "user", None)
         if self.user is None:
             raise PermissionDenied("A request with a user is required.")
         self.allowed_models = None if allowed_models is None else self.resolve_models(allowed_models, "allowed_models")
+        if excluded_models is None:
+            raise ImproperlyConfigured("excluded_models: expected a list, got None.")
         self.excluded_apps = {entry for entry in excluded_models if isinstance(entry, str) and "." not in entry}
+        for app_label in self.excluded_apps:
+            try:
+                apps.get_app_config(app_label)
+            except LookupError:
+                raise ImproperlyConfigured(f"excluded_models: unknown app label {app_label!r}") from None
         self.excluded_models = self.resolve_models(set(excluded_models) - self.excluded_apps, "excluded_models")
+        self.scoped_models = set(scoped_models)
         self.relations = {}
+        self.multi_valued_paths = set()
         self.errors = {}
 
     @staticmethod
@@ -201,8 +210,8 @@ class _SpecValidator:
             related_model = getattr(field, "related_model", None)
             if related_model is not None and not self.check_model(related_model, key):
                 return None
-            if related_model is not None and prefix is not None:
-                self.relations[prefix + "__".join(parts[: index + 1])] = related_model
+            if related_model is not None and not self.record_relation(field, path, key, prefix, parts[: index + 1]):
+                return None
             if index < len(parts) - 1:
                 if related_model is None:
                     self.add_error(key, f"'{part}' in '{path}' is not a relation.", code="unknown_field")
@@ -212,6 +221,26 @@ class _SpecValidator:
                 self.add_error(key, f"'{path}' is not a database column.", code="unknown_field")
                 return None
         return field
+
+    def record_relation(self, field, path, key, prefix, parts):
+        """Record a traversed relation; reject one into a scoped model that the pk subquery cannot scope."""
+        relation_path = None if prefix is None else prefix + "__".join(parts)
+        if relation_path is not None and (field.one_to_many or field.many_to_many):
+            self.multi_valued_paths.add(relation_path)
+        crosses_multi_valued = relation_path is None or any(
+            relation_path == multi or relation_path.startswith(f"{multi}__") for multi in self.multi_valued_paths
+        )
+        if field.related_model in self.scoped_models and crosses_multi_valued:
+            self.add_error(
+                key,
+                f"'{path}' reaches {_label(field.related_model)}, which has a base queryset, through a reverse, "
+                "many-to-many or registered field relation.",
+                code="model_not_allowed",
+            )
+            return False
+        if relation_path is not None:
+            self.relations[relation_path] = field.related_model
+        return True
 
     def computation(self, report_model, column, key):
         """Validate a computation column; return a ComputationField class name or config dict."""
@@ -227,6 +256,13 @@ class _SpecValidator:
                 own_queryset = getattr(klass, "queryset", None)
                 field_model = klass.report_model or (own_queryset.model if own_queryset is not None else report_model)
                 if field_model is not report_model and not self.check_model(field_model, key):
+                    return None
+                if field_model is not report_model and field_model in self.scoped_models:
+                    self.add_error(
+                        key,
+                        f"'{column}' reads {_label(field_model)}, which has a base queryset.",
+                        code="model_not_allowed",
+                    )
                     return None
                 prefix = "" if field_model is report_model else None
                 self.resolve_path(field_model, klass.calculation_field, key, prefix)
@@ -323,11 +359,11 @@ TIME_SERIES_KEYS = ("time_series_columns",)
 CROSSTAB_KEYS = ("crosstab_ids", "crosstab_columns", "crosstab_compute_remainder")
 
 
-def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_periods):
+def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_periods, scoped_models):
     """Validate ``spec`` and return the keyword arguments of the report generator."""
     if not isinstance(spec, dict):
         raise ValidationError({"spec": ValidationError("Expected a JSON object.", code="invalid")})
-    validator = _SpecValidator(spec, request, allowed_models, excluded_models)
+    validator = _SpecValidator(spec, request, allowed_models, excluded_models, scoped_models)
     unknown = set(spec) - set(DYNAMIC_REPORT_SPEC_SCHEMA["properties"])
     for key in sorted(unknown):
         validator.add_error(key, "Unknown spec key.", code="unknown_key")
@@ -492,7 +528,9 @@ def run_dynamic_report(
     model to the queryset its rows come from, also when the spec reaches it through a relation.
     """
     scopes = _resolve_base_querysets(base_querysets)
-    kind, config, relations = _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_periods)
+    kind, config, relations = _clean_spec(
+        spec, request, allowed_models, excluded_models, max_time_series_periods, scopes
+    )
     report_model = config["report_model"]
     try:
         main_queryset = scopes.get(report_model, report_model._default_manager.all())

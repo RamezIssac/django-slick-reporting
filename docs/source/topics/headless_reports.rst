@@ -117,8 +117,11 @@ the usable models and fields in the shape of the LLM assistant catalog.
 * An entry for a model the spec traverses (``group_by``, ``filters``, ``crosstab_field``, ``date_field``, plain
   columns through ``group_by``, computation field paths) keeps the main rows whose relation is in the queryset
   (``<relation path>__in=<queryset>``) or is empty (``<relation path>__isnull=True``). All scopes apply as one
-  subquery on the report model's primary key, and a reverse or many-to-many path adds no duplicate rows.
+  subquery on the report model's primary key.
   With the example above, sales of clients outside the queryset are left out of every column.
+* A path that reaches a model with an entry through a reverse or many-to-many relation (``simplesales__value``
+  on ``Client`` with a ``SimpleSales`` entry), and a registered computation field reading such a model, raise
+  ``ValidationError`` with code ``model_not_allowed``.
 * A value that is not a ``QuerySet`` of its model raises ``ImproperlyConfigured``.
 
 The keys follow the configuration of the LLM assistant (``run_llm_report_config``):
@@ -163,7 +166,8 @@ Validation runs before any query:
   ``ValidationError`` with code ``model_not_allowed``. ``allowed_models=None`` means every installed model
   ``request.user`` may view. ``excluded_models`` entries are app labels (``"auth"``) or
   ``"app_label.ModelName"``; the default ``DEFAULT_EXCLUDED_MODELS`` is ``("auth", "sessions")``, and a list
-  passed by the caller replaces it. ``describe_dynamic_report_models()`` leaves excluded models out, along with
+  passed by the caller replaces it. An unknown app label, an unknown model or ``excluded_models=None`` raises
+  ``ImproperlyConfigured``. ``describe_dynamic_report_models()`` leaves excluded models out, along with
   the relations pointing to them.
 * Filter values are checked against their field (``value__gte: "abc"`` is rejected).
 * A report computes at most 500 computation columns (columns, plus time series and crosstab columns
