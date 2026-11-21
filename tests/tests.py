@@ -3,7 +3,7 @@ from unittest import skip
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Count, Q, Sum
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
@@ -975,3 +975,32 @@ class TestGroupByFlag(TestCase):
         self.assertEqual(len(data), 2)
         self.assertEqual(data[1]["sum__quantity"], 25)
         self.assertEqual(data[1][f"sum__quantityTS{year}0401"], 25)
+
+
+class TestDebitCreditResolve(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.client1 = Client.objects.create(name="Client 1")
+        cls.product1 = Product.objects.create(name="Product 1")
+        for flag, quantity in (("sales", 30), ("sales", 20), ("sales-return", 7)):
+            SalesWithFlag.objects.create(
+                doc_date=datetime.datetime(year, 1, 1),
+                client=cls.client1,
+                product=cls.product1,
+                quantity=quantity,
+                price=10,
+                flag=flag,
+            )
+
+    def test_resolve_subtracts_credit_from_debit(self):
+        net_field = ComputationField.create(Sum, "value", name="net_of_returns")
+        net_field.plus_side_q = [Q(flag="sales")]
+        net_field.minus_side_q = [Q(flag="sales-return")]
+        report = ReportGenerator(
+            report_model=SalesWithFlag,
+            group_by="client",
+            columns=["name", net_field],
+        )
+        data = report.get_report_data()
+        self.assertEqual(data[0]["net_of_returns"], 430)
