@@ -3,7 +3,7 @@ from unittest import skip
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
@@ -975,3 +975,51 @@ class TestGroupByFlag(TestCase):
         self.assertEqual(len(data), 2)
         self.assertEqual(data[1]["sum__quantity"], 25)
         self.assertEqual(data[1][f"sum__quantityTS{year}0401"], 25)
+
+
+class TestDocTypeSides(TestCase):
+    databases = "__all__"
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        client = Client.objects.create(name="Client 1")
+        product = Product.objects.create(name="Product 1")
+        for flag, value in (("sales", 100), ("returns", 30), ("other", 7)):
+            SimpleSales.objects.create(
+                doc_date=datetime.datetime(year, 1, 2),
+                client=client,
+                product=product,
+                quantity=1,
+                price=value,
+                flag=flag,
+            )
+
+    def _row(self, plus, minus, columns=("__debit__", "__credit__", "__total__")):
+        generator = ReportGenerator(
+            report_model=SimpleSales,
+            group_by="client",
+            columns=["name", *columns],
+            date_field="doc_date",
+            start_date=datetime.datetime(year, 1, 1),
+            end_date=datetime.datetime(year, 12, 31),
+            doc_type_plus_list=[Q(flag__in=plus)] if plus else [],
+            doc_type_minus_list=[Q(flag__in=minus)] if minus else [],
+        )
+        return generator.get_report_data()[0]
+
+    def test_plus_and_minus_lists(self):
+        row = self._row(["sales"], ["returns"], columns=("__debit__", "__credit__"))
+        self.assertEqual((row["__debit__"], row["__credit__"]), (100, 30))
+
+    def test_empty_minus_list_has_no_credit_side(self):
+        row = self._row(["sales"], [])
+        self.assertEqual((row["__debit__"], row["__credit__"], row["__total__"]), (100, 0, 100))
+
+    def test_empty_plus_list_has_no_debit_side(self):
+        row = self._row([], ["returns"])
+        self.assertEqual((row["__debit__"], row["__credit__"], row["__total__"]), (0, 30, -30))
+
+    def test_no_lists_leaves_debit_unfiltered(self):
+        row = self._row([], [], columns=("__debit__", "__credit__"))
+        self.assertEqual((row["__debit__"], row["__credit__"]), (137, 0))
