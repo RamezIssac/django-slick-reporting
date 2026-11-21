@@ -167,8 +167,8 @@ Validation runs before any query:
   ``request.user`` may view. ``excluded_models`` entries are app labels (``"auth"``) or
   ``"app_label.ModelName"``; the default ``DEFAULT_EXCLUDED_MODELS`` is ``("auth", "sessions")``, and a list
   passed by the caller replaces it. An app label of the default whose app is not installed is skipped; any
-  other unknown app label, an unknown model or ``excluded_models=None`` raises ``ImproperlyConfigured``. ``describe_dynamic_report_models()`` leaves excluded models out, along with
-  the relations pointing to them.
+  other unknown app label, an unknown model or ``excluded_models=None`` raises ``ImproperlyConfigured``.
+  ``describe_dynamic_report_models()`` leaves excluded models out, along with the relations pointing to them.
 * Filter values are checked against their field (``value__gte: "abc"`` is rejected).
 * A report computes at most 500 computation columns (columns, plus time series and crosstab columns
   repeated per period and value), else code ``too_large``.
