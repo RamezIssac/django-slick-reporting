@@ -1,17 +1,18 @@
 import datetime
 import logging
 from dataclasses import dataclass
+from decimal import Decimal
 from inspect import isclass
 
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured
-from django.db.models import ForeignKey, Q
+from django.db.models import DecimalField, ForeignKey, Q, Sum
 from django.utils.translation import gettext as _
 
 from . import app_settings
 from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import ComputationField
-from .helpers import get_field_from_query_text
+from .helpers import get_field_from_query_text, normalize_column_type
 from .registry import field_registry
 
 logger = logging.getLogger(__name__)
@@ -159,6 +160,10 @@ class ReportGeneratorAPI:
     """
     swap_sign = False
 
+    total_columns = None
+    """Names of the columns to total over all rows, on top of the summable computation fields.
+    Use it for list report columns such as ``["value"]``; a total-column name that is not a report column raises."""
+
     crosstab_precomputed = False
     """If True, crosstab reads pre-computed values from the database instead of aggregating raw data.
     In this mode, crosstab_columns should be a list of DB column name strings (not ComputationField classes)."""
@@ -206,6 +211,7 @@ class ReportGenerator(ReportGeneratorAPI):
         start_date_field_name=None,
         end_date_field_name=None,
         table_name=None,
+        total_columns=None,
     ):
         """
 
@@ -231,6 +237,7 @@ class ReportGenerator(ReportGeneratorAPI):
         :param doc_type_plus_list:
         :param doc_type_minus_list:
         :param limit_records:
+        :param total_columns: names of the columns to total over all rows
         """
         from .app_settings import (
             SLICK_REPORTING_DEFAULT_END_DATE,
@@ -362,8 +369,11 @@ class ReportGenerator(ReportGeneratorAPI):
         # todo delete this
         self.show_empty_records = False  # show_empty_records if show_empty_records else self.show_empty_records
 
+        self.total_columns = list(total_columns or self.total_columns or [])
+
         # Preparing actions
         self._parse()
+        self._check_total_columns()
 
         self.main_queryset = self.prepare_queryset(main_queryset)
         self._prepare_report_dependencies()
@@ -623,8 +633,10 @@ class ReportGenerator(ReportGeneratorAPI):
                     data[name] = obj.get(name, "")
         return data
 
-    def get_report_data(self):
+    def get_report_data(self, max_rows=None):
         main_queryset = self.main_queryset[: self.limit_records] if self.limit_records else self.main_queryset
+        if max_rows is not None:
+            main_queryset = main_queryset[:max_rows]
 
         all_columns = (
             ("normal", self._parsed_columns),
@@ -787,6 +799,12 @@ class ReportGenerator(ReportGeneratorAPI):
         self._parsed_columns = list(self.parsed_columns)
         self._crosstab_parsed_columns = self.get_crosstab_parsed_columns()
         self._time_series_parsed_columns = self.get_time_series_parsed_columns()
+
+    def _check_total_columns(self):
+        parsed = self._parsed_columns + self._time_series_parsed_columns + self._crosstab_parsed_columns
+        unknown = set(self.total_columns) - {col["name"] for col in parsed}
+        if unknown:
+            raise ImproperlyConfigured(f"total_columns {sorted(unknown)} are not columns of {self}")
 
     def get_database_columns(self):
         return [col["name"] for col in self.parsed_columns if "source" in col and col["source"] == "database"]
@@ -1041,6 +1059,7 @@ class ReportGenerator(ReportGeneratorAPI):
             "crosstab_column_names": [x["name"] for x in crosstab_columns],
             "crosstab_column_verbose_names": [x["verbose_name"] for x in crosstab_columns],
             "date_window": self.get_date_window(),
+            "total_columns": list(self.total_columns),
         }
         return metadata
 
@@ -1064,7 +1083,7 @@ class ReportGenerator(ReportGeneratorAPI):
                 "verbose_name": col["verbose_name"],
                 "visible": col.get("visible", True),
                 "type": col_type,
-                "is_summable": col.get("is_summable", ""),
+                "is_summable": True if col["name"] in self.total_columns else col.get("is_summable", ""),
             }
             if col_type == "number":
                 field_fmt = getattr(col.get("ref"), "number_format", None) or {}
@@ -1172,6 +1191,31 @@ class ReportGenerator(ReportGeneratorAPI):
 class ListViewReportGenerator(ReportGenerator):
     def prepare_queryset(self, queryset):
         return self._apply_queryset_options(queryset, self.get_database_columns())
+
+    def get_database_totals(self):
+        """Return ``{"row_count": n, "totals": {name: value}}`` counted and summed in the database over all rows,
+        or ``None`` when a totaled column is not a numeric database column."""
+        totaled = [
+            col
+            for col in self.parsed_columns
+            if col["name"] in self.total_columns
+            or (normalize_column_type(col.get("type")) == "number" and col.get("is_summable") is True)
+        ]
+        database_columns = set(self.get_database_columns())
+        if any(
+            col["name"] not in database_columns or normalize_column_type(col.get("type")) != "number" for col in totaled
+        ):
+            return None
+        queryset = self.main_queryset[: self.limit_records] if self.limit_records else self.main_queryset
+        sums = queryset.aggregate(**{f"total_{index}": Sum(col["name"]) for index, col in enumerate(totaled)})
+        totals = {}
+        for index, col in enumerate(totaled):
+            total = sums[f"total_{index}"] or 0
+            if total and isinstance(col["ref"], DecimalField):
+                # SQLite drops the scale of a decimal sum; keep the one a Python sum of the values has.
+                total = Decimal(total).quantize(Decimal(1).scaleb(-col["ref"].decimal_places))
+            totals[col["name"]] = total
+        return {"row_count": queryset.count(), "totals": totals}
 
     def _apply_queryset_options(self, query, fields=None):
         """

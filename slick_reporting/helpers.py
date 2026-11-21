@@ -151,14 +151,20 @@ def compact_response(full_response, max_rows=None):
     """
     columns = [col for col in full_response["columns"] if col.get("visible", True) is not False]
     data = full_response["data"]
-    row_count = len(data.get(columns[0]["name"], [])) if columns else 0
+    metadata = full_response.get("metadata", {})
+    built_rows = len(data.get(columns[0]["name"], [])) if columns else 0
+    row_count = metadata.get("row_count", built_rows)
+    database_totals = metadata.get("totals", {})
 
+    declared_totals = set(metadata.get("total_columns") or [])
     compact_columns = []
     totals = {}
     for col in columns:
         col_type = normalize_column_type(col.get("type"))
         compact_columns.append({"name": col["name"], "label": force_str(col["verbose_name"]), "type": col_type})
-        if col_type == "number" and col.get("is_summable") is True:
+        if col["name"] in database_totals:
+            totals[col["name"]] = format(_to_decimal(database_totals[col["name"]]), "f")
+        elif col["name"] in declared_totals or (col_type == "number" and col.get("is_summable") is True):
             values = data.get(col["name"], [])
             try:
                 total = sum(
@@ -168,11 +174,11 @@ def compact_response(full_response, max_rows=None):
                 continue
             totals[col["name"]] = format(total, "f")
 
-    shown = row_count if max_rows is None else min(row_count, max_rows)
+    shown = built_rows if max_rows is None else min(built_rows, max_rows)
     column_values = [data.get(col["name"], []) for col in columns]
     rows = [[_compact_value(values[index]) for values in column_values] for index in range(shown)]
 
-    date_window = full_response.get("metadata", {}).get("date_window") or {}
+    date_window = metadata.get("date_window") or {}
     return {
         "columns": compact_columns,
         "rows": rows,

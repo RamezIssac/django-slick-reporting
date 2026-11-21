@@ -33,6 +33,7 @@ ReportGenerator
 
     .. rubric:: Below are the magical attrs
     .. autoattribute:: limit_records
+    .. autoattribute:: total_columns
     .. autoattribute:: swap_sign
     .. autoattribute:: field_registry_class
 
