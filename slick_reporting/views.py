@@ -171,6 +171,9 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
 
     export_actions = None
 
+    run_max_rows = None
+    """Set by ``run(max_rows=...)``: the most rows a list report builds, see ``get_database_totals()``."""
+
     extra_params = None
     """A dict of GET parameters the view reads outside its form, mapping each name to a JSON Schema property.
     ``run()`` accepts these names and passes them through ``request.GET``."""
@@ -474,7 +477,7 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         )
 
     @classmethod
-    def run(cls, request, params=None, check_access=True, **initkwargs):
+    def run(cls, request, params=None, check_access=True, max_rows=None, **initkwargs):
         """
         Run the report without rendering and return its full response (as ``get_report_results()``).
 
@@ -482,6 +485,7 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         initial value computed at call time, and a date-only ``end_date`` on a DateTimeField covers its whole day.
         Unknown or invalid params raise ``ValidationError`` keyed by parameter, a failed ``test_func()``
         ``PermissionDenied``; keep ``check_access=True`` when exposing reports to users.
+        ``max_rows`` lets a list report build only that many rows, with its row count and totals from the database.
         """
         params = dict(params or {})
         headless_request = copy.copy(request)
@@ -489,6 +493,7 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         headless_request.GET = QueryDict(mutable=True)
         headless_request.POST = QueryDict()
         view = cls(**initkwargs)
+        view.run_max_rows = max_rows
         view.setup(headless_request)
         if check_access and not view.test_func():
             raise PermissionDenied
@@ -709,15 +714,36 @@ class SlickReportingListViewMixin(ReportViewBase):
 
         queryset = self.get_queryset()
         report_generator = self.get_report_generator(queryset, for_print)
-        data = report_generator.get_report_data()
-        data = self.filter_results(data, for_print)
+        database_totals = self.get_database_totals(report_generator)
+        if database_totals is None:
+            data = report_generator.get_report_data()
+            data = self.filter_results(data, for_print)
+        else:
+            data = report_generator.get_report_data(max_rows=self.run_max_rows)
 
-        return report_generator.get_full_response(
+        response = report_generator.get_full_response(
             data=data,
             report_slug=self.get_report_slug(),
             chart_settings=self.chart_settings,
             default_chart_title=self.report_title,
         )
+        if database_totals is not None:
+            response["metadata"].update(database_totals)
+        return response
+
+    def get_database_totals(self, report_generator):
+        """Row count and totals from the database when ``run()`` passed ``max_rows``, else ``None``.
+        ``None`` also when ``filter_results``, ``format_row`` or the row building is overridden."""
+        generator_class = type(report_generator)
+        default_hooks = (
+            type(self).filter_results is ReportViewBase.filter_results
+            and type(self).format_row is ReportViewBase.format_row
+            and generator_class.get_report_data is ReportGenerator.get_report_data
+            and generator_class._get_record_data is ListViewReportGenerator._get_record_data
+        )
+        if self.run_max_rows is None or not default_hooks:
+            return None
+        return report_generator.get_database_totals()
 
 
 class SlickReportingListView(SlickReportingListViewMixin, ReportViewBase):

@@ -1,17 +1,18 @@
 import datetime
 import logging
 from dataclasses import dataclass
+from decimal import Decimal
 from inspect import isclass
 
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured
-from django.db.models import ForeignKey, Q
+from django.db.models import DecimalField, ForeignKey, Q, Sum
 from django.utils.translation import gettext as _
 
 from . import app_settings
 from .app_settings import SLICK_REPORTING_DEFAULT_CHARTS_ENGINE
 from .fields import ComputationField
-from .helpers import get_field_from_query_text
+from .helpers import get_field_from_query_text, normalize_column_type
 from .registry import field_registry
 
 logger = logging.getLogger(__name__)
@@ -632,8 +633,10 @@ class ReportGenerator(ReportGeneratorAPI):
                     data[name] = obj.get(name, "")
         return data
 
-    def get_report_data(self):
+    def get_report_data(self, max_rows=None):
         main_queryset = self.main_queryset[: self.limit_records] if self.limit_records else self.main_queryset
+        if max_rows is not None:
+            main_queryset = main_queryset[:max_rows]
 
         all_columns = (
             ("normal", self._parsed_columns),
@@ -1188,6 +1191,28 @@ class ReportGenerator(ReportGeneratorAPI):
 class ListViewReportGenerator(ReportGenerator):
     def prepare_queryset(self, queryset):
         return self._apply_queryset_options(queryset, self.get_database_columns())
+
+    def get_database_totals(self):
+        """Return ``{"row_count": n, "totals": {name: value}}`` counted and summed in the database over all rows,
+        or ``None`` when a totaled column is not a database column."""
+        totaled = [
+            col
+            for col in self.parsed_columns
+            if col["name"] in self.total_columns
+            or (normalize_column_type(col.get("type")) == "number" and col.get("is_summable") is True)
+        ]
+        if not {col["name"] for col in totaled} <= set(self.get_database_columns()):
+            return None
+        queryset = self.main_queryset[: self.limit_records] if self.limit_records else self.main_queryset
+        sums = queryset.aggregate(**{f"total_{index}": Sum(col["name"]) for index, col in enumerate(totaled)})
+        totals = {}
+        for index, col in enumerate(totaled):
+            total = sums[f"total_{index}"] or 0
+            if total and isinstance(col["ref"], DecimalField):
+                # SQLite drops the scale of a decimal sum; keep the one a Python sum of the values has.
+                total = Decimal(total).quantize(Decimal(1).scaleb(-col["ref"].decimal_places))
+            totals[col["name"]] = total
+        return {"row_count": queryset.count(), "totals": totals}
 
     def _apply_queryset_options(self, query, fields=None):
         """

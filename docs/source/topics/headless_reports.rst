@@ -21,7 +21,7 @@ Running a report view
     full_response = MonthlySales.run(request, {"client_id": [1, 2], "start_date": "2026-01-01"})
     result = compact_response(full_response, max_rows=200)
 
-``run(request, params=None, check_access=True, **initkwargs)`` is a classmethod. It:
+``run(request, params=None, check_access=True, max_rows=None, **initkwargs)`` is a classmethod. It:
 
 #. copies ``request`` as a GET request whose ``request.GET`` holds the params,
 #. fills every form field missing from ``params`` with its initial value, computed at call time
@@ -42,6 +42,17 @@ as ``"2026-03-31"`` covers the whole day (``2026-03-31T23:59:59``). A form decla
 
 Note: keep ``check_access=True`` (the default) when the caller exposes reports to users, and pass ``False``
 only from server code that enforces the report's view permission itself, because ``False`` skips ``test_func()``.
+
+``max_rows`` makes a list report build at most that many rows. Its ``metadata`` then carries ``row_count``
+and ``totals`` counted and summed in the database over all rows, and ``compact_response()`` reports those:
+
+.. code-block:: python
+
+    full_response = ExpenseStatement.run(request, params, max_rows=50)
+    result = compact_response(full_response, max_rows=50)
+
+The report builds every row, as without ``max_rows``, when a totaled column is not a database column or the view
+overrides ``filter_results`` or ``format_row``. Grouped, time series and crosstab reports always build every row.
 
 A view that reads GET parameters outside its form declares them in ``extra_params``, a dict of JSON Schema
 properties. ``run()`` accepts those names and passes them through ``request.GET``:

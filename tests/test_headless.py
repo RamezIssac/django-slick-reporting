@@ -37,6 +37,10 @@ class SalesListReportWithFilters(SalesListReport):
     filters = ["client"]
 
 
+class SalesListWithValueTotal(SalesListReport):
+    total_columns = ["value"]
+
+
 class SalesStatement(SalesListReport):
     columns = ["id", "doc_date", "client__name", "value", "value_as_text"]
     total_columns = ["value", "value_as_text"]
@@ -299,6 +303,43 @@ class CompactResponseTest(BaseTestData, TestCase):
         compact = compact_response(ClientTotalsWithIdTotal.run(self.request), max_rows=1)
         self.assertEqual(compact["totals"]["__total__"], "1800")
         self.assertIn("id", compact["totals"])
+
+    def assert_max_rows_matches_full_build(self, view_class, params=None, built_rows=2):
+        limited = view_class.run(self.request, params, max_rows=2)
+        self.assertEqual(len(limited["data"]["id"]), built_rows)
+        self.assertEqual(
+            compact_response(limited, max_rows=2), compact_response(view_class.run(self.request, params), 2)
+        )
+        return compact_response(limited, max_rows=2)
+
+    def test_max_rows_builds_only_those_rows_with_database_count_and_totals(self):
+        compact = self.assert_max_rows_matches_full_build(SalesListWithValueTotal)
+        self.assertEqual(
+            (compact["row_count"], compact["truncated"], compact["totals"]), (9, True, {"value": "1800.00"})
+        )
+
+    def test_max_rows_respects_limit_records(self):
+        class FiveSales(SalesListWithValueTotal):
+            limit_records = 5
+
+        self.assertEqual(self.assert_max_rows_matches_full_build(FiveSales)["row_count"], 5)
+
+    def test_max_rows_with_no_rows(self):
+        params = {"start_date": f"{year - 5}-01-01", "end_date": f"{year - 5}-12-31"}
+        compact = self.assert_max_rows_matches_full_build(SalesListWithValueTotal, params, built_rows=0)
+        self.assertEqual((compact["row_count"], compact["totals"]), (0, {"value": "0"}))
+
+    def test_max_rows_builds_every_row_when_a_total_or_hook_needs_them(self):
+        class FilteredSales(SalesListWithValueTotal):
+            def filter_results(self, data, for_print=False):
+                return data
+
+        for view_class in (SalesStatement, FilteredSales):
+            with self.subTest(view_class.__name__):
+                self.assert_max_rows_matches_full_build(view_class, built_rows=9)
+
+    def test_max_rows_leaves_grouped_reports_whole(self):
+        self.assertEqual(len(ClientTotals.run(self.request, max_rows=1)["data"]["name"]), 3)
 
     def test_non_numeric_computation_column_has_no_total(self):
         compact = compact_response(ClientLastSale.run(self.request))
