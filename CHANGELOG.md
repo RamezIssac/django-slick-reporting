@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Debit/credit balance** (`ComputationField.resolve`): `debit_value or 0 - credit_value or 0` ignored the credit side because of operator precedence; it is now `(debit_value or 0) - (credit_value or 0)`, so `__total__` and `__balance__` subtract credit values.
+
 ## [1.5.1] - 2026-11-18
 
 ### Fixed
