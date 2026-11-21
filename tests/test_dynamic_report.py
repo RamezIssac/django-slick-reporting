@@ -5,10 +5,11 @@ import datetime
 from django.contrib.auth.models import Permission, User
 from django.db.models import Sum
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, modify_settings
 
 from slick_reporting.fields import ComputationField
 from slick_reporting.dynamic_report import (
+    DEFAULT_EXCLUDED_MODELS,
     DYNAMIC_REPORT_SPEC_SCHEMA,
     describe_dynamic_report_models,
     run_dynamic_report,
@@ -312,6 +313,18 @@ class DynamicReportTest(BaseTestData, TestCase):
                 run_dynamic_report(spec, self.request, excluded_models=excluded)
             with self.assertRaises(ImproperlyConfigured):
                 describe_dynamic_report_models(self.request, excluded_models=excluded)
+
+    @modify_settings(INSTALLED_APPS={"remove": ["django.contrib.sessions"]})
+    def test_default_exclusion_skips_apps_that_are_not_installed(self):
+        spec = {"report_model": "tests.SimpleSales", "columns": [VALUE_SUM]}
+        self.assertEqual(compact_response(self.run_spec(spec))["totals"], {"value_sum": "1800"})
+        identifiers = {entry["identifier"] for entry in describe_dynamic_report_models(self.request)}
+        self.assertIn("tests.SimpleSales", identifiers)
+        self.assertFalse({"auth.User", "auth.Group"} & identifiers)
+        with self.assertRaises(ImproperlyConfigured):
+            run_dynamic_report(spec, self.request, excluded_models=[*DEFAULT_EXCLUDED_MODELS, "payrol"])
+        response = run_dynamic_report(spec, self.request, excluded_models=[*DEFAULT_EXCLUDED_MODELS, "tests.Product"])
+        self.assertEqual(compact_response(response)["totals"], {"value_sum": "1800"})
 
     def test_rows_with_a_null_relation_stay_in_scope(self):
         no_contact = Client.objects.create(name="Client 4", sex="MALE")

@@ -154,6 +154,8 @@ class _SpecValidator:
             try:
                 apps.get_app_config(app_label)
             except LookupError:
+                if app_label in DEFAULT_EXCLUDED_MODELS:
+                    continue
                 raise ImproperlyConfigured(f"excluded_models: unknown app label {app_label!r}") from None
         self.excluded_models = self.resolve_models(set(excluded_models) - self.excluded_apps, "excluded_models")
         self.scoped_models = set(scoped_models)
