@@ -67,7 +67,15 @@ All notable changes to this project will be documented in this file.
   `dashboard.css` and `dashboard.js` were missing from built packages, which made pages referencing them
   return HTTP 500 under `ManifestStaticFilesStorage`.
 
+### Fixed
+
+- **Empty ``doc_type_minus_list`` / ``doc_type_plus_list`` no longer run that side unfiltered**: with
+  one list set and the other empty, the empty side ran over every row (an expense total with only a
+  plus list returned 0 because every row also counted as credit). An empty side now contributes 0.
+  Fields with neither list set are unchanged.
+
 ## [1.5.1] - 2026-11-18
+
 
 ### Fixed
 
