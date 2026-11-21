@@ -4,7 +4,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django import forms
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.db.models import Max
 from django.test import RequestFactory, TestCase, override_settings
 
@@ -35,6 +35,16 @@ class SalesListReport(ListReportView):
 
 class SalesListReportWithFilters(SalesListReport):
     filters = ["client"]
+
+
+class SalesStatement(SalesListReport):
+    columns = ["id", "doc_date", "client__name", "value", "value_as_text"]
+    total_columns = ["value", "value_as_text"]
+
+    def value_as_text(self, obj):
+        return str(obj["value"])
+
+    value_as_text.verbose_name = "Value as text"
 
 
 @override_settings(SLICK_REPORTING_SETTINGS=HEADLESS_SETTINGS)
@@ -256,6 +266,39 @@ class CompactResponseTest(BaseTestData, TestCase):
         self.assertTrue(compact["rows"][0][1].startswith(f"{year}-02-02"))
         self.assertIn(compact["rows"][0][3], {"100.00", "200.00", "300.00"})
         json.dumps(compact)
+
+    def test_list_report_totals_declared_columns_over_all_rows(self):
+        compact = compact_response(SalesStatement.run(self.request), max_rows=2)
+        self.assertEqual(len(compact["rows"]), 2)
+        self.assertEqual((compact["row_count"], compact["truncated"]), (9, True))
+        self.assertEqual(compact["totals"], {"value": "1800.00", "value_as_text": "1800.00"})
+        self.assertEqual(compact["columns"][4]["type"], "text")
+
+    def test_declared_total_columns_are_summable_in_the_full_response(self):
+        columns = {col["name"]: col["is_summable"] for col in SalesStatement.run(self.request)["columns"]}
+        self.assertEqual((columns["value"], columns["value_as_text"], columns["client__name"]), (True, True, ""))
+
+    def test_declared_total_column_with_text_values_has_no_total(self):
+        class NamesTotalled(SalesListReport):
+            total_columns = ["client__name"]
+
+        self.assertEqual(compact_response(NamesTotalled.run(self.request))["totals"], {})
+
+    def test_unknown_total_column_raises(self):
+        class TypoTotal(SalesListReport):
+            total_columns = ["valeu"]
+
+        with self.assertRaisesMessage(ImproperlyConfigured, "['valeu']"):
+            TypoTotal.run(self.request)
+
+    def test_grouped_report_total_columns_add_to_computation_fields(self):
+        class ClientTotalsWithIdTotal(ClientTotals):
+            columns = ["id", "name", "__total__"]
+            total_columns = ["id"]
+
+        compact = compact_response(ClientTotalsWithIdTotal.run(self.request), max_rows=1)
+        self.assertEqual(compact["totals"]["__total__"], "1800")
+        self.assertIn("id", compact["totals"])
 
     def test_non_numeric_computation_column_has_no_total(self):
         compact = compact_response(ClientLastSale.run(self.request))

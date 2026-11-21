@@ -153,12 +153,13 @@ def compact_response(full_response, max_rows=None):
     data = full_response["data"]
     row_count = len(data.get(columns[0]["name"], [])) if columns else 0
 
+    declared_totals = set(full_response.get("metadata", {}).get("total_columns") or [])
     compact_columns = []
     totals = {}
     for col in columns:
         col_type = normalize_column_type(col.get("type"))
         compact_columns.append({"name": col["name"], "label": force_str(col["verbose_name"]), "type": col_type})
-        if col_type == "number" and col.get("is_summable") is True:
+        if col["name"] in declared_totals or (col_type == "number" and col.get("is_summable") is True):
             values = data.get(col["name"], [])
             try:
                 total = sum(

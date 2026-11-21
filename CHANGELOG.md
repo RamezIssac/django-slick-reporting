@@ -12,6 +12,9 @@ All notable changes to this project will be documented in this file.
 - **Compact output**: `slick_reporting.helpers.compact_response(full_response, max_rows=None)` returns
   columns (name, label, normalized type), positional rows, server-side totals over all rows, `row_count`,
   `truncated` and `date_window`, with Decimal-safe strings and `null` for empty cells.
+- **Declared total columns**: a report's `total_columns` (e.g. `["value"]` on a list report) names the columns
+  totaled over all rows, in `compact_response()` totals and the datatable footer, on top of the summable
+  computation fields. An unknown name raises `ImproperlyConfigured`.
 - **Dynamic reports from a JSON spec**: `slick_reporting.dynamic_report.run_dynamic_report(spec, request,
   allowed_models=None, excluded_models=DEFAULT_EXCLUDED_MODELS, base_querysets=None)` runs an aggregate, time
   series, crosstab or list report from the keys of the LLM assistant config, after checking every model and

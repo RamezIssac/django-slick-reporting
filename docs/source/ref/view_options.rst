@@ -294,6 +294,20 @@ As you would expect, for DESC order: default_order_by (or order_by as a paramete
     Ordering can also be controlled at run time by passing order_by='field_name' as a parameter to the view.
 
 
+``total_columns``
+-----------------
+
+The names of the columns to total over all rows, default to ``None``. Computation fields are totaled by default;
+use it for model field and attribute columns, e.g. ``total_columns = ["value"]`` on a list report.
+The columns are totaled in the datatable footer and in ``compact_response()``. A name that is not a report column
+raises ``ImproperlyConfigured``.
+
+.. note::
+
+    Name only the columns whose sum means something, e.g. ``value`` and not ``price`` or a running balance,
+    because every declared column gets a total.
+
+
 ``limit_records``
 -----------------
 

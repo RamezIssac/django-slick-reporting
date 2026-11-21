@@ -75,9 +75,10 @@ Compact output
 * Only visible columns are included. ``type`` is one of ``number``, ``text``, ``date``, ``datetime``, ``boolean``.
 * ``rows`` are positional, in the order of ``columns``. At most ``max_rows`` rows are returned;
   ``row_count`` is the number of rows before truncation and ``truncated`` tells whether rows were cut.
-* ``totals`` covers every ``number`` column whose ``is_summable`` is ``True``, over all rows, before truncation.
-  Computation fields are summable by default; a list report column becomes summable through its options,
-  e.g. ``("value", {"is_summable": True})``.
+* ``totals`` covers every ``number`` column whose ``is_summable`` is ``True`` and every column the report names in
+  ``total_columns``, over all rows, before truncation. Computation fields are summable by default; a list report
+  declares the columns to total, e.g. ``total_columns = ["value"]``. A declared column is totaled whatever its
+  ``type``; a column holding a non-numeric value gets no total.
 * Numbers are strings (Decimal safe), dates and datetimes are ISO strings, empty cells are ``null``.
 
 
