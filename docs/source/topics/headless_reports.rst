@@ -51,8 +51,8 @@ and ``totals`` counted and summed in the database over all rows, and ``compact_r
     full_response = ExpenseStatement.run(request, params, max_rows=50)
     result = compact_response(full_response, max_rows=50)
 
-The report builds every row, as without ``max_rows``, when a totaled column is not a database column or the view
-overrides ``filter_results`` or ``format_row``. Grouped, time series and crosstab reports always build every row.
+The report builds every row, as without ``max_rows``, when a totaled column is not a numeric database column or
+the view overrides ``filter_results`` or ``format_row``. Grouped, time series and crosstab reports always build every row.
 
 A view that reads GET parameters outside its form declares them in ``extra_params``, a dict of JSON Schema
 properties. ``run()`` accepts those names and passes them through ``request.GET``:

@@ -17,8 +17,8 @@ All notable changes to this project will be documented in this file.
   computation fields. An unknown name raises `ImproperlyConfigured`.
 - **Row limit in the database for list reports**: `run(request, params, max_rows=n)` builds at most `n` rows of
   a list report and counts and totals all rows in the database; `compact_response()` reports that `row_count`
-  and those totals. The report builds every row when a totaled column is not a database column or the view
-  overrides `filter_results` or `format_row`.
+  and those totals. The report builds every row when a totaled column is not a numeric database column or the
+  view overrides `filter_results` or `format_row`.
 - **Dynamic reports from a JSON spec**: `slick_reporting.dynamic_report.run_dynamic_report(spec, request,
   allowed_models=None, excluded_models=DEFAULT_EXCLUDED_MODELS, base_querysets=None)` runs an aggregate, time
   series, crosstab or list report from the keys of the LLM assistant config, after checking every model and

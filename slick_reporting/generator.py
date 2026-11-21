@@ -1194,14 +1194,17 @@ class ListViewReportGenerator(ReportGenerator):
 
     def get_database_totals(self):
         """Return ``{"row_count": n, "totals": {name: value}}`` counted and summed in the database over all rows,
-        or ``None`` when a totaled column is not a database column."""
+        or ``None`` when a totaled column is not a numeric database column."""
         totaled = [
             col
             for col in self.parsed_columns
             if col["name"] in self.total_columns
             or (normalize_column_type(col.get("type")) == "number" and col.get("is_summable") is True)
         ]
-        if not {col["name"] for col in totaled} <= set(self.get_database_columns()):
+        database_columns = set(self.get_database_columns())
+        if any(
+            col["name"] not in database_columns or normalize_column_type(col.get("type")) != "number" for col in totaled
+        ):
             return None
         queryset = self.main_queryset[: self.limit_records] if self.limit_records else self.main_queryset
         sums = queryset.aggregate(**{f"total_{index}": Sum(col["name"]) for index, col in enumerate(totaled)})

@@ -334,7 +334,10 @@ class CompactResponseTest(BaseTestData, TestCase):
             def filter_results(self, data, for_print=False):
                 return data
 
-        for view_class in (SalesStatement, FilteredSales):
+        class NamesTotalled(SalesListReport):
+            total_columns = ["client__name"]
+
+        for view_class in (SalesStatement, FilteredSales, NamesTotalled):
             with self.subTest(view_class.__name__):
                 self.assert_max_rows_matches_full_build(view_class, built_rows=9)
 
