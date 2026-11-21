@@ -1,3 +1,4 @@
+import copy
 import csv
 import datetime
 import warnings
@@ -6,11 +7,13 @@ import simplejson as json
 from django import forms
 from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
-from django.db.models import Q
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Model, Q, QuerySet
 from django.forms import modelform_factory
-from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
+from django.http import HttpResponse, JsonResponse, QueryDict, StreamingHttpResponse
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
+from django.utils.translation import gettext_lazy as _
 from django.views.generic import FormView
 
 from .app_settings import SLICK_REPORTING_SETTINGS, get_access_function, get_end_date, get_start_date
@@ -26,6 +29,7 @@ from .generator import (
     ReportGenerator,
     ReportGeneratorAPI,
 )
+from .helpers import end_of_day_if_date_only
 
 
 def dictsort(value, arg, desc=False):
@@ -36,13 +40,33 @@ def dictsort(value, arg, desc=False):
     return sorted(value, key=lambda x: x[arg], reverse=desc)
 
 
+def _query_value(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, Model):
+        return str(value.pk)
+    if isinstance(value, (datetime.date, datetime.time)):
+        return value.isoformat()
+    return str(value)
+
+
+def _set_query_value(query, key, value):
+    """Store a JSON-like value in a QueryDict as a form would submit it; None and empty values are skipped."""
+    if isinstance(value, QuerySet):
+        value = list(value)
+    if isinstance(value, (list, tuple, set)):
+        query.setlist(key, [_query_value(item) for item in value])
+    elif value is not None and value != "":
+        query[key] = _query_value(value)
+
+
 class ExportToCSV:
     def get_filename(self):
         return self.report_title
 
     def get_response(self):
         response = HttpResponse(content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = "attachment; filename={filename}.csv".format(filename=self.get_filename())
+        response["Content-Disposition"] = f"attachment; filename={self.get_filename()}.csv"
         # response.write("\ufeff")  # UTF-8 BOM for correct Arabic/non-ASCII rendering in Excel
         writer = csv.writer(response)
         for rows in self.get_rows():
@@ -84,9 +108,7 @@ class ExportToStreamingCSV(ExportToCSV):
         return StreamingHttpResponse(
             rows_with_bom(),
             content_type="text/csv; charset=utf-8",
-            headers={
-                "Content-Disposition": 'attachment; filename="{filename}.csv"'.format(filename=self.get_filename())
-            },
+            headers={"Content-Disposition": f'attachment; filename="{self.get_filename()}.csv"'},
         )
 
 
@@ -148,6 +170,10 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
     template_name = "slick_reporting/report.html"
 
     export_actions = None
+
+    extra_params = None
+    """A dict of GET parameters the view reads outside its form, mapping each name to a JSON Schema property.
+    ``run()`` accepts these names and passes them through ``request.GET``."""
 
     def test_func(self):
         access_function = get_access_function()
@@ -447,6 +473,52 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         )
 
     @classmethod
+    def run(cls, request, params=None, check_access=True, **initkwargs):
+        """
+        Run the report without rendering and return its full response (as ``get_report_results()``).
+
+        ``params`` maps form field names (and ``extra_params`` names) to JSON values; omitted fields take their
+        initial value computed at call time, and a date-only ``end_date`` on a DateTimeField covers its whole day.
+        Unknown or invalid params raise ``ValidationError`` keyed by parameter, a failed ``test_func()``
+        ``PermissionDenied``; keep ``check_access=True`` when exposing reports to users.
+        """
+        params = dict(params or {})
+        headless_request = copy.copy(request)
+        headless_request.method = "GET"
+        headless_request.GET = QueryDict(mutable=True)
+        headless_request.POST = QueryDict()
+        view = cls(**initkwargs)
+        view.setup(headless_request)
+        if check_access and not view.test_func():
+            raise PermissionDenied
+
+        form_class = view.get_form_class()
+        form_kwargs = view.get_form_kwargs()
+        unbound_form = form_class(**form_kwargs)
+        known_params = set(unbound_form.fields) | set(view.extra_params or {})
+        unknown = sorted(set(params) - known_params)
+        if unknown:
+            raise ValidationError(
+                {name: ValidationError(_("Unknown parameter."), code="unknown_parameter") for name in unknown}
+            )
+
+        if "end_date" in params and isinstance(unbound_form.fields.get("end_date"), forms.DateTimeField):
+            params["end_date"] = end_of_day_if_date_only(params["end_date"])
+        query = headless_request.GET
+        for name, field in unbound_form.fields.items():
+            value = params.pop(name) if name in params else unbound_form.get_initial_for_field(field, name)
+            if isinstance(field, forms.DateField) and isinstance(value, datetime.datetime):
+                value = value.date()
+            _set_query_value(query, unbound_form.add_prefix(name), value)
+        for name, value in params.items():
+            _set_query_value(query, name, value)
+
+        view.form = form_class(**{**form_kwargs, "data": query})
+        if not view.form.is_valid():
+            raise ValidationError(view.form.errors.as_data())
+        return view.get_report_results()
+
+    @classmethod
     def get_metadata(cls, generator):
         """
         A hook to send data about the report for front end which can later be used in charting
@@ -580,14 +652,19 @@ class SlickReportingListViewMixin(ReportViewBase):
 
     def get_report_generator(self, queryset=None, for_print=False):
         q_filters, kw_filters = self.get_form_filters(self.form)
+        # A ModelForm built from `filters` has no date range: the generator then uses the default window.
+        get_start_date = getattr(self.form, "get_start_date", None)
+        get_end_date = getattr(self.form, "get_end_date", None)
 
         return self.report_generator_class(
             self.get_report_model(),
-            # start_date=self.form.get_start_date(),
-            # end_date=self.form.get_end_date(),
+            start_date=get_start_date() if get_start_date else None,
+            end_date=get_end_date() if get_end_date else None,
             q_filters=q_filters,
             kwargs_filters=kw_filters,
             date_field=self.date_field,
+            start_date_field_name=self.start_date_field_name,
+            end_date_field_name=self.end_date_field_name,
             main_queryset=queryset,
             print_flag=for_print,
             limit_records=self.limit_records,

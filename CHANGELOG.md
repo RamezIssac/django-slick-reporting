@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### New Features
 
+- **Run reports without a page**: `ReportViewBase.run(request, params)` binds the report form from JSON
+  params (defaults computed at call time), rejects unknown params and returns the full response, or raises
+  `ValidationError` with the form errors. Views declare GET params read outside the form in `extra_params`.
+- **Compact output**: `slick_reporting.helpers.compact_response(full_response, max_rows=None)` returns
+  columns (name, label, normalized type), positional rows, server-side totals over all rows, `row_count`,
+  `truncated` and `date_window`, with Decimal-safe strings and `null` for empty cells.
+- **Dynamic reports from a JSON spec**: `slick_reporting.dynamic_report.run_dynamic_report(spec, request,
+  allowed_models=None, excluded_models=DEFAULT_EXCLUDED_MODELS, base_querysets=None)` runs an aggregate, time
+  series, crosstab or list report from the keys of the LLM assistant config, after checking every model and
+  field path against the user's view permission, `allowed_models` (`None` means every model the user may view)
+  and `excluded_models` (default: the `auth` and `sessions` apps). A request with a user is required.
+  `base_querysets={Model: queryset}` scopes the report model's rows and every relation the spec traverses;
+  rows with an empty relation stay, and a reverse or many-to-many path into a scoped model is rejected.
+  `DYNAMIC_REPORT_SPEC_SCHEMA` documents the spec;
+  `describe_dynamic_report_models(request)` lists the usable models and fields. See the
+  "Running Reports Without a Page" topic.
 - **Datatable number formatting** — numeric columns in the datatable can now be displayed
   with locale-aware thousands separators and configurable decimal places.
   Raw values are kept in the JSON response so DataTables sorting and footer summation
@@ -41,6 +57,10 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- `ListReportView` applies the requested date range. It used the default window whatever dates the
+  form held, and `ListViewReportGenerator` dropped rows dated exactly on the start date.
+- `SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"]` and `["DEFAULT_END_DATE_TIME"]` are computed on
+  each read. They kept the dates of the process start.
 - Time-series and crosstab column metadata was missing the ``type`` key, which would
   silently prevent number formatting from applying to those column types.
 - The sdist and wheel now ship `slick_reporting/dashboard/static` and `slick_reporting/dashboard/templates`.

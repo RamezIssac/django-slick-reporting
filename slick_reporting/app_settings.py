@@ -110,6 +110,9 @@ SLICK_REPORTING_SETTINGS_DEFAULT = {
 
 def get_slick_reporting_settings():
     slick_settings = SLICK_REPORTING_SETTINGS_DEFAULT.copy()
+    # Computed on each read: a long-running process must not keep the dates of its start.
+    slick_settings["DEFAULT_START_DATE_TIME"] = get_start_date()
+    slick_settings["DEFAULT_END_DATE_TIME"] = get_end_date()
     slick_chart_settings = slick_settings["CHARTS"].copy()
 
     user_settings = getattr(settings, "SLICK_REPORTING_SETTINGS", {})

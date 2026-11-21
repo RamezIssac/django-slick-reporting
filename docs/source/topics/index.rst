@@ -39,3 +39,4 @@ You saw how to use the ReportView class in the tutorial and you identified the t
    dynamic_model
    pivot_report
    llm_assistant
+   headless_reports

@@ -1,0 +1,597 @@
+"""
+Run an ad-hoc report from a JSON spec.
+
+The spec uses the keys of ``slick_reporting.llm.executor.run_llm_report_config``. Every model and field path in it
+is checked against an allowlist of models and the user's view permission before any query runs.
+"""
+
+import re
+
+from django import forms
+from django.apps import apps
+from django.core.exceptions import (
+    FieldDoesNotExist,
+    FieldError,
+    ImproperlyConfigured,
+    PermissionDenied,
+    ValidationError,
+)
+from django.db.models import Model, Q, QuerySet
+
+from .app_settings import get_end_date, get_start_date
+from .generator import TIME_SERIES_DELTAS, ListViewReportGenerator, ReportGenerator
+from .helpers import NUMBER_COLUMN_TYPES, end_of_day_if_date_only
+from .llm.executor import _build_computation_field, prepare_filters
+from .llm.introspection import REPORTABLE_METHODS, _model_to_catalog
+from .registry import field_registry
+
+__all__ = [
+    "DEFAULT_EXCLUDED_MODELS",
+    "DYNAMIC_REPORT_SPEC_SCHEMA",
+    "describe_dynamic_report_models",
+    "run_dynamic_report",
+]
+
+DEFAULT_EXCLUDED_MODELS = ("auth", "sessions")
+MAX_TIME_SERIES_PERIODS = 120
+MAX_CROSSTAB_IDS = 50
+MAX_COMPUTED_COLUMNS = 500
+FILTER_LOOKUPS = {
+    "exact",
+    "iexact",
+    "in",
+    "gt",
+    "gte",
+    "lt",
+    "lte",
+    "range",
+    "isnull",
+    "contains",
+    "icontains",
+    "startswith",
+    "istartswith",
+    "endswith",
+    "iendswith",
+    "year",
+    "month",
+    "day",
+}
+COERCED_LOOKUPS = {"exact", "in", "gt", "gte", "lt", "lte", "range"}
+SUMMABLE_METHODS = {"Sum", "Count"}
+NUMERIC_ONLY_METHODS = {"Sum", "Avg"}
+COLUMN_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+_computation_schema = {
+    "type": "object",
+    "properties": {
+        "method": {"enum": sorted(REPORTABLE_METHODS)},
+        "field": {"type": "string", "description": "Field path on report_model, e.g. 'value' or 'order__total'."},
+        "name": {"type": "string", "pattern": COLUMN_NAME_PATTERN.pattern},
+        "verbose_name": {"type": "string"},
+    },
+    "required": ["method", "field"],
+    "additionalProperties": False,
+}
+_computation_column_schema = {
+    "oneOf": [
+        _computation_schema,
+        {"type": "string", "description": "A registered computation field name, e.g. '__total__'."},
+    ]
+}
+_scalar_schema = {"type": ["string", "number", "integer", "boolean", "null"]}
+
+DYNAMIC_REPORT_SPEC_SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Dynamic report spec",
+    "type": "object",
+    "properties": {
+        "report_model": {"type": "string", "description": "The model holding the rows, as 'app_label.ModelName'."},
+        "kind": {
+            "enum": ["aggregate", "list"],
+            "default": "aggregate",
+            "description": "'aggregate' computes columns per group_by value (one total row without group_by); "
+            "'list' returns the matching report_model rows.",
+        },
+        "title": {"type": "string"},
+        "group_by": {"type": "string", "description": "Field path on report_model to group rows by."},
+        "columns": {
+            "type": "array",
+            "description": "Field paths (on the group_by related model when group_by is a foreign key, else on "
+            "report_model) and computation columns. A 'list' report takes field paths only.",
+            "items": {"oneOf": [{"type": "string"}, _computation_schema]},
+        },
+        "date_field": {"type": "string", "description": "Date or datetime field path used by the date range."},
+        "start_date": {"type": "string", "format": "date-time"},
+        "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO date or datetime; a date-only value covers its whole day.",
+        },
+        "time_series_pattern": {"enum": sorted(TIME_SERIES_DELTAS)},
+        "time_series_columns": {"type": "array", "items": _computation_column_schema},
+        "crosstab_field": {"type": "string", "description": "Field path on report_model to pivot on."},
+        "crosstab_ids": {"type": "array", "items": _scalar_schema, "maxItems": MAX_CROSSTAB_IDS},
+        "crosstab_columns": {"type": "array", "items": _computation_column_schema},
+        "crosstab_compute_remainder": {"type": "boolean", "default": False},
+        "filters": {
+            "type": "object",
+            "description": "ORM filters: '<field path>[__<lookup>]' to a value; '__in' and '__range' take a list. "
+            f"Lookups: {', '.join(sorted(FILTER_LOOKUPS))}.",
+            "additionalProperties": {"oneOf": [_scalar_schema, {"type": "array", "items": _scalar_schema}]},
+        },
+    },
+    "required": ["report_model"],
+    "additionalProperties": False,
+}
+
+
+def _resolve_model(identifier):
+    if isinstance(identifier, type) and issubclass(identifier, Model):
+        return identifier
+    try:
+        return apps.get_model(identifier)
+    except (LookupError, ValueError, TypeError, AttributeError):
+        return None
+
+
+def _label(model):
+    return f"{model._meta.app_label}.{model._meta.object_name}"
+
+
+class _SpecValidator:
+    """Collects the errors of one spec, keyed by spec key."""
+
+    def __init__(self, spec, request, allowed_models, excluded_models, scoped_models=()):
+        self.spec = spec
+        self.user = getattr(request, "user", None)
+        if self.user is None:
+            raise PermissionDenied("A request with a user is required.")
+        self.allowed_models = None if allowed_models is None else self.resolve_models(allowed_models, "allowed_models")
+        if excluded_models is None:
+            raise ImproperlyConfigured("excluded_models: expected a list, got None.")
+        self.excluded_apps = {entry for entry in excluded_models if isinstance(entry, str) and "." not in entry}
+        for app_label in self.excluded_apps:
+            try:
+                apps.get_app_config(app_label)
+            except LookupError:
+                if app_label in DEFAULT_EXCLUDED_MODELS:
+                    continue
+                raise ImproperlyConfigured(f"excluded_models: unknown app label {app_label!r}") from None
+        self.excluded_models = self.resolve_models(set(excluded_models) - self.excluded_apps, "excluded_models")
+        self.scoped_models = set(scoped_models)
+        self.relations = {}
+        self.multi_valued_paths = set()
+        self.errors = {}
+
+    @staticmethod
+    def resolve_models(identifiers, argument):
+        models = set()
+        for identifier in identifiers:
+            model = _resolve_model(identifier)
+            if model is None:
+                raise ImproperlyConfigured(f"{argument}: could not resolve {identifier!r}")
+            models.add(model)
+        return models
+
+    def is_allowed(self, model):
+        if model._meta.app_label in self.excluded_apps or model in self.excluded_models:
+            return False
+        return self.allowed_models is None or model in self.allowed_models
+
+    def add_error(self, key, message, code="invalid"):
+        self.errors.setdefault(key, []).append(ValidationError(message, code=code))
+
+    def check_model(self, model, key):
+        if not self.is_allowed(model):
+            self.add_error(key, f"Model {_label(model)} is not available for reports.", code="model_not_allowed")
+            return False
+        opts = model._meta
+        if not (
+            self.user.has_perm(f"{opts.app_label}.view_{opts.model_name}")
+            or self.user.has_perm(f"{opts.app_label}.change_{opts.model_name}")
+        ):
+            raise PermissionDenied(f"No view permission on {_label(model)}.")
+        return True
+
+    def resolve_path(self, model, path, key, prefix=""):
+        """
+        Return the concrete field at the end of ``path``, or None after recording an error.
+
+        With a ``prefix`` (the path from the report model to ``model``), traversed relations land in ``relations``.
+        """
+        if not isinstance(path, str) or not path:
+            self.add_error(key, f"Expected a field path, got {path!r}.")
+            return None
+        parts = path.split("__")
+        for index, part in enumerate(parts):
+            try:
+                field = model._meta.get_field(part)
+            except FieldDoesNotExist:
+                self.add_error(key, f"Unknown field '{part}' on {_label(model)} (in '{path}').", code="unknown_field")
+                return None
+            related_model = getattr(field, "related_model", None)
+            if related_model is not None and not self.check_model(related_model, key):
+                return None
+            if related_model is not None and not self.record_relation(field, path, key, prefix, parts[: index + 1]):
+                return None
+            if index < len(parts) - 1:
+                if related_model is None:
+                    self.add_error(key, f"'{part}' in '{path}' is not a relation.", code="unknown_field")
+                    return None
+                model = related_model
+            elif not getattr(field, "concrete", False):
+                self.add_error(key, f"'{path}' is not a database column.", code="unknown_field")
+                return None
+        return field
+
+    def record_relation(self, field, path, key, prefix, parts):
+        """Record a traversed relation; reject one into a scoped model that the pk subquery cannot scope."""
+        relation_path = None if prefix is None else prefix + "__".join(parts)
+        if relation_path is not None and (field.one_to_many or field.many_to_many):
+            self.multi_valued_paths.add(relation_path)
+        crosses_multi_valued = relation_path is None or any(
+            relation_path == multi or relation_path.startswith(f"{multi}__") for multi in self.multi_valued_paths
+        )
+        if field.related_model in self.scoped_models and crosses_multi_valued:
+            self.add_error(
+                key,
+                f"'{path}' reaches {_label(field.related_model)}, which has a base queryset, through a reverse, "
+                "many-to-many or registered field relation.",
+                code="model_not_allowed",
+            )
+            return False
+        if relation_path is not None:
+            self.relations[relation_path] = field.related_model
+        return True
+
+    def computation(self, report_model, column, key):
+        """Validate a computation column; return a ComputationField class name or config dict."""
+        if isinstance(column, str):
+            if column not in field_registry.get_all_report_fields_names():
+                self.add_error(key, f"'{column}' is not a registered computation field.", code="unknown_field")
+                return None
+            pending, seen = [field_registry.get_field_by_name(column)], set()
+            while pending:
+                klass = pending.pop()
+                seen.add(klass)
+                # A registered field may read its own model, which must pass the same checks.
+                own_queryset = getattr(klass, "queryset", None)
+                field_model = klass.report_model or (own_queryset.model if own_queryset is not None else report_model)
+                if field_model is not report_model and not self.check_model(field_model, key):
+                    return None
+                if field_model is not report_model and field_model in self.scoped_models:
+                    self.add_error(
+                        key,
+                        f"'{column}' reads {_label(field_model)}, which has a base queryset.",
+                        code="model_not_allowed",
+                    )
+                    return None
+                prefix = "" if field_model is report_model else None
+                self.resolve_path(field_model, klass.calculation_field, key, prefix)
+                pending.extend(required for required in klass._get_required_classes() if required not in seen)
+            return column
+        if not isinstance(column, dict):
+            self.add_error(key, f"Expected a computation object, got {column!r}.")
+            return None
+        unknown = set(column) - set(_computation_schema["properties"])
+        if unknown:
+            self.add_error(key, f"Unknown computation keys: {', '.join(sorted(unknown))}.")
+            return None
+        method = column.get("method")
+        if not isinstance(method, str) or method not in REPORTABLE_METHODS:
+            self.add_error(key, f"Unknown method {method!r}; use one of {', '.join(sorted(REPORTABLE_METHODS))}.")
+            return None
+        field = self.resolve_path(report_model, column.get("field"), key)
+        if field is None:
+            return None
+        if method in NUMERIC_ONLY_METHODS and field.get_internal_type() not in NUMBER_COLUMN_TYPES:
+            self.add_error(key, f"{method} needs a numeric field; '{column['field']}' is not numeric.")
+            return None
+        name = column.get("name") or f"{method.lower()}__{column['field']}"
+        if not isinstance(name, str) or not COLUMN_NAME_PATTERN.match(name):
+            self.add_error(key, f"Column name {name!r} must be a Python identifier.")
+            return None
+        return {**column, "name": name, "is_summable": method in SUMMABLE_METHODS}
+
+    def computations(self, report_model, key, required=False):
+        columns = self.spec.get(key) or []
+        if not isinstance(columns, list):
+            self.add_error(key, "Expected a list.")
+            return []
+        if required and not columns:
+            self.add_error(key, "At least one computation column is required.", code="required")
+        cleaned = [self.computation(report_model, column, key) for column in columns]
+        self.check_unique_names(cleaned, key)
+        return cleaned
+
+    def check_unique_names(self, columns, key):
+        seen = set()
+        for column in columns:
+            name = column["name"] if isinstance(column, dict) else column
+            if name in (None, "__time_series__", "__crosstab__"):
+                continue
+            if name in seen:
+                self.add_error(key, f"Column name {name!r} is used more than once.")
+            seen.add(name)
+
+    def date(self, key):
+        value = self.spec.get(key)
+        if value in (None, ""):
+            return None
+        try:
+            return forms.DateTimeField().clean(end_of_day_if_date_only(value) if key == "end_date" else value)
+        except ValidationError as error:
+            self.errors.setdefault(key, []).extend(error.error_list)
+        except (TypeError, ValueError, AttributeError):
+            self.add_error(key, f"Expected an ISO date or datetime, got {value!r}.")
+        return None
+
+    def filters(self, report_model):
+        filters = self.spec.get("filters") or {}
+        if not isinstance(filters, dict):
+            self.add_error("filters", "Expected an object of field lookups.")
+            return {}
+        for name, value in filters.items():
+            path, _, lookup = name.rpartition("__")
+            if lookup not in FILTER_LOOKUPS or not path:
+                path, lookup = name, "exact"
+            field = self.resolve_path(report_model, path, "filters")
+            if field is None:
+                continue
+            values = value if isinstance(value, list) else [value]
+            if lookup == "range" and not (isinstance(value, list) and len(value) == 2):
+                self.add_error("filters", f"'{name}' takes a list of two values.")
+            elif lookup == "isnull" and not isinstance(value, bool):
+                self.add_error("filters", f"'{name}' takes true or false.")
+            elif lookup not in ("in", "range") and isinstance(value, (list, dict)):
+                self.add_error("filters", f"'{name}' takes a single value.")
+            elif lookup in ("year", "month", "day") and not all(isinstance(item, int) for item in values):
+                self.add_error("filters", f"'{name}' takes an integer.")
+            elif lookup in COERCED_LOOKUPS and not field.is_relation:
+                # Relations keep their values: prepare_filters() resolves labels to ids.
+                for item in values:
+                    try:
+                        field.to_python(item)
+                    except (ValidationError, TypeError, ValueError, AttributeError):
+                        self.add_error("filters", f"{item!r} is not a valid value for '{path}'.")
+        return filters
+
+
+TIME_SERIES_KEYS = ("time_series_columns",)
+CROSSTAB_KEYS = ("crosstab_ids", "crosstab_columns", "crosstab_compute_remainder")
+
+
+def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_periods, scoped_models):
+    """Validate ``spec`` and return the keyword arguments of the report generator."""
+    if not isinstance(spec, dict):
+        raise ValidationError({"spec": ValidationError("Expected a JSON object.", code="invalid")})
+    validator = _SpecValidator(spec, request, allowed_models, excluded_models, scoped_models)
+    unknown = set(spec) - set(DYNAMIC_REPORT_SPEC_SCHEMA["properties"])
+    for key in sorted(unknown):
+        validator.add_error(key, "Unknown spec key.", code="unknown_key")
+
+    report_model = _resolve_model(spec.get("report_model") or "")
+    if report_model is None:
+        validator.add_error("report_model", f"Unknown model {spec.get('report_model')!r}; use 'app_label.ModelName'.")
+        raise ValidationError(validator.errors)
+    if not validator.check_model(report_model, "report_model"):
+        raise ValidationError(validator.errors)
+
+    kind = spec.get("kind") or "aggregate"
+    if kind not in ("aggregate", "list"):
+        validator.add_error("kind", "Use 'aggregate' or 'list'.")
+
+    date_field = spec.get("date_field") or None
+    if date_field:
+        field = validator.resolve_path(report_model, date_field, "date_field")
+        if field is not None and field.get_internal_type() not in ("DateField", "DateTimeField"):
+            validator.add_error("date_field", f"'{date_field}' is not a date or datetime field.")
+    start_date, end_date = validator.date("start_date"), validator.date("end_date")
+    if (start_date or end_date) and not date_field:
+        validator.add_error("date_field", "start_date and end_date need a date_field.", code="required")
+    if date_field and not validator.errors:
+        # Defaults go through the same field so both dates share the USE_TZ awareness.
+        start_date = start_date or forms.DateTimeField().clean(get_start_date())
+        end_date = end_date or forms.DateTimeField().clean(get_end_date())
+        if start_date > end_date:
+            validator.add_error("end_date", "end_date is before start_date.")
+    filters = validator.filters(report_model)
+
+    config = {
+        "report_model": report_model,
+        "date_field": date_field,
+        "start_date": start_date,
+        "end_date": end_date,
+        "kwargs_filters": filters,
+    }
+    series_periods = 1
+    columns = spec.get("columns") or []
+    if not isinstance(columns, list):
+        validator.add_error("columns", "Expected a list.")
+        columns = []
+
+    if kind == "list":
+        for key in ("group_by", "time_series_pattern", "crosstab_field", *TIME_SERIES_KEYS, *CROSSTAB_KEYS):
+            if spec.get(key):
+                validator.add_error(key, "A 'list' report takes columns, dates and filters only.")
+        if not columns:
+            validator.add_error("columns", "At least one column is required.", code="required")
+        for column in columns:
+            if not isinstance(column, str):
+                validator.add_error("columns", f"A 'list' report takes field paths only, got {column!r}.")
+            else:
+                validator.resolve_path(report_model, column, "columns")
+        validator.check_unique_names([column for column in columns if isinstance(column, str)], "columns")
+        config["columns"] = columns
+    else:
+        group_by = spec.get("group_by") or None
+        group_by_field = validator.resolve_path(report_model, group_by, "group_by") if group_by else None
+        # As in ReportGenerator.check_columns: plain columns live on the group_by related model, if any.
+        column_model = getattr(group_by_field, "related_model", None) or report_model
+        cleaned_columns = []
+        for column in columns:
+            is_plain = isinstance(column, str) and column not in field_registry.get_all_report_fields_names()
+            if column in ("__time_series__", "__crosstab__"):
+                cleaned_columns.append(column)
+            elif is_plain and not group_by:
+                validator.add_error("columns", f"Field column '{column}' needs a group_by.")
+            elif is_plain:
+                # A rejected group_by already carries the error; its columns cannot be resolved.
+                if group_by_field is not None:
+                    prefix = f"{group_by}__" if column_model is not report_model else ""
+                    validator.resolve_path(column_model, column, "columns", prefix)
+                cleaned_columns.append(column)
+            else:
+                cleaned_columns.append(validator.computation(report_model, column, "columns"))
+        validator.check_unique_names(cleaned_columns, "columns")
+        config.update(group_by=group_by, columns=cleaned_columns)
+
+        pattern = spec.get("time_series_pattern") or None
+        crosstab_field = spec.get("crosstab_field") or None
+        for key, keys, placeholder in (
+            ("time_series_pattern", TIME_SERIES_KEYS, "__time_series__"),
+            ("crosstab_field", CROSSTAB_KEYS, "__crosstab__"),
+        ):
+            if not spec.get(key) and (placeholder in columns or any(spec.get(dependent) for dependent in keys)):
+                validator.add_error(key, f"{placeholder}, {', '.join(keys)} need a {key}.", code="required")
+        if pattern:
+            if not isinstance(pattern, str) or pattern not in TIME_SERIES_DELTAS:
+                validator.add_error("time_series_pattern", f"Use one of {', '.join(sorted(TIME_SERIES_DELTAS))}.")
+            elif not date_field:
+                validator.add_error("date_field", "A time series needs a date_field.", code="required")
+            elif start_date and end_date:
+                period_start, periods = start_date, 0
+                while period_start < end_date and periods <= max_time_series_periods:
+                    period_start, periods = period_start + TIME_SERIES_DELTAS[pattern], periods + 1
+                series_periods = periods
+                if periods > max_time_series_periods:
+                    validator.add_error(
+                        "time_series_pattern",
+                        f"More than {max_time_series_periods} periods; use a longer pattern or a shorter date range.",
+                        code="too_many_periods",
+                    )
+            config.update(
+                time_series_pattern=pattern,
+                time_series_columns=validator.computations(report_model, "time_series_columns", required=True),
+            )
+
+        if crosstab_field:
+            validator.resolve_path(report_model, crosstab_field, "crosstab_field")
+            crosstab_ids = spec.get("crosstab_ids") or []
+            if not isinstance(crosstab_ids, list) or len(crosstab_ids) > MAX_CROSSTAB_IDS:
+                validator.add_error("crosstab_ids", f"Expected a list of at most {MAX_CROSSTAB_IDS} values.")
+            remainder = spec.get("crosstab_compute_remainder", False)
+            if not isinstance(remainder, bool):
+                validator.add_error("crosstab_compute_remainder", "Expected true or false.")
+            config.update(
+                crosstab_field=crosstab_field,
+                crosstab_ids=crosstab_ids,
+                crosstab_compute_remainder=remainder,
+                crosstab_columns=validator.computations(report_model, "crosstab_columns", required=True),
+            )
+
+    if not validator.errors:
+        crosstab_width = len(config.get("crosstab_ids", [])) + int(bool(config.get("crosstab_compute_remainder")))
+        computed = (
+            len(config.get("columns", []))
+            + series_periods * len(config.get("time_series_columns", []))
+            + series_periods * crosstab_width * len(config.get("crosstab_columns", []))
+        )
+        if computed > MAX_COMPUTED_COLUMNS:
+            validator.add_error(
+                "spec", f"The report would compute {computed} columns, above {MAX_COMPUTED_COLUMNS}.", code="too_large"
+            )
+    if validator.errors:
+        raise ValidationError(validator.errors)
+    return kind, config, validator.relations
+
+
+def _resolve_base_querysets(base_querysets):
+    scopes = {}
+    for identifier, queryset in (base_querysets or {}).items():
+        model = _resolve_model(identifier)
+        if model is None or not isinstance(queryset, QuerySet) or queryset.model is not model:
+            raise ImproperlyConfigured(f"base_querysets: {identifier!r} needs a QuerySet of that model.")
+        scopes[model] = queryset
+    return scopes
+
+
+def run_dynamic_report(
+    spec,
+    request,
+    allowed_models=None,
+    excluded_models=DEFAULT_EXCLUDED_MODELS,
+    base_querysets=None,
+    max_time_series_periods=MAX_TIME_SERIES_PERIODS,
+):
+    """
+    Validate ``spec`` (see ``DYNAMIC_REPORT_SPEC_SCHEMA``) against the models the user may view, narrowed by
+    ``allowed_models`` and ``excluded_models``, and run it; return the full response. ``base_querysets`` maps a
+    model to the queryset its rows come from, also when the spec reaches it through a relation.
+    """
+    scopes = _resolve_base_querysets(base_querysets)
+    kind, config, relations = _clean_spec(
+        spec, request, allowed_models, excluded_models, max_time_series_periods, scopes
+    )
+    report_model = config["report_model"]
+    try:
+        main_queryset = scopes.get(report_model, report_model._default_manager.all())
+        scope = Q()
+        for path, model in relations.items():
+            if model in scopes:
+                scope &= Q(**{f"{path}__in": scopes[model]}) | Q(**{f"{path}__isnull": True})
+        if scope:
+            scoped_pks = report_model._default_manager.filter(scope).values("pk")
+            main_queryset = main_queryset.filter(pk__in=scoped_pks)
+        config["main_queryset"] = main_queryset
+        q_filters, config["kwargs_filters"] = prepare_filters(report_model, config["kwargs_filters"])
+        for key in ("columns", "time_series_columns", "crosstab_columns"):
+            if key in config:
+                config[key] = [_build_computation_field(column) for column in config[key]]
+        generator_class = ListViewReportGenerator if kind == "list" else ReportGenerator
+        generator = generator_class(q_filters=q_filters, **config)
+        data = generator.get_report_data()
+        return generator.get_full_response(
+            data=data,
+            report_slug="dynamic_report",
+            chart_settings=[],
+            default_chart_title=spec.get("title") or report_model._meta.verbose_name_plural,
+        )
+    except (FieldDoesNotExist, FieldError, ImproperlyConfigured, KeyError, ValueError, TypeError) as error:
+        raise ValidationError({"spec": ValidationError(str(error), code="invalid_spec")}) from error
+    except ValidationError as error:
+        # A value the ORM rejects while querying arrives without an error_dict.
+        if hasattr(error, "error_dict"):
+            raise
+        raise ValidationError({"filters": error.error_list}) from error
+
+
+def describe_dynamic_report_models(request, allowed_models=None, excluded_models=DEFAULT_EXCLUDED_MODELS):
+    """
+    Describe the models a spec may use: fields with their types and relations, in the shape of the llm catalog.
+
+    Only models the user may view, narrowed by ``allowed_models`` and ``excluded_models``, are listed; relations
+    to other models are left out.
+    """
+    validator = _SpecValidator({}, request, allowed_models, excluded_models)
+    candidates = validator.allowed_models if validator.allowed_models is not None else apps.get_models()
+
+    def usable(model):
+        try:
+            return validator.check_model(model, "model")
+        except PermissionDenied:
+            return False
+
+    usable_labels = {_label(model) for model in candidates if usable(model)}
+    catalog = []
+    for model in sorted(candidates, key=_label):
+        if _label(model) not in usable_labels:
+            continue
+        entry = _model_to_catalog(model)
+        entry["fields"] = [
+            field
+            for field in entry["fields"]
+            if not field["is_relation"] or field.get("related_model") in usable_labels
+        ]
+        catalog.append(entry)
+    return catalog
