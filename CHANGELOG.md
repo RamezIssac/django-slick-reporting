@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **``__total__`` no longer runs unused ``__debit__`` and ``__credit__`` queries.** ``TotalReportField``
+  declared both as ``requires`` but computes its own sum; a crosstab of ``__total__`` over 3 columns
+  drops from 10 queries to 4.
+- **``ReportView`` no longer fetches every ``report_model`` row on each request.**
+  ``get_report_generator`` evaluated the queryset with ``queryset or self.get_queryset()``; it now
+  checks ``queryset is None``. With both fixes a monthly time-series view request drops from 17
+  queries to 10.
+
 ## [1.5.1] - 2026-11-18
 
 ### Fixed
