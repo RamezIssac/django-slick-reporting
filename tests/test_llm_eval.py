@@ -651,6 +651,14 @@ class ScorerRealPayloadTests(TestCase):
         passed, detail = EvaluationScorer.score_result_values(result)
         self.assertFalse(passed, detail)
 
+    def test_monthly_values_read_only_the_value_series(self):
+        result = self._executed("product1_monthly_q1")
+        january = {"start": "2026-01-01", "end": "2026-01-31"}
+        result.report_data["columns"].append({"name": "quantity__sumTS20260201", "period": january})
+        result.report_data["data"]["quantity__sumTS20260201"] = [999]
+        passed, detail = EvaluationScorer.score_result_values(result)
+        self.assertTrue(passed, detail)
+
 
 class BackendUsageTests(SimpleTestCase):
     def test_base_backend_reports_no_usage(self):

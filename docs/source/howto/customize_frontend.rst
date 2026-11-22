@@ -36,6 +36,7 @@ Let's have a look
         # A list explaining the columns/keys in the data results.
         # ie: list(response["data"].keys()) == [col["name"] for col in response["columns"]]
         # It contains needed information about verbose name , if summable and hints about the data type.
+        # A time series column also has "period": {"start": date, "end": date}, its first and last included day.
         "columns": [
             {
                 "name": "name",

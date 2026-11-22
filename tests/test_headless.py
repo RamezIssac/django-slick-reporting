@@ -260,6 +260,9 @@ class CompactResponseTest(BaseTestData, TestCase):
         self.assertEqual({col["type"] for col in series}, {"number"})
         january_total = next(col["name"] for col in series if col["name"].startswith("__total__"))
         self.assertEqual(compact["totals"][january_total], "600")
+        january = next(col for col in series if col["name"] == january_total)
+        self.assertEqual(january["period"], {"start": f"{year}-01-01", "end": f"{year}-01-31"})
+        self.assertNotIn("period", compact["columns"][0])
         json.dumps(compact)
 
     def test_list_values_are_json_safe(self):

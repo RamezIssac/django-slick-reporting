@@ -1012,6 +1012,13 @@ class ReportGenerator(ReportGeneratorAPI):
             return value.date()
         return value
 
+    @staticmethod
+    def _last_day_of_period(end):
+        """The last day a time series period covers: its ``end_date`` bound is exclusive."""
+        if isinstance(end, datetime.datetime):
+            return (end - datetime.timedelta(microseconds=1)).date()
+        return end - datetime.timedelta(days=1)
+
     def get_date_window(self):
         """
         Compute the effective date window the report covers, for display on widgets and report pages.
@@ -1085,6 +1092,11 @@ class ReportGenerator(ReportGeneratorAPI):
                 "type": col_type,
                 "is_summable": True if col["name"] in self.total_columns else col.get("is_summable", ""),
             }
+            if "start_date" in col:
+                entry["period"] = {
+                    "start": self._date_window_point(col["start_date"]),
+                    "end": self._last_day_of_period(col["end_date"]),
+                }
             if col_type == "number":
                 field_fmt = getattr(col.get("ref"), "number_format", None) or {}
                 entry["number_format"] = {**global_number_format, **field_fmt}

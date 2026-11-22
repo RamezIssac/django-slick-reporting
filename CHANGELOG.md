@@ -29,6 +29,10 @@ All notable changes to this project will be documented in this file.
   `DYNAMIC_REPORT_SPEC_SCHEMA` documents the spec;
   `describe_dynamic_report_models(request)` lists the usable models and fields. See the
   "Running Reports Without a Page" topic.
+- **Time series column period**: each time series column in `get_columns_data()` and `compact_response()`
+  carries `period`, its first and last included day (`__total__TS20260201`, "Total January 2026", has
+  `{"start": "2026-01-01", "end": "2026-01-31"}`). Column names are unchanged; their `TS` suffix is the
+  period's exclusive end date.
 - **Datatable number formatting** — numeric columns in the datatable can now be displayed
   with locale-aware thousands separators and configurable decimal places.
   Raw values are kept in the JSON response so DataTables sorting and footer summation
