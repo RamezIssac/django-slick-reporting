@@ -256,6 +256,22 @@ class DynamicReportTest(BaseTestData, TestCase):
         self.assert_spec_error({"report_model": "tests.Nope"}, "report_model", "invalid")
         self.assert_spec_error({**base, "kind": "list", "columns": ["value"]}, "group_by", "invalid")
 
+    def test_unknown_model_names_the_closest_model_the_user_may_use(self):
+        def message(report_model, **kwargs):
+            with self.assertRaises(ValidationError) as caught:
+                self.run_spec({"report_model": report_model}, **kwargs)
+            return caught.exception.error_dict["report_model"][0].message
+
+        self.assertEqual(
+            message("sales.SimpleSales"), "Unknown model 'sales.SimpleSales'; did you mean 'tests.SimpleSales'?"
+        )
+        self.assertEqual(message("tests.Nope"), "Unknown model 'tests.Nope'; use 'app_label.ModelName'.")
+        self.assertEqual(message("accounting.Prdct"), "Unknown model 'accounting.Prdct'; did you mean 'tests.Product'?")
+        self.assertIn("did you mean 'tests.Contact'", message("sales.Contact", allowed_models=None))
+        self.assertNotIn("tests.Contact'", message("sales.Contact", allowed_models=None, excluded_models=[Contact]))
+        self.request.user = self.limited_user
+        self.assertNotIn("tests.Contact'", message("sales.Contact", allowed_models=None))
+
     def test_series_and_crosstab_keys_need_their_driving_key(self):
         base = {"report_model": "tests.SimpleSales", "group_by": "client", "columns": ["name", VALUE_SUM]}
         self.assert_spec_error({**base, "time_series_columns": [VALUE_SUM]}, "time_series_pattern", "required")

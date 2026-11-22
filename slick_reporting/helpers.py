@@ -142,14 +142,33 @@ def _to_decimal(value):
     return Decimal(value)
 
 
+PUBLIC_COLUMN_NAMES = {"__balance__": "balance"}
+"""The business name ``compact_response()`` gives a computation field; a report's order_by takes either name."""
+
+
+def public_column_name(name, period=None):
+    """The name of a full-response column in ``compact_response()``: ``__balance__`` reads ``balance``, and a time
+    series column ends with its period's first day (``__total__TS20260201``, January 2026, reads
+    ``__total__2026_01_01``)."""
+    for internal, public in PUBLIC_COLUMN_NAMES.items():
+        if name.startswith(internal):
+            name = public + name[len(internal) :]
+    if period:
+        base, start = name.rpartition("TS")[0], _compact_value(period["start"]).replace("-", "_")
+        name = f"{base}{'' if base.endswith('_') else '_'}{start}"
+    return name
+
+
 def compact_response(full_response, max_rows=None):
     """
     Turn a report full response (``ReportGenerator.get_full_response()``) into a compact,
     JSON-safe result: visible columns, positional rows, and totals computed over all rows.
 
-    Numbers are strings (Decimal safe), dates are ISO strings and empty cells are ``None``.
+    Numbers are strings (Decimal safe), dates are ISO strings and empty cells are ``None``. Columns and totals are
+    keyed by ``public_column_name()``, unless that name is already another column's.
     """
     columns = [col for col in full_response["columns"] if col.get("visible", True) is not False]
+    names = {col["name"] for col in columns}
     data = full_response["data"]
     metadata = full_response.get("metadata", {})
     built_rows = len(data.get(columns[0]["name"], [])) if columns else 0
@@ -161,12 +180,15 @@ def compact_response(full_response, max_rows=None):
     totals = {}
     for col in columns:
         col_type = normalize_column_type(col.get("type"))
-        compact_column = {"name": col["name"], "label": force_str(col["verbose_name"]), "type": col_type}
+        name = public_column_name(col["name"], col.get("period"))
+        if name != col["name"] and name in names:
+            name = col["name"]
+        compact_column = {"name": name, "label": force_str(col["verbose_name"]), "type": col_type}
         if "period" in col:
             compact_column["period"] = {key: _compact_value(day) for key, day in col["period"].items()}
         compact_columns.append(compact_column)
         if col["name"] in database_totals:
-            totals[col["name"]] = format(_to_decimal(database_totals[col["name"]]), "f")
+            totals[name] = format(_to_decimal(database_totals[col["name"]]), "f")
         elif col["name"] in declared_totals or (col_type == "number" and col.get("is_summable") is True):
             values = data.get(col["name"], [])
             try:
@@ -175,7 +197,7 @@ def compact_response(full_response, max_rows=None):
                 )
             except (InvalidOperation, TypeError, ValueError):
                 continue
-            totals[col["name"]] = format(total, "f")
+            totals[name] = format(total, "f")
 
     shown = built_rows if max_rows is None else min(built_rows, max_rows)
     column_values = [data.get(col["name"], []) for col in columns]

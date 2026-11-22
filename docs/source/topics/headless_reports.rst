@@ -91,10 +91,13 @@ Compact output
   declares the columns to total, e.g. ``total_columns = ["value"]``. A declared column is totaled whatever its
   ``type``; a column holding a non-numeric value gets no total.
 * Numbers are strings (Decimal safe), dates and datetimes are ISO strings, empty cells are ``null``.
-* A time series column also carries ``period``: its first and last included day, e.g.
-  ``{"name": "__total__TS20260201", "label": "Total January 2026", "type": "number",
-  "period": {"start": "2026-01-01", "end": "2026-01-31"}}``. The ``TS`` suffix of the name is the period's
-  exclusive end date.
+* A time series column also carries ``period``: its first and last included day. Its name ends with the
+  period's first day: the full response's ``__total__TS20260201`` (its ``TS`` suffix is the exclusive end date)
+  reads ``{"name": "__total__2026_01_01", "label": "Total January 2026", "type": "number",
+  "period": {"start": "2026-01-01", "end": "2026-01-31"}}``.
+* ``__balance__`` reads ``balance`` (``helpers.PUBLIC_COLUMN_NAMES``), unless the report has a column of that
+  name. ``public_column_name(name, period=None)`` gives a full-response column's compact name; a report's
+  ``order_by`` takes either name.
 
 
 Dynamic reports from a JSON spec
@@ -192,6 +195,8 @@ Validation runs before any query:
   passed by the caller replaces it. An app label of the default whose app is not installed is skipped; any
   other unknown app label, an unknown model or ``excluded_models=None`` raises ``ImproperlyConfigured``.
   ``describe_dynamic_report_models()`` leaves excluded models out, along with the relations pointing to them.
+* An unknown ``report_model`` names the closest model the spec may use, by model name:
+  ``Unknown model 'cash.ClientPayment'; did you mean 'payment.ClientPayment'?``.
 * Filter values are checked against their field (``value__gte: "abc"`` is rejected).
 * A report computes at most 500 computation columns (columns, plus time series and crosstab columns
   repeated per period and value), else code ``too_large``. On a crosstab, this check runs after the

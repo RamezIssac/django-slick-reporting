@@ -5,6 +5,7 @@ The spec uses the keys of ``slick_reporting.llm.executor.run_llm_report_config``
 is checked against an allowlist of models and the user's view permission before any query runs.
 """
 
+import difflib
 import re
 
 from django import forms
@@ -195,17 +196,24 @@ class _SpecValidator:
     def add_error(self, key, message, code="invalid"):
         self.errors.setdefault(key, []).append(ValidationError(message, code=code))
 
+    def may_view(self, model):
+        opts = model._meta
+        return self.user.has_perm(f"{opts.app_label}.view_{opts.model_name}") or self.user.has_perm(
+            f"{opts.app_label}.change_{opts.model_name}"
+        )
+
     def check_model(self, model, key):
         if not self.is_allowed(model):
             self.add_error(key, f"Model {_label(model)} is not available for reports.", code="model_not_allowed")
             return False
-        opts = model._meta
-        if not (
-            self.user.has_perm(f"{opts.app_label}.view_{opts.model_name}")
-            or self.user.has_perm(f"{opts.app_label}.change_{opts.model_name}")
-        ):
+        if not self.may_view(model):
             raise PermissionDenied(f"No view permission on {_label(model)}.")
         return True
+
+    def usable_labels(self):
+        """The labels of the models a spec may use."""
+        candidates = self.allowed_models if self.allowed_models is not None else apps.get_models()
+        return {_label(model) for model in candidates if self.is_allowed(model) and self.may_view(model)}
 
     def resolve_path(self, model, path, key, prefix=""):
         """
@@ -401,7 +409,11 @@ def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_
 
     report_model = _resolve_model(spec.get("report_model") or "")
     if report_model is None:
-        validator.add_error("report_model", f"Unknown model {spec.get('report_model')!r}; use 'app_label.ModelName'.")
+        # Match on the model name: a wrong app label ('cash.Expense' for 'expense.Expense') is the usual slip.
+        labels = {label.rpartition(".")[2].lower(): label for label in sorted(validator.usable_labels())}
+        closest = difflib.get_close_matches(str(spec.get("report_model")).rpartition(".")[2].lower(), labels)
+        hint = f"did you mean {labels[closest[0]]!r}?" if closest else "use 'app_label.ModelName'."
+        validator.add_error("report_model", f"Unknown model {spec.get('report_model')!r}; {hint}")
         raise ValidationError(validator.errors)
     if not validator.check_model(report_model, "report_model"):
         raise ValidationError(validator.errors)
@@ -642,20 +654,10 @@ def describe_dynamic_report_models(request, allowed_models=None, excluded_models
     to other models are left out.
     """
     validator = _SpecValidator({}, request, allowed_models, excluded_models)
-    candidates = validator.allowed_models if validator.allowed_models is not None else apps.get_models()
-
-    def usable(model):
-        try:
-            return validator.check_model(model, "model")
-        except PermissionDenied:
-            return False
-
-    usable_labels = {_label(model) for model in candidates if usable(model)}
+    usable_labels = validator.usable_labels()
     catalog = []
-    for model in sorted(candidates, key=_label):
-        if _label(model) not in usable_labels:
-            continue
-        entry = _model_to_catalog(model)
+    for label in sorted(usable_labels):
+        entry = _model_to_catalog(apps.get_model(label))
         entry["fields"] = [
             field
             for field in entry["fields"]
