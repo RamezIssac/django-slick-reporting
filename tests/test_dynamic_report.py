@@ -106,6 +106,26 @@ class DynamicReportTest(BaseTestData, TestCase):
         )
         self.assertEqual(compact["rows"], [["Product 1", "300", "1500"]])
 
+    def test_series_and_crosstab_columns_take_a_name_declared_in_columns(self):
+        columns = ["name", VALUE_SUM, {"method": "Count", "field": "id"}]
+        series = {"date_field": "doc_date", "start_date": f"{year}-01-01", "end_date": f"{year}-01-31"}
+        spec = {"report_model": "tests.SimpleSales", "group_by": "client", "columns": columns, **series}
+        by_name = {**spec, "time_series_pattern": "monthly", "time_series_columns": ["value_sum", "count__id"]}
+        by_object = {**by_name, "time_series_columns": columns[1:]}
+        self.assertEqual(compact_response(self.run_spec(by_name)), compact_response(self.run_spec(by_object)))
+        crosstab = {**spec, "crosstab_field": "product", "crosstab_columns": ["value_sum"]}
+        self.assertEqual(
+            compact_response(self.run_spec(crosstab)),
+            compact_response(self.run_spec({**crosstab, "crosstab_columns": [VALUE_SUM]})),
+        )
+        with self.assertRaises(ValidationError) as caught:
+            self.run_spec({**by_name, "time_series_columns": ["value"]})
+        errors = caught.exception.error_dict["time_series_columns"]
+        self.assertEqual(
+            [(error.code, error.message) for error in errors],
+            [("unknown_field", "'value' is not named in columns or registered.")],
+        )
+
     def crosstab_spec(self, **extra):
         return {
             "report_model": "tests.SimpleSales",
@@ -412,6 +432,10 @@ class DynamicReportTest(BaseTestData, TestCase):
 
     def test_schema_and_catalog(self):
         self.assertEqual(DYNAMIC_REPORT_SPEC_SCHEMA["required"], ["report_model"])
+        self.assertIn(
+            {"type": "string", "description": "A computation name from columns, or a registered one, e.g. '__total__'."},
+            DYNAMIC_REPORT_SPEC_SCHEMA["properties"]["crosstab_columns"]["items"]["oneOf"],
+        )
         json.dumps(DYNAMIC_REPORT_SPEC_SCHEMA)
         catalog = describe_dynamic_report_models(self.request, allowed_models=[SimpleSales, Client])
         self.assertEqual([entry["identifier"] for entry in catalog], ["tests.Client", "tests.SimpleSales"])
