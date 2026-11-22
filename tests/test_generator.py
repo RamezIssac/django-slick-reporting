@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from django.db.models import Sum
 from django.test import TestCase, override_settings
@@ -691,3 +691,55 @@ class TestDateWindow(TestCase):
             response["metadata"]["date_window"]["label"],
             "From 2020-01-01 to 2020-12-31",
         )
+
+
+class TestTimeSeriesPeriod(TestCase):
+    def test_monthly_column_period_is_first_and_last_day_of_the_month(self):
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            date_field="doc_date",
+            group_by="client",
+            columns=["name"],
+            time_series_pattern="monthly",
+            time_series_columns=["__total__"],
+            start_date=datetime(2026, 1, 1),
+            end_date=datetime(2026, 3, 1),
+        )
+        columns = {col["name"]: col for col in report.get_columns_data()}
+        january = columns["__total__TS20260201"]
+        self.assertTrue(january["verbose_name"].endswith("January 2026"))
+        self.assertEqual(january["period"], {"start": date(2026, 1, 1), "end": date(2026, 1, 31)})
+        self.assertNotIn("period", columns["name"])
+
+    def test_custom_date_periods_end_the_day_before_their_bound(self):
+        columns = [col for col in TimeSeriesCustomDates().get_columns_data() if "period" in col]
+        self.assertEqual(
+            [col["period"] for col in columns],
+            [
+                {"start": date(2020, 1, 1), "end": date(2020, 1, 16)},
+                {"start": date(2020, 4, 17), "end": date(2020, 4, 30)},
+                {"start": date(2020, 8, 8), "end": date(2020, 9, 8)},
+            ],
+        )
+
+    def test_crosstab_columns_in_a_time_series_carry_their_period(self):
+        report = ReportGenerator(
+            report_model=SimpleSales,
+            date_field="doc_date",
+            group_by="product",
+            columns=["name"],
+            time_series_pattern="monthly",
+            crosstab_field="client",
+            crosstab_columns=["__total__"],
+            crosstab_ids=[1],
+            crosstab_compute_remainder=False,
+            start_date=datetime(2026, 1, 1),
+            end_date=datetime(2026, 2, 1),
+        )
+        columns = {col["name"]: col for col in report.get_columns_data()}
+        self.assertEqual(
+            columns["__total__CT1TS20260201"]["period"], {"start": date(2026, 1, 1), "end": date(2026, 1, 31)}
+        )
+
+    def test_a_period_ending_after_midnight_covers_its_end_day(self):
+        self.assertEqual(ReportGenerator._last_day_of_period(datetime(2026, 2, 1, 12)), date(2026, 2, 1))

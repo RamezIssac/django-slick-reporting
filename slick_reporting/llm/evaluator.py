@@ -21,7 +21,6 @@ This module is evaluation tooling; it is wired to the ``tests`` app models
 
 from __future__ import annotations
 
-import calendar
 import datetime
 import hashlib
 import json
@@ -116,8 +115,6 @@ _COUNTRY_ALIASES = {
     "DE": ["de", "germany"],
 }
 
-_MONTH_NAME_RE = re.compile(r"\b(" + "|".join(m for m in calendar.month_name if m) + r")\s+(\d{4})\b")
-_TS_KEY_RE = re.compile(r"^(?P<metric>.+)TS(?P<ymd>\d{8})$")
 _NUMBER_RE = re.compile(r"-?\$?\d[\d,]*(?:\.\d+)?")
 
 
@@ -670,31 +667,18 @@ def _extract_group_values(result: EvaluationResult, label_keys: tuple[str, ...],
 
 
 def _extract_monthly_values(result: EvaluationResult, field_name: str) -> dict[str, float]:
-    """
-    Map calendar month (``2026-01``) -> value from real time-series keys.
-
-    slick_reporting emits one column per period named ``<field>__sumTS<YYYYMMDD>``
-    whose ``verbose_name`` carries the authoritative label (e.g. "Sum value
-    January 2026").  The verbose label is used when available; otherwise the
-    key date is taken as the period's end boundary and shifted back one month
-    (monthly periods end on the 1st of the following month).
-    """
-    columns_meta = {}
-    for col in (result.report_data or {}).get("columns") or []:
-        if isinstance(col, dict):
-            columns_meta[str(col.get("name"))] = str(col.get("verbose_name", ""))
-
-    prefix = f"{field_name}__sumTS"
+    """Map calendar month (``2026-01``) -> value, from the ``period`` start of each ``<field>__sum``
+    time series column."""
+    base_name = f"{field_name}__sum"
+    month_by_key = {
+        col["name"]: str(col["period"]["start"])[:7]
+        for col in (result.report_data or {}).get("columns") or []
+        if isinstance(col, dict) and col.get("base_name") == base_name and col.get("period")
+    }
     values: dict[str, float] = {}
     for row in _rows(result):
         for key, value in row.items():
-            key = str(key)
-            if not key.startswith(prefix):
-                continue
-            m = _TS_KEY_RE.match(key)
-            if not m:
-                continue
-            month = _month_label_for_ts(m.group("ymd"), columns_meta.get(key, ""))
+            month = month_by_key.get(key)
             if not month:
                 continue
             try:
@@ -702,19 +686,6 @@ def _extract_monthly_values(result: EvaluationResult, field_name: str) -> dict[s
             except (TypeError, ValueError):
                 pass
     return values
-
-
-def _month_label_for_ts(ymd: str, verbose_name: str) -> str | None:
-    m = _MONTH_NAME_RE.search(verbose_name or "")
-    if m:
-        month_number = list(calendar.month_name).index(m.group(1))
-        return f"{m.group(2)}-{month_number:02d}"
-    try:
-        boundary = datetime.date(int(ymd[:4]), int(ymd[4:6]), int(ymd[6:8]))
-    except ValueError:
-        return None
-    last_day_of_period_month = boundary.replace(day=1) - datetime.timedelta(days=1)
-    return f"{last_day_of_period_month.year}-{last_day_of_period_month.month:02d}"
 
 
 # ---------------------------------------------------------------------------

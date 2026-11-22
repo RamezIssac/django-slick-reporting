@@ -5,6 +5,7 @@ The spec uses the keys of ``slick_reporting.llm.executor.run_llm_report_config``
 is checked against an allowlist of models and the user's view permission before any query runs.
 """
 
+import difflib
 import re
 
 from django import forms
@@ -16,11 +17,11 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.db.models import Model, Q, QuerySet
+from django.db.models import ForeignKey, Model, Q, QuerySet
 
 from .app_settings import get_end_date, get_start_date
 from .generator import TIME_SERIES_DELTAS, ListViewReportGenerator, ReportGenerator
-from .helpers import NUMBER_COLUMN_TYPES, end_of_day_if_date_only
+from .helpers import NUMBER_COLUMN_TYPES, end_of_day_if_date_only, get_field_from_query_text
 from .llm.executor import _build_computation_field, prepare_filters
 from .llm.introspection import REPORTABLE_METHODS, _model_to_catalog
 from .registry import field_registry
@@ -75,7 +76,7 @@ _computation_schema = {
 _computation_column_schema = {
     "oneOf": [
         _computation_schema,
-        {"type": "string", "description": "A registered computation field name, e.g. '__total__'."},
+        {"type": "string", "description": "A computation name from columns, or a registered one, e.g. '__total__'."},
     ]
 }
 _scalar_schema = {"type": ["string", "number", "integer", "boolean", "null"]}
@@ -93,7 +94,11 @@ DYNAMIC_REPORT_SPEC_SCHEMA = {
             "'list' returns the matching report_model rows.",
         },
         "title": {"type": "string"},
-        "group_by": {"type": "string", "description": "Field path on report_model to group rows by."},
+        "group_by": {
+            "type": "string",
+            "description": "Field path on report_model to group rows by. Rows start with the group's label "
+            "column: the group_by value, else the related model's 'name' or its text ('group_label').",
+        },
         "columns": {
             "type": "array",
             "description": "Field paths (on the group_by related model when group_by is a foreign key, else on "
@@ -110,7 +115,12 @@ DYNAMIC_REPORT_SPEC_SCHEMA = {
         "time_series_pattern": {"enum": sorted(TIME_SERIES_DELTAS)},
         "time_series_columns": {"type": "array", "items": _computation_column_schema},
         "crosstab_field": {"type": "string", "description": "Field path on report_model to pivot on."},
-        "crosstab_ids": {"type": "array", "items": _scalar_schema, "maxItems": MAX_CROSSTAB_IDS},
+        "crosstab_ids": {
+            "type": "array",
+            "items": _scalar_schema,
+            "maxItems": MAX_CROSSTAB_IDS,
+            "description": "Values of crosstab_field to pivot on; default: every value in the filtered data.",
+        },
         "crosstab_columns": {"type": "array", "items": _computation_column_schema},
         "crosstab_compute_remainder": {"type": "boolean", "default": False},
         "filters": {
@@ -138,6 +148,10 @@ def _label(model):
     return f"{model._meta.app_label}.{model._meta.object_name}"
 
 
+def _column_name(column):
+    return column["name"] if isinstance(column, dict) else column
+
+
 class _SpecValidator:
     """Collects the errors of one spec, keyed by spec key."""
 
@@ -162,6 +176,7 @@ class _SpecValidator:
         self.relations = {}
         self.multi_valued_paths = set()
         self.errors = {}
+        self.declared = {}
 
     @staticmethod
     def resolve_models(identifiers, argument):
@@ -181,17 +196,24 @@ class _SpecValidator:
     def add_error(self, key, message, code="invalid"):
         self.errors.setdefault(key, []).append(ValidationError(message, code=code))
 
+    def may_view(self, model):
+        opts = model._meta
+        return self.user.has_perm(f"{opts.app_label}.view_{opts.model_name}") or self.user.has_perm(
+            f"{opts.app_label}.change_{opts.model_name}"
+        )
+
     def check_model(self, model, key):
         if not self.is_allowed(model):
             self.add_error(key, f"Model {_label(model)} is not available for reports.", code="model_not_allowed")
             return False
-        opts = model._meta
-        if not (
-            self.user.has_perm(f"{opts.app_label}.view_{opts.model_name}")
-            or self.user.has_perm(f"{opts.app_label}.change_{opts.model_name}")
-        ):
+        if not self.may_view(model):
             raise PermissionDenied(f"No view permission on {_label(model)}.")
         return True
+
+    def usable_labels(self):
+        """The labels of the models a spec may use."""
+        candidates = self.allowed_models if self.allowed_models is not None else apps.get_models()
+        return {_label(model) for model in candidates if self.is_allowed(model) and self.may_view(model)}
 
     def resolve_path(self, model, path, key, prefix=""):
         """
@@ -247,8 +269,10 @@ class _SpecValidator:
     def computation(self, report_model, column, key):
         """Validate a computation column; return a ComputationField class name or config dict."""
         if isinstance(column, str):
+            if column in self.declared:
+                return self.declared[column]
             if column not in field_registry.get_all_report_fields_names():
-                self.add_error(key, f"'{column}' is not a registered computation field.", code="unknown_field")
+                self.add_error(key, f"'{column}' is not named in columns or registered.", code="unknown_field")
                 return None
             pending, seen = [field_registry.get_field_by_name(column)], set()
             while pending:
@@ -307,7 +331,7 @@ class _SpecValidator:
     def check_unique_names(self, columns, key):
         seen = set()
         for column in columns:
-            name = column["name"] if isinstance(column, dict) else column
+            name = _column_name(column)
             if name in (None, "__time_series__", "__crosstab__"):
                 continue
             if name in seen:
@@ -357,12 +381,25 @@ class _SpecValidator:
         return filters
 
 
+def _group_label_column(group_by, group_by_field):
+    """The column naming each group: the group_by value, else the related model's 'name' or its str()."""
+    related_model = getattr(group_by_field, "related_model", None)
+    if related_model is None:
+        return group_by
+    # The generator reads related-model rows for a direct ForeignKey only.
+    if "__" in group_by or type(group_by_field) is not ForeignKey:
+        return None
+    if any(field.name == "name" for field in related_model._meta.concrete_fields):
+        return "name"
+    return "group_label"
+
+
 TIME_SERIES_KEYS = ("time_series_columns",)
 CROSSTAB_KEYS = ("crosstab_ids", "crosstab_columns", "crosstab_compute_remainder")
 
 
 def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_periods, scoped_models):
-    """Validate ``spec`` and return the keyword arguments of the report generator."""
+    """Validate ``spec``; return the report kind, the generator keyword arguments, relations and series periods."""
     if not isinstance(spec, dict):
         raise ValidationError({"spec": ValidationError("Expected a JSON object.", code="invalid")})
     validator = _SpecValidator(spec, request, allowed_models, excluded_models, scoped_models)
@@ -372,7 +409,11 @@ def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_
 
     report_model = _resolve_model(spec.get("report_model") or "")
     if report_model is None:
-        validator.add_error("report_model", f"Unknown model {spec.get('report_model')!r}; use 'app_label.ModelName'.")
+        # Match on the model name: a wrong app label ('cash.Expense' for 'expense.Expense') is the usual slip.
+        labels = {label.rpartition(".")[2].lower(): label for label in sorted(validator.usable_labels())}
+        closest = difflib.get_close_matches(str(spec.get("report_model")).rpartition(".")[2].lower(), labels)
+        hint = f"did you mean {labels[closest[0]]!r}?" if closest else "use 'app_label.ModelName'."
+        validator.add_error("report_model", f"Unknown model {spec.get('report_model')!r}; {hint}")
         raise ValidationError(validator.errors)
     if not validator.check_model(report_model, "report_model"):
         raise ValidationError(validator.errors)
@@ -443,7 +484,11 @@ def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_
                 cleaned_columns.append(column)
             else:
                 cleaned_columns.append(validator.computation(report_model, column, "columns"))
+        label = _group_label_column(group_by, group_by_field)
+        if label and label not in {_column_name(column) for column in cleaned_columns}:
+            cleaned_columns.insert(0, label)
         validator.check_unique_names(cleaned_columns, "columns")
+        validator.declared = {column["name"]: column for column in cleaned_columns if isinstance(column, dict)}
         config.update(group_by=group_by, columns=cleaned_columns)
 
         pattern = spec.get("time_series_pattern") or None
@@ -490,20 +535,44 @@ def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_
                 crosstab_columns=validator.computations(report_model, "crosstab_columns", required=True),
             )
 
-    if not validator.errors:
-        crosstab_width = len(config.get("crosstab_ids", [])) + int(bool(config.get("crosstab_compute_remainder")))
-        computed = (
-            len(config.get("columns", []))
-            + series_periods * len(config.get("time_series_columns", []))
-            + series_periods * crosstab_width * len(config.get("crosstab_columns", []))
-        )
-        if computed > MAX_COMPUTED_COLUMNS:
-            validator.add_error(
-                "spec", f"The report would compute {computed} columns, above {MAX_COMPUTED_COLUMNS}.", code="too_large"
-            )
     if validator.errors:
         raise ValidationError(validator.errors)
-    return kind, config, validator.relations
+    return kind, config, validator.relations, series_periods
+
+
+class _DynamicReportGenerator(ReportGenerator):
+    """Without crosstab_ids, pivots on the crosstab values in the report rows; labels relations with str()."""
+
+    def __init__(self, scopes, **kwargs):
+        self.scopes = scopes
+        super().__init__(**kwargs)
+
+    def _parse(self):
+        field_name = self.crosstab_field
+        if field_name and not self.crosstab_ids:
+            rows = self.queryset.exclude(**{f"{field_name}__isnull": True}).order_by()
+            rows = self._apply_queryset_options(rows, [field_name]).distinct()[: MAX_CROSSTAB_IDS + 1]
+            if len(rows) > MAX_CROSSTAB_IDS:
+                message = f"More than {MAX_CROSSTAB_IDS} values in the data; pass crosstab_ids or narrow the filters."
+                raise ValidationError({"crosstab_ids": ValidationError(message, code="too_many_ids")})
+            self.crosstab_ids = sorted(row[field_name] for row in rows)
+        self.crosstab_labels = {}
+        field = get_field_from_query_text(field_name, self.report_model) if field_name else None
+        if field is not None and field.is_relation:
+            related = self.scopes.get(field.related_model, field.related_model._default_manager.all())
+            objects = related.in_bulk(self.crosstab_ids, field_name=field.target_field.name)
+            self.crosstab_labels = {str(key): str(obj) for key, obj in objects.items()}
+        super()._parse()
+
+    def group_label(self, row, data):
+        model = self.group_by_field.related_model
+        return str(model(**{field.attname: row[field.name] for field in model._meta.concrete_fields}))
+
+    def get_crosstab_field_verbose_name(self, computation_class, model, id):
+        label = self.crosstab_labels.get(str(id))
+        if label is None:
+            return super().get_crosstab_field_verbose_name(computation_class, model, id)
+        return f"{computation_class.verbose_name} {label}"
 
 
 def _resolve_base_querysets(base_querysets):
@@ -530,7 +599,7 @@ def run_dynamic_report(
     model to the queryset its rows come from, also when the spec reaches it through a relation.
     """
     scopes = _resolve_base_querysets(base_querysets)
-    kind, config, relations = _clean_spec(
+    kind, config, relations, series_periods = _clean_spec(
         spec, request, allowed_models, excluded_models, max_time_series_periods, scopes
     )
     report_model = config["report_model"]
@@ -548,8 +617,19 @@ def run_dynamic_report(
         for key in ("columns", "time_series_columns", "crosstab_columns"):
             if key in config:
                 config[key] = [_build_computation_field(column) for column in config[key]]
-        generator_class = ListViewReportGenerator if kind == "list" else ReportGenerator
-        generator = generator_class(q_filters=q_filters, **config)
+        if kind == "list":
+            generator = ListViewReportGenerator(q_filters=q_filters, **config)
+        else:
+            generator = _DynamicReportGenerator(scopes, q_filters=q_filters, **config)
+        crosstab_width = len(generator.crosstab_ids) + int(bool(config.get("crosstab_compute_remainder")))
+        computed = (
+            len(config.get("columns", []))
+            + series_periods * len(config.get("time_series_columns", []))
+            + series_periods * crosstab_width * len(config.get("crosstab_columns", []))
+        )
+        if computed > MAX_COMPUTED_COLUMNS:
+            message = f"The report would compute {computed} columns, above {MAX_COMPUTED_COLUMNS}."
+            raise ValidationError({"spec": ValidationError(message, code="too_large")})
         data = generator.get_report_data()
         return generator.get_full_response(
             data=data,
@@ -574,20 +654,10 @@ def describe_dynamic_report_models(request, allowed_models=None, excluded_models
     to other models are left out.
     """
     validator = _SpecValidator({}, request, allowed_models, excluded_models)
-    candidates = validator.allowed_models if validator.allowed_models is not None else apps.get_models()
-
-    def usable(model):
-        try:
-            return validator.check_model(model, "model")
-        except PermissionDenied:
-            return False
-
-    usable_labels = {_label(model) for model in candidates if usable(model)}
+    usable_labels = validator.usable_labels()
     catalog = []
-    for model in sorted(candidates, key=_label):
-        if _label(model) not in usable_labels:
-            continue
-        entry = _model_to_catalog(model)
+    for label in sorted(usable_labels):
+        entry = _model_to_catalog(apps.get_model(label))
         entry["fields"] = [
             field
             for field in entry["fields"]

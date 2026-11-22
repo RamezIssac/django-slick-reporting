@@ -1,9 +1,10 @@
 import json
 
 import datetime
+from unittest import mock
 
 from django.contrib.auth.models import Permission, User
-from django.db.models import Sum
+from django.db.models import CASCADE, OneToOneField, Sum
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.test import RequestFactory, TestCase, modify_settings
 
@@ -11,6 +12,7 @@ from slick_reporting.fields import ComputationField
 from slick_reporting.dynamic_report import (
     DEFAULT_EXCLUDED_MODELS,
     DYNAMIC_REPORT_SPEC_SCHEMA,
+    _group_label_column,
     describe_dynamic_report_models,
     run_dynamic_report,
 )
@@ -49,6 +51,35 @@ class DynamicReportTest(BaseTestData, TestCase):
         self.assertEqual(compact["totals"], {"value_sum": "1800"})
         self.assertEqual(compact["columns"][1], {"name": "value_sum", "label": "Sales", "type": "number"})
         json.dumps(compact)
+
+    def test_group_by_rows_start_with_the_group_label(self):
+        def names_and_rows(spec, **kwargs):
+            compact = compact_response(self.run_spec(spec, **kwargs))
+            return [column["name"] for column in compact["columns"]], compact["rows"]
+
+        spec = {"report_model": "tests.SimpleSales", "group_by": "client", "columns": [VALUE_SUM]}
+        self.assertEqual(
+            names_and_rows(spec),
+            (["name", "value_sum"], [["Client 1", "300"], ["Client 2", "600"], ["Client 3", "900"]]),
+        )
+        self.assertEqual(
+            names_and_rows({**spec, "group_by": "client__name"}),
+            (["client__name", "value_sum"], [["Client 1", "300"], ["Client 2", "600"], ["Client 3", "900"]]),
+        )
+        self.assertEqual(
+            names_and_rows({**spec, "columns": ["country", VALUE_SUM]})[0], ["name", "country", "value_sum"]
+        )
+        sum_named_name = {**VALUE_SUM, "name": "name"}
+        self.assertEqual(names_and_rows({**spec, "columns": [sum_named_name]})[0], ["name"])
+        allowed = [*ALLOWED, "tests.Contact"]
+        by_contact = {**spec, "group_by": "client__contact"}
+        self.assertEqual(names_and_rows(by_contact, allowed_models=allowed)[0], ["value_sum"])
+        self.assertIsNone(_group_label_column("contact", OneToOneField(Contact, on_delete=CASCADE)))
+        count = {"method": "Count", "field": "id"}
+        clients_by_contact = {"report_model": "tests.Client", "group_by": "contact", "columns": [count]}
+        labels = [str(client.contact) for client in (self.client1, self.client2, self.client3)]
+        response = self.run_spec(clients_by_contact, allowed_models=allowed)
+        self.assertEqual(response["data"], {"group_label": labels, "count__id": [1, 1, 1]})
 
     def test_totals_row_without_group_by_and_avg_is_not_summed(self):
         spec = {
@@ -105,6 +136,91 @@ class DynamicReportTest(BaseTestData, TestCase):
         )
         self.assertEqual(compact["rows"], [["Product 1", "300", "1500"]])
 
+    def test_series_and_crosstab_columns_take_a_name_declared_in_columns(self):
+        columns = ["name", VALUE_SUM, {"method": "Count", "field": "id"}]
+        series = {"date_field": "doc_date", "start_date": f"{year}-01-01", "end_date": f"{year}-01-31"}
+        spec = {"report_model": "tests.SimpleSales", "group_by": "client", "columns": columns, **series}
+        by_name = {**spec, "time_series_pattern": "monthly", "time_series_columns": ["value_sum", "count__id"]}
+        by_object = {**by_name, "time_series_columns": columns[1:]}
+        self.assertEqual(compact_response(self.run_spec(by_name)), compact_response(self.run_spec(by_object)))
+        crosstab = {**spec, "crosstab_field": "product", "crosstab_columns": ["value_sum"]}
+        self.assertEqual(
+            compact_response(self.run_spec(crosstab)),
+            compact_response(self.run_spec({**crosstab, "crosstab_columns": [VALUE_SUM]})),
+        )
+        with self.assertRaises(ValidationError) as caught:
+            self.run_spec({**by_name, "time_series_columns": ["value"]})
+        errors = caught.exception.error_dict["time_series_columns"]
+        self.assertEqual(
+            [(error.code, error.message) for error in errors],
+            [("unknown_field", "'value' is not named in columns or registered.")],
+        )
+
+    def crosstab_spec(self, **extra):
+        return {
+            "report_model": "tests.SimpleSales",
+            "group_by": "product",
+            "columns": ["name"],
+            "crosstab_field": "client",
+            "crosstab_columns": [VALUE_SUM],
+            **extra,
+        }
+
+    def crosstab_labels(self, spec, **kwargs):
+        compact = compact_response(self.run_spec(spec, **kwargs))
+        return [col["label"] for col in compact["columns"][1:]], compact["rows"]
+
+    def test_crosstab_without_ids_pivots_on_the_ids_in_the_data(self):
+        compact = compact_response(self.run_spec(self.crosstab_spec()))
+        clients = (self.client1, self.client2, self.client3)
+        self.assertEqual([col["name"] for col in compact["columns"][1:]], [f"value_sumCT{c.pk}" for c in clients])
+        labels = [col["label"] for col in compact["columns"][1:]]
+        self.assertEqual(labels, ["Sales Client 1", "Sales Client 2", "Sales Client 3"])
+        self.assertEqual(compact["rows"], [["Product 1", "300", "600", "900"]])
+
+    def test_crosstab_without_ids_follows_filters_dates_and_scope(self):
+        SimpleSales.objects.create(
+            doc_date=datetime.datetime(year - 1, 6, 1),
+            client=self.clientIdle,
+            product=self.product1,
+            quantity=1,
+            price=5,
+        )
+        labels = self.crosstab_labels(self.crosstab_spec())[0]
+        self.assertEqual(labels, ["Sales Client 1", "Sales Client 2", "Sales Client 3", "Sales Client Idle"])
+        dated = self.crosstab_spec(date_field="doc_date", start_date=f"{year}-01-01", end_date=f"{year}-12-31")
+        self.assertEqual(self.crosstab_labels(dated), (labels[:3], [["Product 1", "300", "600", "900"]]))
+        filtered = self.crosstab_spec(filters={"value__gte": 200})
+        self.assertEqual(self.crosstab_labels(filtered), (labels[1:3], [["Product 1", "600", "900"]]))
+        scoped = {Client: Client.objects.exclude(pk=self.client3.pk)}
+        self.assertEqual(self.crosstab_labels(self.crosstab_spec(), base_querysets=scoped)[0], labels[:2] + labels[3:])
+        contacts = self.crosstab_spec(crosstab_field="client__contact")
+        with_contacts = self.crosstab_labels(contacts, allowed_models=ALLOWED + ["tests.Contact"])[0]
+        self.assertEqual(len(with_contacts), 3)  # Client Idle has no contact
+
+    def test_crosstab_labels_stay_ids_out_of_scope_and_on_plain_fields(self):
+        scoped = {Client: Client.objects.exclude(pk=self.client3.pk)}
+        spec = self.crosstab_spec(crosstab_ids=[str(self.client3.pk)], crosstab_compute_remainder=True)
+        labels = self.crosstab_labels(spec, base_querysets=scoped)[0]
+        self.assertEqual(labels, [f"Sales client {self.client3.pk}", "The remainder"])
+        spec = self.crosstab_spec(crosstab_ids=[str(self.client1.pk)], crosstab_compute_remainder=True)
+        self.assertEqual(self.crosstab_labels(spec)[0], ["Sales Client 1", "The remainder"])
+        labels, rows = self.crosstab_labels(self.crosstab_spec(crosstab_field="client__sex"))
+        self.assertEqual(labels, [f"Sales client__sex {sex}" for sex in ("FEMALE", "MALE", "OTHER")])
+        self.assertEqual(rows, [["Product 1", "600", "300", "900"]])
+
+    def test_crosstab_without_ids_caps_the_ids_found(self):
+        with mock.patch("slick_reporting.dynamic_report.MAX_CROSSTAB_IDS", 3):
+            self.assertEqual(len(self.crosstab_labels(self.crosstab_spec())[0]), 3)
+        with mock.patch("slick_reporting.dynamic_report.MAX_CROSSTAB_IDS", 2):
+            self.assert_spec_error(self.crosstab_spec(), "crosstab_ids", "too_many_ids")
+
+    def test_crosstab_without_ids_counts_the_ids_found_in_the_column_cap(self):
+        with mock.patch("slick_reporting.dynamic_report.MAX_COMPUTED_COLUMNS", 4):
+            self.assertEqual(len(self.crosstab_labels(self.crosstab_spec())[0]), 3)
+        with mock.patch("slick_reporting.dynamic_report.MAX_COMPUTED_COLUMNS", 3):
+            self.assert_spec_error(self.crosstab_spec(), "spec", "too_large")
+
     def test_list(self):
         spec = {
             "report_model": "tests.SimpleSales",
@@ -139,6 +255,22 @@ class DynamicReportTest(BaseTestData, TestCase):
         self.assert_spec_error({**base, "date_field": "doc_date", "start_date": "soon"}, "start_date", "invalid")
         self.assert_spec_error({"report_model": "tests.Nope"}, "report_model", "invalid")
         self.assert_spec_error({**base, "kind": "list", "columns": ["value"]}, "group_by", "invalid")
+
+    def test_unknown_model_names_the_closest_model_the_user_may_use(self):
+        def message(report_model, **kwargs):
+            with self.assertRaises(ValidationError) as caught:
+                self.run_spec({"report_model": report_model}, **kwargs)
+            return caught.exception.error_dict["report_model"][0].message
+
+        self.assertEqual(
+            message("sales.SimpleSales"), "Unknown model 'sales.SimpleSales'; did you mean 'tests.SimpleSales'?"
+        )
+        self.assertEqual(message("tests.Nope"), "Unknown model 'tests.Nope'; use 'app_label.ModelName'.")
+        self.assertEqual(message("accounting.Prdct"), "Unknown model 'accounting.Prdct'; did you mean 'tests.Product'?")
+        self.assertIn("did you mean 'tests.Contact'", message("sales.Contact", allowed_models=None))
+        self.assertNotIn("tests.Contact'", message("sales.Contact", allowed_models=None, excluded_models=[Contact]))
+        self.request.user = self.limited_user
+        self.assertNotIn("tests.Contact'", message("sales.Contact", allowed_models=None))
 
     def test_series_and_crosstab_keys_need_their_driving_key(self):
         base = {"report_model": "tests.SimpleSales", "group_by": "client", "columns": ["name", VALUE_SUM]}
@@ -346,6 +478,10 @@ class DynamicReportTest(BaseTestData, TestCase):
 
     def test_schema_and_catalog(self):
         self.assertEqual(DYNAMIC_REPORT_SPEC_SCHEMA["required"], ["report_model"])
+        self.assertIn(
+            {"type": "string", "description": "A computation name from columns, or a registered one, e.g. '__total__'."},
+            DYNAMIC_REPORT_SPEC_SCHEMA["properties"]["crosstab_columns"]["items"]["oneOf"],
+        )
         json.dumps(DYNAMIC_REPORT_SPEC_SCHEMA)
         catalog = describe_dynamic_report_models(self.request, allowed_models=[SimpleSales, Client])
         self.assertEqual([entry["identifier"] for entry in catalog], ["tests.Client", "tests.SimpleSales"])

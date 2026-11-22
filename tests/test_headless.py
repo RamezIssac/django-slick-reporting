@@ -5,13 +5,13 @@ from unittest.mock import patch
 
 from django import forms
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
-from django.db.models import Max
+from django.db.models import Max, Sum
 from django.test import RequestFactory, TestCase, override_settings
 
 from slick_reporting.fields import ComputationField
 from slick_reporting.forms import BaseReportForm
 from slick_reporting.generator import ListViewReportGenerator, ReportGenerator
-from slick_reporting.helpers import compact_response
+from slick_reporting.helpers import compact_response, public_column_name
 from slick_reporting.views import ListReportView, ReportView
 
 from .models import SimpleSales
@@ -108,6 +108,19 @@ class ClientTotals(ReportView):
     date_field = "doc_date"
     group_by = "client"
     columns = ["name", "__total__"]
+
+
+class ClientBalances(ClientTotals):
+    columns = ["name", "__balance__"]
+
+
+class MonthlySalesWithTSInFieldName(MonthlyProductSales):
+    time_series_columns = [ComputationField.create(Sum, "value", name="TS_valueTS", verbose_name="Sales")]
+
+
+class MonthlyProductClientMatrix(ProductClientSalesMatrix):
+    time_series_pattern = "monthly"
+    time_series_columns = ["__total__"]
 
 
 class ClientTotalsScopedByGetParam(ClientTotals):
@@ -256,11 +269,82 @@ class CompactResponseTest(BaseTestData, TestCase):
     def test_time_series_columns_are_numbers_and_summed(self):
         params = {"start_date": f"{year}-01-01", "end_date": f"{year}-03-31"}
         compact = compact_response(MonthlyProductSales.run(self.request, params))
-        series = [col for col in compact["columns"] if "TS" in col["name"]]
+        series = [col for col in compact["columns"] if "period" in col]
         self.assertEqual({col["type"] for col in series}, {"number"})
-        january_total = next(col["name"] for col in series if col["name"].startswith("__total__"))
-        self.assertEqual(compact["totals"][january_total], "600")
+        self.assertEqual([col["name"] for col in series[:2]], [f"__total__{year}_01_01", f"__balance__{year}_01_01"])
+        self.assertEqual(compact["totals"][f"__total__{year}_01_01"], "600")
+        self.assertEqual(series[0]["period"], {"start": f"{year}-01-01", "end": f"{year}-01-31"})
+        self.assertLessEqual(set(compact["totals"]), {col["name"] for col in compact["columns"]})
+        self.assertNotIn("period", compact["columns"][0])
         json.dumps(compact)
+
+    def test_public_column_names(self):
+        january = {"start": datetime.date(2026, 1, 1), "end": datetime.date(2026, 1, 31)}
+        for base, compact_name in [
+            ("net_sales_value", "net_sales_value_2026_01_01"),
+            ("__total__CT5", "__total__CT5_2026_01_01"),
+            ("__balance__CT5", "__balance__CT5_2026_01_01"),
+        ]:
+            column = {"name": f"{base}TS20260201", "base_name": base, "period": january}
+            self.assertEqual(public_column_name(column), compact_name)
+        self.assertEqual(public_column_name({"name": "__balance__"}), "__balance__")
+        self.assertEqual(public_column_name({"name": "opening__balance__"}), "opening__balance__")
+
+    def test_series_field_name_containing_ts_keeps_it(self):
+        params = {"start_date": f"{year}-01-01", "end_date": f"{year}-03-31"}
+        compact = compact_response(MonthlySalesWithTSInFieldName.run(self.request, params))
+        series = [col["name"] for col in compact["columns"] if "period" in col]
+        self.assertEqual(series, [f"TS_valueTS_{year}_{month:02}_01" for month in (1, 2, 3)])
+
+    def test_crosstab_series_column_keeps_its_crosstab_suffix(self):
+        params = {"start_date": f"{year}-01-01", "end_date": f"{year}-01-31", "client_id": [self.client1.pk]}
+        compact = compact_response(MonthlyProductClientMatrix.run(self.request, params))
+        series = [col["name"] for col in compact["columns"] if "period" in col]
+        self.assertIn(f"__total__CT{self.client1.pk}_{year}_01_01", series)
+
+    def test_overridden_series_columns_without_base_name_keep_their_name(self):
+        class SeriesWithoutBaseName(ReportGenerator):
+            def get_time_series_parsed_columns(self):
+                return [
+                    {k: v for k, v in col.items() if k != "base_name"}
+                    for col in super().get_time_series_parsed_columns()
+                ]
+
+        report = SeriesWithoutBaseName(
+            report_model=SimpleSales,
+            date_field="doc_date",
+            group_by="client",
+            columns=["name", "__time_series__"],
+            time_series_pattern="monthly",
+            time_series_columns=["__total__"],
+            start_date=datetime.datetime(year, 1, 1),
+            end_date=datetime.datetime(year, 1, 31),
+        )
+        series = [col for col in report.get_columns_data() if "period" in col]
+        self.assertEqual([(col["name"], col["base_name"]) for col in series], [(f"__total__TS{year}0201",) * 2])
+
+    def test_balance_keeps_its_name_and_verbose_name_label(self):
+        compact = compact_response(ClientBalances.run(self.request))
+        self.assertEqual(compact["columns"][1], {"name": "__balance__", "label": "Closing Total", "type": "number"})
+        self.assertEqual(compact["totals"], {"__balance__": "1800"})
+        rows = compact_response(ClientBalances.run(self.request, default_order_by="-__balance__"))["rows"]
+        self.assertEqual([row[0] for row in rows], ["Client 3", "Client 2", "Client 1"])
+
+    def test_a_series_column_keeps_its_name_when_its_compact_name_is_taken(self):
+        january = {"start": datetime.date(2026, 1, 1), "end": datetime.date(2026, 1, 31)}
+        columns = [
+            {"name": "net_2026_01_01", "verbose_name": "Net", "type": "number"},
+            {
+                "name": "netTS20260201",
+                "base_name": "net",
+                "verbose_name": "Net January",
+                "type": "number",
+                "period": january,
+            },
+        ]
+        compact = compact_response({"columns": columns, "data": {"net_2026_01_01": [1], "netTS20260201": [2]}})
+        self.assertEqual([col["name"] for col in compact["columns"]], ["net_2026_01_01", "netTS20260201"])
+        self.assertEqual(compact["rows"], [["1", "2"]])
 
     def test_list_values_are_json_safe(self):
         params = {"start_date": f"{year}-02-01", "end_date": f"{year}-02-28"}

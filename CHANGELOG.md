@@ -29,6 +29,17 @@ All notable changes to this project will be documented in this file.
   `DYNAMIC_REPORT_SPEC_SCHEMA` documents the spec;
   `describe_dynamic_report_models(request)` lists the usable models and fields. See the
   "Running Reports Without a Page" topic.
+- **Time series column period**: each time series column in `get_columns_data()` and `compact_response()`
+  carries `period`, its first and last included day (`__total__TS20260201`, "Total January 2026", has
+  `{"start": "2026-01-01", "end": "2026-01-31"}`) and, in `get_columns_data()`, `base_name`, its name without
+  the period suffix (`__total__`). Full-response names are unchanged; their `TS` suffix is the period's exclusive
+  end date.
+- **Compact column names**: `compact_response()` names a time series column after its period's first day
+  (`__total__TS20260201` reads `__total__2026_01_01`), in `columns` and `totals`;
+  `helpers.public_column_name(column)` gives that name from `base_name` and `period`. The full response, CSV,
+  HTML and chart keys are unchanged.
+- **Unknown model hint**: an unknown `report_model` in a dynamic spec names the closest model the user may use
+  ("Unknown model 'cash.ClientPayment'; did you mean 'payment.ClientPayment'?").
 - **Datatable number formatting** — numeric columns in the datatable can now be displayed
   with locale-aware thousands separators and configurable decimal places.
   Raw values are kept in the JSON response so DataTables sorting and footer summation
@@ -64,6 +75,12 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- A dynamic `group_by` report starts its rows with the group's label column when `columns` lacks it:
+  the `group_by` value, else the related model's `name`, else `group_label` (its `str()`). The rows had no
+  label.
+- A dynamic report crosstab without `crosstab_ids` pivots on every value of `crosstab_field` in the filtered
+  data, up to 50 (code `too_many_ids` above). It returned no crosstab columns. Crosstab column labels on a
+  relation read the related object's `str()` ("Sales Client 1"), not its id ("Sales client 1").
 - `ListReportView` applies the requested date range. It used the default window whatever dates the
   form held, and `ListViewReportGenerator` dropped rows dated exactly on the start date.
 - `SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"]` and `["DEFAULT_END_DATE_TIME"]` are computed on

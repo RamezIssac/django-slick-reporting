@@ -91,6 +91,13 @@ Compact output
   declares the columns to total, e.g. ``total_columns = ["value"]``. A declared column is totaled whatever its
   ``type``; a column holding a non-numeric value gets no total.
 * Numbers are strings (Decimal safe), dates and datetimes are ISO strings, empty cells are ``null``.
+* A time series column also carries ``period``: its first and last included day. Its name ends with the
+  period's first day: the full response's ``__total__TS20260201`` (its ``TS`` suffix is the exclusive end date)
+  reads ``{"name": "__total__2026_01_01", "label": "Total January 2026", "type": "number",
+  "period": {"start": "2026-01-01", "end": "2026-01-31"}}``.
+  ``public_column_name(column)`` gives a full-response column's compact name from its ``base_name`` (the name
+  without the period suffix, ``__total__``) and ``period``. A series column whose compact name is another
+  column's keeps its full-response name.
 
 
 Dynamic reports from a JSON spec
@@ -146,7 +153,9 @@ The keys follow the configuration of the LLM assistant (``run_llm_report_config`
 ``title``
     Used as the report title.
 ``group_by``
-    Field path on ``report_model``.
+    Field path on ``report_model``. Rows start with the group's label column when ``columns`` lacks it: the
+    ``group_by`` value on ``report_model``, else the related model's ``name``, else ``group_label`` (its
+    ``str()``). A one-to-one or a relation reached through ``__`` (``client__contact``) gets no label column.
 ``columns``
     Field paths and computation columns. Field paths resolve on the ``group_by`` related model when
     ``group_by`` is a relation (``name``, ``email``), else on ``report_model``. A computation column is
@@ -163,8 +172,13 @@ The keys follow the configuration of the LLM assistant (``run_llm_report_config`
     ``time_series_pattern`` raises code ``required``.
 ``crosstab_field``, ``crosstab_ids``, ``crosstab_columns``, ``crosstab_compute_remainder``
     The field path to pivot on, up to 50 of its values, the computation columns per value, and whether to
-    add a column for all other values (default ``false``). Any of these keys or a ``__crosstab__`` column
-    without ``crosstab_field`` raises code ``required``.
+    add a column for all other values (default ``false``). Without ``crosstab_ids`` the report pivots on the
+    values present in the filtered data, up to 50, else code ``too_many_ids``. Columns on a relation are
+    labeled with the related object's ``str()``. Any of these keys or a ``__crosstab__`` column without
+    ``crosstab_field`` raises code ``required``.
+
+    ``time_series_columns`` and ``crosstab_columns`` also take the ``name`` of a computation column declared
+    in ``columns``, as a string.
 ``filters``
     ``{"<field path>[__<lookup>]": value}``. Lookups: ``exact``, ``iexact``, ``in``, ``gt``, ``gte``, ``lt``,
     ``lte``, ``range``, ``isnull``, ``contains``, ``icontains``, ``startswith``, ``istartswith``, ``endswith``,
@@ -181,16 +195,20 @@ Validation runs before any query:
   passed by the caller replaces it. An app label of the default whose app is not installed is skipped; any
   other unknown app label, an unknown model or ``excluded_models=None`` raises ``ImproperlyConfigured``.
   ``describe_dynamic_report_models()`` leaves excluded models out, along with the relations pointing to them.
+* An unknown ``report_model`` names the closest model the spec may use, by model name:
+  ``Unknown model 'cash.ClientPayment'; did you mean 'payment.ClientPayment'?``.
 * Filter values are checked against their field (``value__gte: "abc"`` is rejected).
 * A report computes at most 500 computation columns (columns, plus time series and crosstab columns
-  repeated per period and value), else code ``too_large``.
+  repeated per period and value), else code ``too_large``. On a crosstab, this check runs after the
+  queries that find the crosstab values and their labels.
 * ``request.user`` needs the view or change permission on each of those models, else ``PermissionDenied``.
   A ``request`` of ``None`` or without a ``user`` raises ``PermissionDenied`` too.
 * Column names are unique within ``columns``, ``time_series_columns`` and ``crosstab_columns``, else code
   ``invalid``.
 * Unknown keys, unknown fields, unsupported lookups and malformed or wrongly typed values raise
   ``ValidationError``; its ``error_dict`` is keyed by spec key, with the codes ``unknown_key``,
-  ``unknown_field``, ``required``, ``too_many_periods``, ``too_large``, ``invalid`` or ``invalid_spec``.
+  ``unknown_field``, ``required``, ``too_many_periods``, ``too_many_ids``, ``too_large``, ``invalid`` or
+  ``invalid_spec``.
 
 Note: pass your own ``excluded_models`` as the default plus your sensitive apps (``[*DEFAULT_EXCLUDED_MODELS,
 "payroll"]``), not a list without ``auth`` and ``sessions``, because the list replaces the default and would
