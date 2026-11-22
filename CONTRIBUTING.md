@@ -26,3 +26,23 @@ separator = ", "  # pragma: no mutate: display text, no behaviour reads it
 ```
 
 The pragma skips every mutant on that line.
+
+## Public API surface
+
+Pull requests to `develop` run `.github/workflows/api-surface.yml`. It loads `slick_reporting` at the PR's base and
+head with griffe and lists the public names added, removed or changed: modules, classes, functions, methods and
+module or class attributes, with their kind and signature or value. Public follows griffe: no leading underscore, not
+imported, listed in `__all__` when the module defines it. Test and migrations modules and instance attributes are left
+out. It reports only: it fails on tool errors, never on what it lists.
+
+```bash
+pip install "griffe==2.4.1"  # Python 3.11+
+python scripts/api_surface.py "$(git merge-base origin/develop HEAD)" HEAD
+```
+
+## PR comments
+
+Both reports go to the job summary and to one PR comment each, replaced on every push. The report job uploads
+`comment.md` as the `pr-comment` artifact, and `.github/workflows/pr-comment.yml` (a `workflow_run` job, which also
+works for fork PRs) posts it. The comment starts with a hidden marker naming the workflow, which picks the comment to replace. `workflow_run` jobs run from
+`develop`, so a change to `pr-comment.yml` takes effect once merged.

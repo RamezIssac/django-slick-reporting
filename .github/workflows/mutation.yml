@@ -11,12 +11,12 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
+          persist-credentials: false
 
       - uses: actions/setup-python@v5
         with:
@@ -36,11 +36,12 @@ jobs:
         run: |
           git diff -U0 HEAD^1 HEAD -- 'slick_reporting/*.py' > pr.patch
           mutmut run --use-patch-file pr.patch --CI --no-progress
-          python scripts/mutation_report.py pr.patch > report.md
-          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          python scripts/mutation_report.py pr.patch > comment.md
+          cat comment.md >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Comment on the PR
-        if: github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh pr comment ${{ github.event.pull_request.number }} --body-file report.md --edit-last --create-if-none
+      # pr-comment.yml posts comment.md on the PR.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr-comment
+          path: comment.md
+          retention-days: 1
