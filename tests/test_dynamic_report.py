@@ -51,6 +51,34 @@ class DynamicReportTest(BaseTestData, TestCase):
         self.assertEqual(compact["columns"][1], {"name": "value_sum", "label": "Sales", "type": "number"})
         json.dumps(compact)
 
+    def test_group_by_rows_start_with_the_group_label(self):
+        def names_and_rows(spec, **kwargs):
+            compact = compact_response(self.run_spec(spec, **kwargs))
+            return [column["name"] for column in compact["columns"]], compact["rows"]
+
+        spec = {"report_model": "tests.SimpleSales", "group_by": "client", "columns": [VALUE_SUM]}
+        self.assertEqual(
+            names_and_rows(spec),
+            (["name", "value_sum"], [["Client 1", "300"], ["Client 2", "600"], ["Client 3", "900"]]),
+        )
+        self.assertEqual(
+            names_and_rows({**spec, "group_by": "client__name"}),
+            (["client__name", "value_sum"], [["Client 1", "300"], ["Client 2", "600"], ["Client 3", "900"]]),
+        )
+        self.assertEqual(
+            names_and_rows({**spec, "columns": ["country", VALUE_SUM]})[0], ["name", "country", "value_sum"]
+        )
+        sum_named_name = {**VALUE_SUM, "name": "name"}
+        self.assertEqual(names_and_rows({**spec, "columns": [sum_named_name]})[0], ["name"])
+        allowed = [*ALLOWED, "tests.Contact"]
+        by_contact = {**spec, "group_by": "client__contact"}
+        self.assertEqual(names_and_rows(by_contact, allowed_models=allowed)[0], ["value_sum"])
+        count = {"method": "Count", "field": "id"}
+        clients_by_contact = {"report_model": "tests.Client", "group_by": "contact", "columns": [count]}
+        labels = [str(client.contact) for client in (self.client1, self.client2, self.client3)]
+        response = self.run_spec(clients_by_contact, allowed_models=allowed)
+        self.assertEqual(response["data"], {"group_label": labels, "count__id": [1, 1, 1]})
+
     def test_totals_row_without_group_by_and_avg_is_not_summed(self):
         spec = {
             "report_model": "tests.SimpleSales",
