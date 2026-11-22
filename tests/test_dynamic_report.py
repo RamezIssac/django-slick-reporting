@@ -4,7 +4,7 @@ import datetime
 from unittest import mock
 
 from django.contrib.auth.models import Permission, User
-from django.db.models import Sum
+from django.db.models import CASCADE, OneToOneField, Sum
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.test import RequestFactory, TestCase, modify_settings
 
@@ -12,6 +12,7 @@ from slick_reporting.fields import ComputationField
 from slick_reporting.dynamic_report import (
     DEFAULT_EXCLUDED_MODELS,
     DYNAMIC_REPORT_SPEC_SCHEMA,
+    _group_label_column,
     describe_dynamic_report_models,
     run_dynamic_report,
 )
@@ -73,6 +74,7 @@ class DynamicReportTest(BaseTestData, TestCase):
         allowed = [*ALLOWED, "tests.Contact"]
         by_contact = {**spec, "group_by": "client__contact"}
         self.assertEqual(names_and_rows(by_contact, allowed_models=allowed)[0], ["value_sum"])
+        self.assertIsNone(_group_label_column("contact", OneToOneField(Contact, on_delete=CASCADE)))
         count = {"method": "Count", "field": "id"}
         clients_by_contact = {"report_model": "tests.Client", "group_by": "contact", "columns": [count]}
         labels = [str(client.contact) for client in (self.client1, self.client2, self.client3)]

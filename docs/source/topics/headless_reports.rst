@@ -148,7 +148,7 @@ The keys follow the configuration of the LLM assistant (``run_llm_report_config`
 ``group_by``
     Field path on ``report_model``. Rows start with the group's label column when ``columns`` lacks it: the
     ``group_by`` value on ``report_model``, else the related model's ``name``, else ``group_label`` (its
-    ``str()``). A relation reached through ``__`` (``client__contact``) gets no label column.
+    ``str()``). A one-to-one or a relation reached through ``__`` (``client__contact``) gets no label column.
 ``columns``
     Field paths and computation columns. Field paths resolve on the ``group_by`` related model when
     ``group_by`` is a relation (``name``, ``email``), else on ``report_model``. A computation column is
