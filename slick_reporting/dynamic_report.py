@@ -16,7 +16,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.db.models import Model, Q, QuerySet
+from django.db.models import ForeignKey, Model, Q, QuerySet
 
 from .app_settings import get_end_date, get_start_date
 from .generator import TIME_SERIES_DELTAS, ListViewReportGenerator, ReportGenerator
@@ -93,7 +93,11 @@ DYNAMIC_REPORT_SPEC_SCHEMA = {
             "'list' returns the matching report_model rows.",
         },
         "title": {"type": "string"},
-        "group_by": {"type": "string", "description": "Field path on report_model to group rows by."},
+        "group_by": {
+            "type": "string",
+            "description": "Field path on report_model to group rows by. Rows start with the group's label "
+            "column: the group_by value, else the related model's 'name' or its text ('group_label').",
+        },
         "columns": {
             "type": "array",
             "description": "Field paths (on the group_by related model when group_by is a foreign key, else on "
@@ -141,6 +145,10 @@ def _resolve_model(identifier):
 
 def _label(model):
     return f"{model._meta.app_label}.{model._meta.object_name}"
+
+
+def _column_name(column):
+    return column["name"] if isinstance(column, dict) else column
 
 
 class _SpecValidator:
@@ -315,7 +323,7 @@ class _SpecValidator:
     def check_unique_names(self, columns, key):
         seen = set()
         for column in columns:
-            name = column["name"] if isinstance(column, dict) else column
+            name = _column_name(column)
             if name in (None, "__time_series__", "__crosstab__"):
                 continue
             if name in seen:
@@ -363,6 +371,19 @@ class _SpecValidator:
                     except (ValidationError, TypeError, ValueError, AttributeError):
                         self.add_error("filters", f"{item!r} is not a valid value for '{path}'.")
         return filters
+
+
+def _group_label_column(group_by, group_by_field):
+    """The column naming each group: the group_by value, else the related model's 'name' or its str()."""
+    related_model = getattr(group_by_field, "related_model", None)
+    if related_model is None:
+        return group_by
+    # The generator reads related-model rows for a direct ForeignKey only.
+    if "__" in group_by or type(group_by_field) is not ForeignKey:
+        return None
+    if any(field.name == "name" for field in related_model._meta.concrete_fields):
+        return "name"
+    return "group_label"
 
 
 TIME_SERIES_KEYS = ("time_series_columns",)
@@ -451,6 +472,9 @@ def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_
                 cleaned_columns.append(column)
             else:
                 cleaned_columns.append(validator.computation(report_model, column, "columns"))
+        label = _group_label_column(group_by, group_by_field)
+        if label and label not in {_column_name(column) for column in cleaned_columns}:
+            cleaned_columns.insert(0, label)
         validator.check_unique_names(cleaned_columns, "columns")
         validator.declared = {column["name"]: column for column in cleaned_columns if isinstance(column, dict)}
         config.update(group_by=group_by, columns=cleaned_columns)
@@ -527,6 +551,10 @@ class _DynamicReportGenerator(ReportGenerator):
             objects = related.in_bulk(self.crosstab_ids, field_name=field.target_field.name)
             self.crosstab_labels = {str(key): str(obj) for key, obj in objects.items()}
         super()._parse()
+
+    def group_label(self, row, data):
+        model = self.group_by_field.related_model
+        return str(model(**{field.attname: row[field.name] for field in model._meta.concrete_fields}))
 
     def get_crosstab_field_verbose_name(self, computation_class, model, id):
         label = self.crosstab_labels.get(str(id))

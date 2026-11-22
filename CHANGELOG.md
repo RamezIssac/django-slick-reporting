@@ -64,6 +64,9 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- A dynamic `group_by` report starts its rows with the group's label column when `columns` lacks it:
+  the `group_by` value, else the related model's `name`, else `group_label` (its `str()`). The rows had no
+  label.
 - A dynamic report crosstab without `crosstab_ids` pivots on every value of `crosstab_field` in the filtered
   data, up to 50 (code `too_many_ids` above). It returned no crosstab columns. Crosstab column labels on a
   relation read the related object's `str()` ("Sales Client 1"), not its id ("Sales client 1").
