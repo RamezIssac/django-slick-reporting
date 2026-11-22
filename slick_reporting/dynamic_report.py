@@ -501,11 +501,28 @@ def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_
 
 
 class _DynamicReportGenerator(ReportGenerator):
-    """Labels crosstab columns with ``crosstab_labels``, a map of str(id) to label."""
+    """Without crosstab_ids, pivots on the crosstab values in the report rows; labels relations with str()."""
 
-    def __init__(self, crosstab_labels=None, **kwargs):
-        self.crosstab_labels = crosstab_labels or {}
+    def __init__(self, scopes, **kwargs):
+        self.scopes = scopes
         super().__init__(**kwargs)
+
+    def _parse(self):
+        field_name = self.crosstab_field
+        if field_name and not self.crosstab_ids:
+            rows = self.queryset.exclude(**{f"{field_name}__isnull": True}).order_by()
+            rows = self._apply_queryset_options(rows, [field_name]).distinct()[: MAX_CROSSTAB_IDS + 1]
+            if len(rows) > MAX_CROSSTAB_IDS:
+                message = f"More than {MAX_CROSSTAB_IDS} values in the data; pass crosstab_ids or narrow the filters."
+                raise ValidationError({"crosstab_ids": ValidationError(message, code="too_many_ids")})
+            self.crosstab_ids = sorted(row[field_name] for row in rows)
+        self.crosstab_labels = {}
+        field = get_field_from_query_text(field_name, self.report_model) if field_name else None
+        if field is not None and field.is_relation:
+            related = self.scopes.get(field.related_model, field.related_model._default_manager.all())
+            objects = related.in_bulk(self.crosstab_ids, field_name=field.target_field.name)
+            self.crosstab_labels = {str(key): str(obj) for key, obj in objects.items()}
+        super()._parse()
 
     def get_crosstab_field_verbose_name(self, computation_class, model, id):
         label = self.crosstab_labels.get(str(id))
@@ -553,27 +570,14 @@ def run_dynamic_report(
             main_queryset = main_queryset.filter(pk__in=scoped_pks)
         config["main_queryset"] = main_queryset
         q_filters, config["kwargs_filters"] = prepare_filters(report_model, config["kwargs_filters"])
-        crosstab_field = config.get("crosstab_field")
-        if crosstab_field and not config["crosstab_ids"]:
-            rows = main_queryset.filter(*q_filters, **config["kwargs_filters"])
-            if config["date_field"]:
-                date_field = config["date_field"]
-                rows = rows.filter(
-                    **{f"{date_field}__gte": config["start_date"], f"{date_field}__lte": config["end_date"]}
-                )
-            ids = rows.exclude(**{f"{crosstab_field}__isnull": True}).order_by().values_list(crosstab_field, flat=True)
-            ids = list(ids.distinct()[: MAX_CROSSTAB_IDS + 1])
-            if len(ids) > MAX_CROSSTAB_IDS:
-                message = f"More than {MAX_CROSSTAB_IDS} values in the data; pass crosstab_ids or narrow the filters."
-                raise ValidationError({"crosstab_ids": ValidationError(message, code="too_many_ids")})
-            config["crosstab_ids"] = sorted(ids)
-        if crosstab_field:
-            field = get_field_from_query_text(crosstab_field, report_model)
-            if field.is_relation:
-                related = scopes.get(field.related_model, field.related_model._default_manager.all())
-                objects = related.in_bulk(config["crosstab_ids"], field_name=field.target_field.name)
-                config["crosstab_labels"] = {str(key): str(obj) for key, obj in objects.items()}
-        crosstab_width = len(config.get("crosstab_ids", [])) + int(bool(config.get("crosstab_compute_remainder")))
+        for key in ("columns", "time_series_columns", "crosstab_columns"):
+            if key in config:
+                config[key] = [_build_computation_field(column) for column in config[key]]
+        if kind == "list":
+            generator = ListViewReportGenerator(q_filters=q_filters, **config)
+        else:
+            generator = _DynamicReportGenerator(scopes, q_filters=q_filters, **config)
+        crosstab_width = len(generator.crosstab_ids) + int(bool(config.get("crosstab_compute_remainder")))
         computed = (
             len(config.get("columns", []))
             + series_periods * len(config.get("time_series_columns", []))
@@ -582,11 +586,6 @@ def run_dynamic_report(
         if computed > MAX_COMPUTED_COLUMNS:
             message = f"The report would compute {computed} columns, above {MAX_COMPUTED_COLUMNS}."
             raise ValidationError({"spec": ValidationError(message, code="too_large")})
-        for key in ("columns", "time_series_columns", "crosstab_columns"):
-            if key in config:
-                config[key] = [_build_computation_field(column) for column in config[key]]
-        generator_class = ListViewReportGenerator if kind == "list" else _DynamicReportGenerator
-        generator = generator_class(q_filters=q_filters, **config)
         data = generator.get_report_data()
         return generator.get_full_response(
             data=data,

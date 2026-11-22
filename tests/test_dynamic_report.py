@@ -144,6 +144,9 @@ class DynamicReportTest(BaseTestData, TestCase):
         self.assertEqual(self.crosstab_labels(filtered), (labels[1:3], [["Product 1", "600", "900"]]))
         scoped = {Client: Client.objects.exclude(pk=self.client3.pk)}
         self.assertEqual(self.crosstab_labels(self.crosstab_spec(), base_querysets=scoped)[0], labels[:2] + labels[3:])
+        contacts = self.crosstab_spec(crosstab_field="client__contact")
+        with_contacts = self.crosstab_labels(contacts, allowed_models=ALLOWED + ["tests.Contact"])[0]
+        self.assertEqual(len(with_contacts), 3)  # Client Idle has no contact
 
     def test_crosstab_labels_stay_ids_out_of_scope_and_on_plain_fields(self):
         scoped = {Client: Client.objects.exclude(pk=self.client3.pk)}
