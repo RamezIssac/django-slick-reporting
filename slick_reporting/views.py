@@ -29,7 +29,7 @@ from .generator import (
     ReportGenerator,
     ReportGeneratorAPI,
 )
-from .helpers import end_of_day_if_date_only
+from .helpers import PUBLIC_COLUMN_NAMES, end_of_day_if_date_only
 
 
 def dictsort(value, arg, desc=False):
@@ -199,6 +199,9 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         :return: Ordered data
         """
         order_field, asc = OrderByForm(self.request.GET).get_order_by(self.default_order_by)
+        if data and order_field not in data[0]:
+            internal_names = {public: internal for internal, public in PUBLIC_COLUMN_NAMES.items()}
+            order_field = internal_names.get(order_field, order_field)
         if order_field:
             data = dictsort(data, order_field, asc)
         return data
