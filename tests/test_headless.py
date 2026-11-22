@@ -4,7 +4,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django import forms
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.db.models import Max
 from django.test import RequestFactory, TestCase, override_settings
 
@@ -35,6 +35,20 @@ class SalesListReport(ListReportView):
 
 class SalesListReportWithFilters(SalesListReport):
     filters = ["client"]
+
+
+class SalesListWithValueTotal(SalesListReport):
+    total_columns = ["value"]
+
+
+class SalesStatement(SalesListReport):
+    columns = ["id", "doc_date", "client__name", "value", "value_as_text"]
+    total_columns = ["value", "value_as_text"]
+
+    def value_as_text(self, obj):
+        return str(obj["value"])
+
+    value_as_text.verbose_name = "Value as text"
 
 
 @override_settings(SLICK_REPORTING_SETTINGS=HEADLESS_SETTINGS)
@@ -256,6 +270,79 @@ class CompactResponseTest(BaseTestData, TestCase):
         self.assertTrue(compact["rows"][0][1].startswith(f"{year}-02-02"))
         self.assertIn(compact["rows"][0][3], {"100.00", "200.00", "300.00"})
         json.dumps(compact)
+
+    def test_list_report_totals_declared_columns_over_all_rows(self):
+        compact = compact_response(SalesStatement.run(self.request), max_rows=2)
+        self.assertEqual(len(compact["rows"]), 2)
+        self.assertEqual((compact["row_count"], compact["truncated"]), (9, True))
+        self.assertEqual(compact["totals"], {"value": "1800.00", "value_as_text": "1800.00"})
+        self.assertEqual(compact["columns"][4]["type"], "text")
+
+    def test_declared_total_columns_are_summable_in_the_full_response(self):
+        columns = {col["name"]: col["is_summable"] for col in SalesStatement.run(self.request)["columns"]}
+        self.assertEqual((columns["value"], columns["value_as_text"], columns["client__name"]), (True, True, ""))
+
+    def test_declared_total_column_with_text_values_has_no_total(self):
+        class NamesTotalled(SalesListReport):
+            total_columns = ["client__name"]
+
+        self.assertEqual(compact_response(NamesTotalled.run(self.request))["totals"], {})
+
+    def test_unknown_total_column_raises(self):
+        class TypoTotal(SalesListReport):
+            total_columns = ["valeu"]
+
+        with self.assertRaisesMessage(ImproperlyConfigured, "['valeu']"):
+            TypoTotal.run(self.request)
+
+    def test_grouped_report_total_columns_add_to_computation_fields(self):
+        class ClientTotalsWithIdTotal(ClientTotals):
+            columns = ["id", "name", "__total__"]
+            total_columns = ["id"]
+
+        compact = compact_response(ClientTotalsWithIdTotal.run(self.request), max_rows=1)
+        self.assertEqual(compact["totals"]["__total__"], "1800")
+        self.assertIn("id", compact["totals"])
+
+    def assert_max_rows_matches_full_build(self, view_class, params=None, built_rows=2):
+        limited = view_class.run(self.request, params, max_rows=2)
+        self.assertEqual(len(limited["data"]["id"]), built_rows)
+        self.assertEqual(
+            compact_response(limited, max_rows=2), compact_response(view_class.run(self.request, params), 2)
+        )
+        return compact_response(limited, max_rows=2)
+
+    def test_max_rows_builds_only_those_rows_with_database_count_and_totals(self):
+        compact = self.assert_max_rows_matches_full_build(SalesListWithValueTotal)
+        self.assertEqual(
+            (compact["row_count"], compact["truncated"], compact["totals"]), (9, True, {"value": "1800.00"})
+        )
+
+    def test_max_rows_respects_limit_records(self):
+        class FiveSales(SalesListWithValueTotal):
+            limit_records = 5
+
+        self.assertEqual(self.assert_max_rows_matches_full_build(FiveSales)["row_count"], 5)
+
+    def test_max_rows_with_no_rows(self):
+        params = {"start_date": f"{year - 5}-01-01", "end_date": f"{year - 5}-12-31"}
+        compact = self.assert_max_rows_matches_full_build(SalesListWithValueTotal, params, built_rows=0)
+        self.assertEqual((compact["row_count"], compact["totals"]), (0, {"value": "0"}))
+
+    def test_max_rows_builds_every_row_when_a_total_or_hook_needs_them(self):
+        class FilteredSales(SalesListWithValueTotal):
+            def filter_results(self, data, for_print=False):
+                return data
+
+        class NamesTotalled(SalesListReport):
+            total_columns = ["client__name"]
+
+        for view_class in (SalesStatement, FilteredSales, NamesTotalled):
+            with self.subTest(view_class.__name__):
+                self.assert_max_rows_matches_full_build(view_class, built_rows=9)
+
+    def test_max_rows_leaves_grouped_reports_whole(self):
+        self.assertEqual(len(ClientTotals.run(self.request, max_rows=1)["data"]["name"]), 3)
 
     def test_non_numeric_computation_column_has_no_total(self):
         compact = compact_response(ClientLastSale.run(self.request))
