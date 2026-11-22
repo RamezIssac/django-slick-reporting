@@ -808,7 +808,7 @@ class RunEvaluationEndToEndTests(TestCase):
 
     def test_full_run_all_formats(self):
         backend = ScriptedBackend()
-        # toon-format needs Python >= 3.10; the 3.9 CI leg runs without the TOON arm.
+        # The TOON arm runs only when the optional toon-format package is installed.
         formats = ["json", "plain", "toon"] if HAS_TOON else ["json", "plain"]
         result = run_evaluation(backend=backend, formats=formats, repetitions=2, question_ids=self.QIDS)
 
