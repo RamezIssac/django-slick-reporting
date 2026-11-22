@@ -185,8 +185,8 @@ Validation runs before any query:
   ``describe_dynamic_report_models()`` leaves excluded models out, along with the relations pointing to them.
 * Filter values are checked against their field (``value__gte: "abc"`` is rejected).
 * A report computes at most 500 computation columns (columns, plus time series and crosstab columns
-  repeated per period and value), else code ``too_large``. Without ``crosstab_ids``, this check follows
-  the query that finds the crosstab values.
+  repeated per period and value), else code ``too_large``. On a crosstab, this check runs after the
+  queries that find the crosstab values and their labels.
 * ``request.user`` needs the view or change permission on each of those models, else ``PermissionDenied``.
   A ``request`` of ``None`` or without a ``user`` raises ``PermissionDenied`` too.
 * Column names are unique within ``columns``, ``time_series_columns`` and ``crosstab_columns``, else code
