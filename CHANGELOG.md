@@ -34,9 +34,8 @@ All notable changes to this project will be documented in this file.
   `{"start": "2026-01-01", "end": "2026-01-31"}`). Full-response names are unchanged; their `TS` suffix is the
   period's exclusive end date.
 - **Compact column names**: `compact_response()` names a time series column after its period's first day
-  (`__total__TS20260201` reads `__total__2026_01_01`) and `__balance__` `balance`, in `columns` and `totals`;
-  `helpers.public_column_name()` gives that name. A report's `order_by` takes `balance` or `__balance__`. The
-  full response, CSV, HTML and chart keys are unchanged.
+  (`__total__TS20260201` reads `__total__2026_01_01`), in `columns` and `totals`; `helpers.public_column_name()`
+  gives that name. The full response, CSV, HTML and chart keys are unchanged.
 - **Unknown model hint**: an unknown `report_model` in a dynamic spec names the closest model the user may use
   ("Unknown model 'cash.ClientPayment'; did you mean 'payment.ClientPayment'?").
 - **Datatable number formatting** — numeric columns in the datatable can now be displayed

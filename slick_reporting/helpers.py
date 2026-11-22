@@ -142,17 +142,9 @@ def _to_decimal(value):
     return Decimal(value)
 
 
-PUBLIC_COLUMN_NAMES = {"__balance__": "balance"}
-"""The business name ``compact_response()`` gives a computation field; a report's order_by takes either name."""
-
-
 def public_column_name(name, period=None):
-    """The name of a full-response column in ``compact_response()``: ``__balance__`` reads ``balance``, and a time
-    series column ends with its period's first day (``__total__TS20260201``, January 2026, reads
-    ``__total__2026_01_01``)."""
-    for internal, public in PUBLIC_COLUMN_NAMES.items():
-        if name.startswith(internal):
-            name = public + name[len(internal) :]
+    """The name of a full-response column in ``compact_response()``: a time series column ends with its period's
+    first day (``__total__TS20260201``, January 2026, reads ``__total__2026_01_01``), others keep their name."""
     if period:
         base, start = name.rpartition("TS")[0], _compact_value(period["start"]).replace("-", "_")
         name = f"{base}{'' if base.endswith('_') else '_'}{start}"
@@ -181,7 +173,7 @@ def compact_response(full_response, max_rows=None):
     for col in columns:
         col_type = normalize_column_type(col.get("type"))
         name = public_column_name(col["name"], col.get("period"))
-        if name != col["name"] and name in names:
+        if name in names:
             name = col["name"]
         compact_column = {"name": name, "label": force_str(col["verbose_name"]), "type": col_type}
         if "period" in col:

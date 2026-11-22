@@ -262,7 +262,7 @@ class CompactResponseTest(BaseTestData, TestCase):
         compact = compact_response(MonthlyProductSales.run(self.request, params))
         series = [col for col in compact["columns"] if "period" in col]
         self.assertEqual({col["type"] for col in series}, {"number"})
-        self.assertEqual([col["name"] for col in series[:2]], [f"__total__{year}_01_01", f"balance_{year}_01_01"])
+        self.assertEqual([col["name"] for col in series[:2]], [f"__total__{year}_01_01", f"__balance__{year}_01_01"])
         self.assertEqual(compact["totals"][f"__total__{year}_01_01"], "600")
         self.assertEqual(series[0]["period"], {"start": f"{year}-01-01", "end": f"{year}-01-31"})
         self.assertLessEqual(set(compact["totals"]), {col["name"] for col in compact["columns"]})
@@ -273,22 +273,25 @@ class CompactResponseTest(BaseTestData, TestCase):
         january = {"start": datetime.date(2026, 1, 1), "end": datetime.date(2026, 1, 31)}
         self.assertEqual(public_column_name("net_sales_valueTS20260201", january), "net_sales_value_2026_01_01")
         self.assertEqual(public_column_name("__total__CT5TS20260201", january), "__total__CT5_2026_01_01")
-        self.assertEqual(public_column_name("__balance__CT5TS20260201", january), "balanceCT5_2026_01_01")
-        self.assertEqual(public_column_name("__balance__"), "balance")
+        self.assertEqual(public_column_name("__balance__CT5TS20260201", january), "__balance__CT5_2026_01_01")
+        self.assertEqual(public_column_name("__balance__"), "__balance__")
         self.assertEqual(public_column_name("opening__balance__"), "opening__balance__")
 
-    def test_balance_reads_balance_and_sorts_by_either_name(self):
+    def test_balance_keeps_its_name_and_verbose_name_label(self):
         compact = compact_response(ClientBalances.run(self.request))
-        self.assertEqual([col["name"] for col in compact["columns"]], ["name", "balance"])
-        self.assertEqual(compact["totals"], {"balance": "1800"})
-        for order_by in ("-balance", "-__balance__"):
-            rows = compact_response(ClientBalances.run(self.request, default_order_by=order_by))["rows"]
-            self.assertEqual([row[0] for row in rows], ["Client 3", "Client 2", "Client 1"])
+        self.assertEqual(compact["columns"][1], {"name": "__balance__", "label": "Closing Total", "type": "number"})
+        self.assertEqual(compact["totals"], {"__balance__": "1800"})
+        rows = compact_response(ClientBalances.run(self.request, default_order_by="-__balance__"))["rows"]
+        self.assertEqual([row[0] for row in rows], ["Client 3", "Client 2", "Client 1"])
 
-    def test_a_column_named_balance_keeps_its_name(self):
-        columns = [{"name": name, "verbose_name": name, "type": "number"} for name in ("balance", "__balance__")]
-        compact = compact_response({"columns": columns, "data": {"balance": [1], "__balance__": [2]}})
-        self.assertEqual([col["name"] for col in compact["columns"]], ["balance", "__balance__"])
+    def test_a_series_column_keeps_its_name_when_its_compact_name_is_taken(self):
+        january = {"start": datetime.date(2026, 1, 1), "end": datetime.date(2026, 1, 31)}
+        columns = [
+            {"name": "net_2026_01_01", "verbose_name": "Net", "type": "number"},
+            {"name": "netTS20260201", "verbose_name": "Net January", "type": "number", "period": january},
+        ]
+        compact = compact_response({"columns": columns, "data": {"net_2026_01_01": [1], "netTS20260201": [2]}})
+        self.assertEqual([col["name"] for col in compact["columns"]], ["net_2026_01_01", "netTS20260201"])
         self.assertEqual(compact["rows"], [["1", "2"]])
 
     def test_list_values_are_json_safe(self):
