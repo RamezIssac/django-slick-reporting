@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 import os
 import sys
+import warnings
 
 import argparse
 import django
 from django.conf import settings
 from django.test.utils import get_runner
+
+# Make deprecation and resource warnings fail the suite (Django's own runtests.py does the same).
+warnings.simplefilter("error", DeprecationWarning)
+warnings.simplefilter("error", PendingDeprecationWarning)
+warnings.simplefilter("error", ResourceWarning)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
