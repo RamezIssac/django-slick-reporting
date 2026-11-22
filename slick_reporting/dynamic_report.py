@@ -20,7 +20,7 @@ from django.db.models import Model, Q, QuerySet
 
 from .app_settings import get_end_date, get_start_date
 from .generator import TIME_SERIES_DELTAS, ListViewReportGenerator, ReportGenerator
-from .helpers import NUMBER_COLUMN_TYPES, end_of_day_if_date_only
+from .helpers import NUMBER_COLUMN_TYPES, end_of_day_if_date_only, get_field_from_query_text
 from .llm.executor import _build_computation_field, prepare_filters
 from .llm.introspection import REPORTABLE_METHODS, _model_to_catalog
 from .registry import field_registry
@@ -110,7 +110,12 @@ DYNAMIC_REPORT_SPEC_SCHEMA = {
         "time_series_pattern": {"enum": sorted(TIME_SERIES_DELTAS)},
         "time_series_columns": {"type": "array", "items": _computation_column_schema},
         "crosstab_field": {"type": "string", "description": "Field path on report_model to pivot on."},
-        "crosstab_ids": {"type": "array", "items": _scalar_schema, "maxItems": MAX_CROSSTAB_IDS},
+        "crosstab_ids": {
+            "type": "array",
+            "items": _scalar_schema,
+            "maxItems": MAX_CROSSTAB_IDS,
+            "description": "Values of crosstab_field to pivot on; default: every value in the filtered data.",
+        },
         "crosstab_columns": {"type": "array", "items": _computation_column_schema},
         "crosstab_compute_remainder": {"type": "boolean", "default": False},
         "filters": {
@@ -362,7 +367,7 @@ CROSSTAB_KEYS = ("crosstab_ids", "crosstab_columns", "crosstab_compute_remainder
 
 
 def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_periods, scoped_models):
-    """Validate ``spec`` and return the keyword arguments of the report generator."""
+    """Validate ``spec``; return the report kind, the generator keyword arguments, relations and series periods."""
     if not isinstance(spec, dict):
         raise ValidationError({"spec": ValidationError("Expected a JSON object.", code="invalid")})
     validator = _SpecValidator(spec, request, allowed_models, excluded_models, scoped_models)
@@ -490,20 +495,40 @@ def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_
                 crosstab_columns=validator.computations(report_model, "crosstab_columns", required=True),
             )
 
-    if not validator.errors:
-        crosstab_width = len(config.get("crosstab_ids", [])) + int(bool(config.get("crosstab_compute_remainder")))
-        computed = (
-            len(config.get("columns", []))
-            + series_periods * len(config.get("time_series_columns", []))
-            + series_periods * crosstab_width * len(config.get("crosstab_columns", []))
-        )
-        if computed > MAX_COMPUTED_COLUMNS:
-            validator.add_error(
-                "spec", f"The report would compute {computed} columns, above {MAX_COMPUTED_COLUMNS}.", code="too_large"
-            )
     if validator.errors:
         raise ValidationError(validator.errors)
-    return kind, config, validator.relations
+    return kind, config, validator.relations, series_periods
+
+
+class _DynamicReportGenerator(ReportGenerator):
+    """Without crosstab_ids, pivots on the crosstab values in the report rows; labels relations with str()."""
+
+    def __init__(self, scopes, **kwargs):
+        self.scopes = scopes
+        super().__init__(**kwargs)
+
+    def _parse(self):
+        field_name = self.crosstab_field
+        if field_name and not self.crosstab_ids:
+            rows = self.queryset.exclude(**{f"{field_name}__isnull": True}).order_by()
+            rows = self._apply_queryset_options(rows, [field_name]).distinct()[: MAX_CROSSTAB_IDS + 1]
+            if len(rows) > MAX_CROSSTAB_IDS:
+                message = f"More than {MAX_CROSSTAB_IDS} values in the data; pass crosstab_ids or narrow the filters."
+                raise ValidationError({"crosstab_ids": ValidationError(message, code="too_many_ids")})
+            self.crosstab_ids = sorted(row[field_name] for row in rows)
+        self.crosstab_labels = {}
+        field = get_field_from_query_text(field_name, self.report_model) if field_name else None
+        if field is not None and field.is_relation:
+            related = self.scopes.get(field.related_model, field.related_model._default_manager.all())
+            objects = related.in_bulk(self.crosstab_ids, field_name=field.target_field.name)
+            self.crosstab_labels = {str(key): str(obj) for key, obj in objects.items()}
+        super()._parse()
+
+    def get_crosstab_field_verbose_name(self, computation_class, model, id):
+        label = self.crosstab_labels.get(str(id))
+        if label is None:
+            return super().get_crosstab_field_verbose_name(computation_class, model, id)
+        return f"{computation_class.verbose_name} {label}"
 
 
 def _resolve_base_querysets(base_querysets):
@@ -530,7 +555,7 @@ def run_dynamic_report(
     model to the queryset its rows come from, also when the spec reaches it through a relation.
     """
     scopes = _resolve_base_querysets(base_querysets)
-    kind, config, relations = _clean_spec(
+    kind, config, relations, series_periods = _clean_spec(
         spec, request, allowed_models, excluded_models, max_time_series_periods, scopes
     )
     report_model = config["report_model"]
@@ -548,8 +573,19 @@ def run_dynamic_report(
         for key in ("columns", "time_series_columns", "crosstab_columns"):
             if key in config:
                 config[key] = [_build_computation_field(column) for column in config[key]]
-        generator_class = ListViewReportGenerator if kind == "list" else ReportGenerator
-        generator = generator_class(q_filters=q_filters, **config)
+        if kind == "list":
+            generator = ListViewReportGenerator(q_filters=q_filters, **config)
+        else:
+            generator = _DynamicReportGenerator(scopes, q_filters=q_filters, **config)
+        crosstab_width = len(generator.crosstab_ids) + int(bool(config.get("crosstab_compute_remainder")))
+        computed = (
+            len(config.get("columns", []))
+            + series_periods * len(config.get("time_series_columns", []))
+            + series_periods * crosstab_width * len(config.get("crosstab_columns", []))
+        )
+        if computed > MAX_COMPUTED_COLUMNS:
+            message = f"The report would compute {computed} columns, above {MAX_COMPUTED_COLUMNS}."
+            raise ValidationError({"spec": ValidationError(message, code="too_large")})
         data = generator.get_report_data()
         return generator.get_full_response(
             data=data,

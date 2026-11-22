@@ -64,6 +64,9 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- A dynamic report crosstab without `crosstab_ids` pivots on every value of `crosstab_field` in the filtered
+  data, up to 50 (code `too_many_ids` above). It returned no crosstab columns. Crosstab column labels on a
+  relation read the related object's `str()` ("Sales Client 1"), not its id ("Sales client 1").
 - `ListReportView` applies the requested date range. It used the default window whatever dates the
   form held, and `ListViewReportGenerator` dropped rows dated exactly on the start date.
 - `SLICK_REPORTING_SETTINGS["DEFAULT_START_DATE_TIME"]` and `["DEFAULT_END_DATE_TIME"]` are computed on
