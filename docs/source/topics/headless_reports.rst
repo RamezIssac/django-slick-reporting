@@ -167,6 +167,9 @@ The keys follow the configuration of the LLM assistant (``run_llm_report_config`
     values present in the filtered data, up to 50, else code ``too_many_ids``. Columns on a relation are
     labeled with the related object's ``str()``. Any of these keys or a ``__crosstab__`` column without
     ``crosstab_field`` raises code ``required``.
+
+    ``time_series_columns`` and ``crosstab_columns`` also take the ``name`` of a computation column declared
+    in ``columns``, as a string.
 ``filters``
     ``{"<field path>[__<lookup>]": value}``. Lookups: ``exact``, ``iexact``, ``in``, ``gt``, ``gte``, ``lt``,
     ``lte``, ``range``, ``isnull``, ``contains``, ``icontains``, ``startswith``, ``istartswith``, ``endswith``,

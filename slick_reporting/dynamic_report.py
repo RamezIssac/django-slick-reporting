@@ -75,7 +75,7 @@ _computation_schema = {
 _computation_column_schema = {
     "oneOf": [
         _computation_schema,
-        {"type": "string", "description": "A registered computation field name, e.g. '__total__'."},
+        {"type": "string", "description": "A computation name from columns, or a registered one, e.g. '__total__'."},
     ]
 }
 _scalar_schema = {"type": ["string", "number", "integer", "boolean", "null"]}
@@ -167,6 +167,7 @@ class _SpecValidator:
         self.relations = {}
         self.multi_valued_paths = set()
         self.errors = {}
+        self.declared = {}
 
     @staticmethod
     def resolve_models(identifiers, argument):
@@ -252,8 +253,10 @@ class _SpecValidator:
     def computation(self, report_model, column, key):
         """Validate a computation column; return a ComputationField class name or config dict."""
         if isinstance(column, str):
+            if column in self.declared:
+                return self.declared[column]
             if column not in field_registry.get_all_report_fields_names():
-                self.add_error(key, f"'{column}' is not a registered computation field.", code="unknown_field")
+                self.add_error(key, f"'{column}' is not named in columns or registered.", code="unknown_field")
                 return None
             pending, seen = [field_registry.get_field_by_name(column)], set()
             while pending:
@@ -449,6 +452,7 @@ def _clean_spec(spec, request, allowed_models, excluded_models, max_time_series_
             else:
                 cleaned_columns.append(validator.computation(report_model, column, "columns"))
         validator.check_unique_names(cleaned_columns, "columns")
+        validator.declared = {column["name"]: column for column in cleaned_columns if isinstance(column, dict)}
         config.update(group_by=group_by, columns=cleaned_columns)
 
         pattern = spec.get("time_series_pattern") or None
