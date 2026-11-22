@@ -91,6 +91,10 @@ Compact output
   declares the columns to total, e.g. ``total_columns = ["value"]``. A declared column is totaled whatever its
   ``type``; a column holding a non-numeric value gets no total.
 * Numbers are strings (Decimal safe), dates and datetimes are ISO strings, empty cells are ``null``.
+* A time series column also carries ``period``: its first and last included day, e.g.
+  ``{"name": "__total__TS20260201", "label": "Total January 2026", "type": "number",
+  "period": {"start": "2026-01-01", "end": "2026-01-31"}}``. The ``TS`` suffix of the name is the period's
+  exclusive end date.
 
 
 Dynamic reports from a JSON spec

@@ -161,7 +161,10 @@ def compact_response(full_response, max_rows=None):
     totals = {}
     for col in columns:
         col_type = normalize_column_type(col.get("type"))
-        compact_columns.append({"name": col["name"], "label": force_str(col["verbose_name"]), "type": col_type})
+        compact_column = {"name": col["name"], "label": force_str(col["verbose_name"]), "type": col_type}
+        if "period" in col:
+            compact_column["period"] = {key: _compact_value(day) for key, day in col["period"].items()}
+        compact_columns.append(compact_column)
         if col["name"] in database_totals:
             totals[col["name"]] = format(_to_decimal(database_totals[col["name"]]), "f")
         elif col["name"] in declared_totals or (col_type == "number" and col.get("is_summable") is True):
