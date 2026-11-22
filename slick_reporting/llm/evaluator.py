@@ -669,11 +669,11 @@ def _extract_group_values(result: EvaluationResult, label_keys: tuple[str, ...],
 def _extract_monthly_values(result: EvaluationResult, field_name: str) -> dict[str, float]:
     """Map calendar month (``2026-01``) -> value, from the ``period`` start of each ``<field>__sum``
     time series column."""
-    prefix = f"{field_name}__sumTS"
+    base_name = f"{field_name}__sum"
     month_by_key = {
         col["name"]: str(col["period"]["start"])[:7]
         for col in (result.report_data or {}).get("columns") or []
-        if isinstance(col, dict) and str(col.get("name")).startswith(prefix) and col.get("period")
+        if isinstance(col, dict) and col.get("base_name") == base_name and col.get("period")
     }
     values: dict[str, float] = {}
     for row in _rows(result):

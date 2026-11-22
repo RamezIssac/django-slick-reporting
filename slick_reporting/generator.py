@@ -845,6 +845,7 @@ class ReportGenerator(ReportGeneratorAPI):
         series = self._get_time_series_dates(self.time_series_pattern)
 
         for index, dt in enumerate(series):
+            suffix = "TS" + dt[1].strftime("%Y%m%d")
             for col in cols:
                 magic_field_class = None
 
@@ -855,7 +856,8 @@ class ReportGenerator(ReportGeneratorAPI):
 
                 _values.append(
                     {
-                        "name": magic_field_class.name + "TS" + dt[1].strftime("%Y%m%d"),
+                        "name": magic_field_class.name + suffix,
+                        "base_name": magic_field_class.name,
                         "original_name": magic_field_class.name,
                         "verbose_name": self.get_time_series_field_verbose_name(magic_field_class, dt, index, series),
                         "ref": magic_field_class,
@@ -871,7 +873,8 @@ class ReportGenerator(ReportGeneratorAPI):
             if self._crosstab_parsed_columns:
                 for parsed_col in self._crosstab_parsed_columns:
                     parsed_col = parsed_col.copy()
-                    parsed_col["name"] = parsed_col["name"] + "TS" + dt[1].strftime("%Y%m%d")
+                    parsed_col["base_name"] = parsed_col["name"]
+                    parsed_col["name"] = parsed_col["name"] + suffix
                     parsed_col["start_date"] = dt[0]
                     parsed_col["end_date"] = dt[1]
                     _values.append(parsed_col)
@@ -1093,6 +1096,7 @@ class ReportGenerator(ReportGeneratorAPI):
                 "is_summable": True if col["name"] in self.total_columns else col.get("is_summable", ""),
             }
             if "start_date" in col:
+                entry["base_name"] = col.get("base_name", col["name"])
                 entry["period"] = {
                     "start": self._date_window_point(col["start_date"]),
                     "end": self._last_day_of_period(col["end_date"]),

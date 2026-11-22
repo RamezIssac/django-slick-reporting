@@ -95,8 +95,9 @@ Compact output
   period's first day: the full response's ``__total__TS20260201`` (its ``TS`` suffix is the exclusive end date)
   reads ``{"name": "__total__2026_01_01", "label": "Total January 2026", "type": "number",
   "period": {"start": "2026-01-01", "end": "2026-01-31"}}``.
-  ``public_column_name(name, period=None)`` gives a full-response column's compact name. A series column whose
-  compact name is another column's keeps its full-response name.
+  ``public_column_name(column)`` gives a full-response column's compact name from its ``base_name`` (the name
+  without the period suffix, ``__total__``) and ``period``. A series column whose compact name is another
+  column's keeps its full-response name.
 
 
 Dynamic reports from a JSON spec

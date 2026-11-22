@@ -142,13 +142,13 @@ def _to_decimal(value):
     return Decimal(value)
 
 
-def public_column_name(name, period=None):
-    """The name of a full-response column in ``compact_response()``: a time series column ends with its period's
-    first day (``__total__TS20260201``, January 2026, reads ``__total__2026_01_01``), others keep their name."""
-    if period:
-        base, start = name.rpartition("TS")[0], _compact_value(period["start"]).replace("-", "_")
-        name = f"{base}{'' if base.endswith('_') else '_'}{start}"
-    return name
+def public_column_name(column):
+    """The name of a full-response column in ``compact_response()``: a time series column is its ``base_name`` and
+    its period's first day (``__total__TS20260201``, January 2026, reads ``__total__2026_01_01``)."""
+    if "period" not in column:
+        return column["name"]
+    base, start = column["base_name"], _compact_value(column["period"]["start"]).replace("-", "_")
+    return f"{base}{'' if base.endswith('_') else '_'}{start}"
 
 
 def compact_response(full_response, max_rows=None):
@@ -172,7 +172,7 @@ def compact_response(full_response, max_rows=None):
     totals = {}
     for col in columns:
         col_type = normalize_column_type(col.get("type"))
-        name = public_column_name(col["name"], col.get("period"))
+        name = public_column_name(col)
         if name in names:
             name = col["name"]
         compact_column = {"name": name, "label": force_str(col["verbose_name"]), "type": col_type}
