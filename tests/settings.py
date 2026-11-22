@@ -55,6 +55,7 @@ STATIC_URL = "/static/"
 
 MIGRATION_MODULES = {"contenttypes": None, "auth": None}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+USE_TZ = True
 
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 

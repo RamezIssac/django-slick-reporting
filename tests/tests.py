@@ -3,7 +3,7 @@ from unittest import skip
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
@@ -1023,3 +1023,31 @@ class TestDocTypeSides(TestCase):
     def test_no_lists_leaves_debit_unfiltered(self):
         row = self._row([], [], columns=("__debit__", "__credit__"))
         self.assertEqual((row["__debit__"], row["__credit__"]), (137, 0))
+
+class TestDebitCreditResolve(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.client1 = Client.objects.create(name="Client 1")
+        cls.product1 = Product.objects.create(name="Product 1")
+        for flag, quantity in (("sales", 30), ("sales", 20), ("sales-return", 7)):
+            SalesWithFlag.objects.create(
+                doc_date=datetime.datetime(year, 1, 1),
+                client=cls.client1,
+                product=cls.product1,
+                quantity=quantity,
+                price=10,
+                flag=flag,
+            )
+
+    def test_resolve_subtracts_credit_from_debit(self):
+        net_field = ComputationField.create(Sum, "value", name="net_of_returns")
+        net_field.plus_side_q = [Q(flag="sales")]
+        net_field.minus_side_q = [Q(flag="sales-return")]
+        report = ReportGenerator(
+            report_model=SalesWithFlag,
+            group_by="client",
+            columns=["name", net_field],
+        )
+        data = report.get_report_data()
+        self.assertEqual(data[0]["net_of_returns"], 430)
