@@ -163,8 +163,10 @@ The keys follow the configuration of the LLM assistant (``run_llm_report_config`
     ``time_series_pattern`` raises code ``required``.
 ``crosstab_field``, ``crosstab_ids``, ``crosstab_columns``, ``crosstab_compute_remainder``
     The field path to pivot on, up to 50 of its values, the computation columns per value, and whether to
-    add a column for all other values (default ``false``). Any of these keys or a ``__crosstab__`` column
-    without ``crosstab_field`` raises code ``required``.
+    add a column for all other values (default ``false``). Without ``crosstab_ids`` the report pivots on the
+    values present in the filtered data, up to 50, else code ``too_many_ids``. Columns on a relation are
+    labeled with the related object's ``str()``. Any of these keys or a ``__crosstab__`` column without
+    ``crosstab_field`` raises code ``required``.
 ``filters``
     ``{"<field path>[__<lookup>]": value}``. Lookups: ``exact``, ``iexact``, ``in``, ``gt``, ``gte``, ``lt``,
     ``lte``, ``range``, ``isnull``, ``contains``, ``icontains``, ``startswith``, ``istartswith``, ``endswith``,
@@ -183,14 +185,16 @@ Validation runs before any query:
   ``describe_dynamic_report_models()`` leaves excluded models out, along with the relations pointing to them.
 * Filter values are checked against their field (``value__gte: "abc"`` is rejected).
 * A report computes at most 500 computation columns (columns, plus time series and crosstab columns
-  repeated per period and value), else code ``too_large``.
+  repeated per period and value), else code ``too_large``. Without ``crosstab_ids``, this check follows
+  the query that finds the crosstab values.
 * ``request.user`` needs the view or change permission on each of those models, else ``PermissionDenied``.
   A ``request`` of ``None`` or without a ``user`` raises ``PermissionDenied`` too.
 * Column names are unique within ``columns``, ``time_series_columns`` and ``crosstab_columns``, else code
   ``invalid``.
 * Unknown keys, unknown fields, unsupported lookups and malformed or wrongly typed values raise
   ``ValidationError``; its ``error_dict`` is keyed by spec key, with the codes ``unknown_key``,
-  ``unknown_field``, ``required``, ``too_many_periods``, ``too_large``, ``invalid`` or ``invalid_spec``.
+  ``unknown_field``, ``required``, ``too_many_periods``, ``too_many_ids``, ``too_large``, ``invalid`` or
+  ``invalid_spec``.
 
 Note: pass your own ``excluded_models`` as the default plus your sensitive apps (``[*DEFAULT_EXCLUDED_MODELS,
 "payroll"]``), not a list without ``auth`` and ``sessions``, because the list replaces the default and would

@@ -1,6 +1,7 @@
 import json
 
 import datetime
+from unittest import mock
 
 from django.contrib.auth.models import Permission, User
 from django.db.models import Sum
@@ -104,6 +105,68 @@ class DynamicReportTest(BaseTestData, TestCase):
             [col["name"] for col in compact["columns"]], ["name", f"__total__CT{self.client1.pk}", "__total__CT----"]
         )
         self.assertEqual(compact["rows"], [["Product 1", "300", "1500"]])
+
+    def crosstab_spec(self, **extra):
+        return {
+            "report_model": "tests.SimpleSales",
+            "group_by": "product",
+            "columns": ["name"],
+            "crosstab_field": "client",
+            "crosstab_columns": [VALUE_SUM],
+            **extra,
+        }
+
+    def crosstab_labels(self, spec, **kwargs):
+        compact = compact_response(self.run_spec(spec, **kwargs))
+        return [col["label"] for col in compact["columns"][1:]], compact["rows"]
+
+    def test_crosstab_without_ids_pivots_on_the_ids_in_the_data(self):
+        compact = compact_response(self.run_spec(self.crosstab_spec()))
+        clients = (self.client1, self.client2, self.client3)
+        self.assertEqual([col["name"] for col in compact["columns"][1:]], [f"value_sumCT{c.pk}" for c in clients])
+        labels = [col["label"] for col in compact["columns"][1:]]
+        self.assertEqual(labels, ["Sales Client 1", "Sales Client 2", "Sales Client 3"])
+        self.assertEqual(compact["rows"], [["Product 1", "300", "600", "900"]])
+
+    def test_crosstab_without_ids_follows_filters_dates_and_scope(self):
+        SimpleSales.objects.create(
+            doc_date=datetime.datetime(year - 1, 6, 1),
+            client=self.clientIdle,
+            product=self.product1,
+            quantity=1,
+            price=5,
+        )
+        labels = self.crosstab_labels(self.crosstab_spec())[0]
+        self.assertEqual(labels, ["Sales Client 1", "Sales Client 2", "Sales Client 3", "Sales Client Idle"])
+        dated = self.crosstab_spec(date_field="doc_date", start_date=f"{year}-01-01", end_date=f"{year}-12-31")
+        self.assertEqual(self.crosstab_labels(dated), (labels[:3], [["Product 1", "300", "600", "900"]]))
+        filtered = self.crosstab_spec(filters={"value__gte": 200})
+        self.assertEqual(self.crosstab_labels(filtered), (labels[1:3], [["Product 1", "600", "900"]]))
+        scoped = {Client: Client.objects.exclude(pk=self.client3.pk)}
+        self.assertEqual(self.crosstab_labels(self.crosstab_spec(), base_querysets=scoped)[0], labels[:2] + labels[3:])
+
+    def test_crosstab_labels_stay_ids_out_of_scope_and_on_plain_fields(self):
+        scoped = {Client: Client.objects.exclude(pk=self.client3.pk)}
+        spec = self.crosstab_spec(crosstab_ids=[str(self.client3.pk)], crosstab_compute_remainder=True)
+        labels = self.crosstab_labels(spec, base_querysets=scoped)[0]
+        self.assertEqual(labels, [f"Sales client {self.client3.pk}", "The remainder"])
+        spec = self.crosstab_spec(crosstab_ids=[str(self.client1.pk)], crosstab_compute_remainder=True)
+        self.assertEqual(self.crosstab_labels(spec)[0], ["Sales Client 1", "The remainder"])
+        labels, rows = self.crosstab_labels(self.crosstab_spec(crosstab_field="client__sex"))
+        self.assertEqual(labels, [f"Sales client__sex {sex}" for sex in ("FEMALE", "MALE", "OTHER")])
+        self.assertEqual(rows, [["Product 1", "600", "300", "900"]])
+
+    def test_crosstab_without_ids_caps_the_ids_found(self):
+        with mock.patch("slick_reporting.dynamic_report.MAX_CROSSTAB_IDS", 3):
+            self.assertEqual(len(self.crosstab_labels(self.crosstab_spec())[0]), 3)
+        with mock.patch("slick_reporting.dynamic_report.MAX_CROSSTAB_IDS", 2):
+            self.assert_spec_error(self.crosstab_spec(), "crosstab_ids", "too_many_ids")
+
+    def test_crosstab_without_ids_counts_the_ids_found_in_the_column_cap(self):
+        with mock.patch("slick_reporting.dynamic_report.MAX_COMPUTED_COLUMNS", 4):
+            self.assertEqual(len(self.crosstab_labels(self.crosstab_spec())[0]), 3)
+        with mock.patch("slick_reporting.dynamic_report.MAX_COMPUTED_COLUMNS", 3):
+            self.assert_spec_error(self.crosstab_spec(), "spec", "too_large")
 
     def test_list(self):
         spec = {
