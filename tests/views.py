@@ -120,6 +120,10 @@ class MonthlyProductSalesWQS(ReportView):
     time_series_columns = [TotalReportField, "__balance__"]
 
 
+class MonthlyProductSalesFilteredQS(MonthlyProductSalesWQS):
+    queryset = SimpleSales.objects.filter(client__name="Client 1")
+
+
 class SimpleSalesListReport(ListReportView):
     report_model = SimpleSales
     date_field = "doc_date"

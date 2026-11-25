@@ -1,0 +1,38 @@
+name: Public API surface
+
+# Lists the public names of slick_reporting a PR adds, removes or changes. Advisory: fails only on tool errors.
+# pr-comment.yml posts comment.md on the PR.
+on:
+  pull_request:
+    branches: [ "develop" ]
+
+permissions:
+  contents: read
+
+jobs:
+  api-surface:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install "griffe==2.4.1"
+
+      # HEAD is the PR merged into its base, HEAD^1 the base tip.
+      - name: Diff the public API against the base
+        run: |
+          python scripts/api_surface.py HEAD^1 HEAD > comment.md
+          cat comment.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr-comment
+          path: comment.md
+          retention-days: 1

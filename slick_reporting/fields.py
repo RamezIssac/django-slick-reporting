@@ -418,7 +418,6 @@ field_registry.register(FirstBalanceField)
 class TotalReportField(ComputationField):
     name = "__total__"
     verbose_name = _("Sum of value")
-    requires: ClassVar[list] = ["__debit__", "__credit__"]
 
 
 field_registry.register(TotalReportField)

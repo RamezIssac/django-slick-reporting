@@ -6,11 +6,17 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-
 - **Empty ``doc_type_minus_list`` / ``doc_type_plus_list`` no longer run that side unfiltered**: with
   one list set and the other empty, the empty side ran over every row (an expense total with only a
   plus list returned 0 because every row also counted as credit). An empty side now contributes 0.
   Fields with neither list set are unchanged.
+- **``__total__`` no longer runs unused ``__debit__`` and ``__credit__`` queries.** ``TotalReportField``
+  declared both as ``requires`` but computes its own sum; a crosstab of ``__total__`` over 3 columns
+  drops from 10 queries to 4.
+- **``ReportView`` no longer fetches every ``report_model`` row on each request.**
+  ``get_report_generator`` evaluated the queryset with ``queryset or self.get_queryset()``; it now
+  checks ``queryset is None``. With both fixes a monthly time-series view request drops from 17
+  queries to 10.
 - **Debit/credit balance** (`ComputationField.resolve`): `debit_value or 0 - credit_value or 0` ignored the credit side because of operator precedence; it is now `(debit_value or 0) - (credit_value or 0)`, so `__total__` and `__balance__` subtract credit values.
 
 
