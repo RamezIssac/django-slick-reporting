@@ -6,7 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-
+- **Empty ``doc_type_minus_list`` / ``doc_type_plus_list`` no longer run that side unfiltered**: with
+  one list set and the other empty, the empty side ran over every row (an expense total with only a
+  plus list returned 0 because every row also counted as credit). An empty side now contributes 0.
+  Fields with neither list set are unchanged.
 - **``__total__`` no longer runs unused ``__debit__`` and ``__credit__`` queries.** ``TotalReportField``
   declared both as ``requires`` but computes its own sum; a crosstab of ``__total__`` over 3 columns
   drops from 10 queries to 4.

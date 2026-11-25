@@ -130,7 +130,7 @@ class ComputationField:
         self._require_classes = self._get_required_classes()
         self._required_prepared_results = None
 
-        self._debit_and_credit = self.plus_side_q or self.minus_side_q
+        self._debit_and_credit = bool(self.plus_side_q or self.minus_side_q)
 
     @classmethod
     def _get_required_classes(cls):
@@ -219,18 +219,19 @@ class ComputationField:
         if kwargs_filters:
             queryset = queryset.filter(**kwargs_filters)
 
-        if self.plus_side_q:
-            queryset = queryset.filter(*self.plus_side_q)
-        debit_results = self.apply_aggregation(queryset, group_by)
+        debit_results = None
+        if self.plus_side_q or not self._debit_and_credit:
+            if self.plus_side_q:
+                queryset = queryset.filter(*self.plus_side_q)
+            debit_results = self.apply_aggregation(queryset, group_by)
 
-        if self._debit_and_credit:
+        if self.minus_side_q:
             queryset = main_queryset.all()
             if kwargs_filters:
                 queryset = queryset.filter(**kwargs_filters)
             if q_filters:
                 queryset = queryset.filter(*q_filters)
-            if self.minus_side_q:
-                queryset = queryset.filter(*self.minus_side_q)
+            queryset = queryset.filter(*self.minus_side_q)
             credit_results = self.apply_aggregation(queryset, group_by)
 
         return debit_results, credit_results
