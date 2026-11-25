@@ -22,16 +22,15 @@ class ReportQueryCountTest(BaseTestData, TestCase):
         self.assertEqual(len(data), 3)
 
     def test_time_series(self):
-        # 1 client rows + 3 months x 5 (__debit__, __credit__, __total__, __balance__ and its __fb__);
-        # __total__ shares its required __debit__ and __credit__ with the columns of the same name
+        # 1 client rows + 3 months x 5 (__debit__, __credit__, __total__, __balance__ and its __fb__)
         with self.assertNumQueries(16):
             report = report_generators.ClientSalesMonthlySeries(start_date=self.start_date, end_date=self.end_date)
             data = report.get_report_data()
         self.assertEqual(len(data), 3)
 
     def test_crosstab(self):
-        # 1 product rows + 3 columns (2 ids, remainder) x 3 (__total__, its required __debit__, __credit__)
-        with self.assertNumQueries(10):
+        # 1 product rows + 3 columns (2 ids, remainder) x 1 (__total__)
+        with self.assertNumQueries(4):
             report = report_generators.ProductClientSalesMatrix(
                 crosstab_ids=[self.client1.pk, self.client2.pk], start_date=self.start_date, end_date=self.end_date
             )
@@ -41,9 +40,8 @@ class ReportQueryCountTest(BaseTestData, TestCase):
     # Patched here: resolving the real access function caches it (get_callable) and changes later view tests.
     @patch("slick_reporting.views.get_access_function", return_value=lambda view: True)
     def test_view_json(self, _):
-        # 1 full report_model fetch (views.py `queryset or self.get_queryset()`) + 1 client rows
-        # + 3 months x 5 (__total__ with __debit__, __credit__; __balance__ with __fb__)
-        with self.assertNumQueries(17):
+        # 1 client rows + 3 months x 3 (__total__, __balance__ and its __fb__)
+        with self.assertNumQueries(10) as queries:
             response = self.client.get(
                 reverse("report1"),
                 data={"start_date": self.start_date.date(), "end_date": self.end_date.date()},
@@ -51,3 +49,5 @@ class ReportQueryCountTest(BaseTestData, TestCase):
             )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()["data"]["name"]), 3)
+        unfiltered = [q["sql"] for q in queries.captured_queries if "WHERE" not in q["sql"]]
+        self.assertEqual(unfiltered, [])

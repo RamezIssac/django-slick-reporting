@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q, Sum
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
+
 from django.urls import reverse
 from django.utils.timezone import now
 
@@ -497,6 +498,14 @@ class TestView(BaseTestData, TestCase):
         )
         self.assertTrue(view_report_data)
         self.assertEqual(columnar_to_rows(view_report_data), report_generator.get_report_data())
+
+    def test_report_generator_defaults_to_view_queryset(self):
+        view = views.MonthlyProductSalesFilteredQS()
+        view.setup(RequestFactory().get("/", data={"start_date": f"{year}-01-01", "end_date": f"{year}-12-31"}))
+        view.form = view.get_form()
+        view.form.is_valid()
+        data = view.get_report_generator().get_report_data()
+        self.assertEqual([row["name"] for row in data], ["Client 1"])
 
     def test_qs_only(self):
         response = self.client.get(

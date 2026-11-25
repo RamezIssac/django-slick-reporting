@@ -348,7 +348,8 @@ class ReportViewBase(ReportGeneratorAPI, UserPassesTestMixin, FormView):
         return self.group_by_custom_querysets
 
     def get_report_generator(self, queryset=None, for_print=False):
-        queryset = queryset or self.get_queryset()
+        if queryset is None:
+            queryset = self.get_queryset()
         q_filters, kw_filters = self.form.get_filters()
         crosstab_compute_remainder = False
         if self.crosstab_field:
