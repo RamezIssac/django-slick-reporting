@@ -1,0 +1,44 @@
+name: PR comment
+
+on:
+  # workflow_run gives fork PRs a pull-requests: write token (Django's coverage_comment.yml).
+  # The only PR-controlled input is comment.md, posted as text.
+  workflow_run:
+    workflows: [ "Public API surface", "Mutation testing" ]
+    types: [ completed ]
+
+permissions:
+  actions: read
+  pull-requests: write
+
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pr-comment
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      # One comment per workflow and PR, updated in place on each push.
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const marker = `<!-- ${run.name} -->`;
+            const body = `${marker}\n${require('fs').readFileSync('comment.md', 'utf8').slice(0, 65000)}`;
+            const { owner, repo } = context.repo;
+            const { data: prs } = await github.rest.pulls.list({
+              owner, repo, state: 'open', head: `${run.head_repository.owner.login}:${run.head_branch}`,
+            });
+            const pr = prs.find(p => p.head.sha === run.head_sha);
+            if (!pr) return core.info(`No open PR at ${run.head_sha}: a newer push owns the comment.`);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number: pr.number, per_page: 100,
+            });
+            const mine = comments.find(c => c.user.login === 'github-actions[bot]' && c.body?.startsWith(marker));
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
