@@ -567,12 +567,13 @@ class ReportGenerator(ReportGeneratorAPI):
                     group_data = self._precomputed_crosstab_data.get(group_by_val, {})
                     data[name] = group_data.get(crosstab_val, {}).get(crosstab_col, 0)
 
-                elif col_data.get("source", "") in ("attribute_field", "container_class_attribute_field"):
+                elif col_data.get("source", "") == "attribute_field":
                     data[name] = col_data["ref"](obj, data)
 
-                elif (
-                    col_data.get("source", "") == "magic_field" and (self.group_by or self.group_by_custom_querysets)
-                ) or (not (self.group_by or self.group_by_custom_querysets)):
+                elif col_data.get("source", "") == "container_class_attribute_field":
+                    data[name] = self._call_container_method(col_data["ref"], obj, data)
+
+                elif self._is_computed_column(col_data):
                     source = self._report_fields_dependencies[window].get(name, False)
 
                     if source:
@@ -592,6 +593,16 @@ class ReportGenerator(ReportGeneratorAPI):
                 else:
                     data[name] = obj.get(name, "")
         return data
+
+    def _is_computed_column(self, col_data):
+        """Grouped reports compute their computation fields; an ungrouped report computes every column."""
+        if self.group_by or self.group_by_custom_querysets:
+            return col_data.get("source", "") == "magic_field"
+        return True
+
+    def _call_container_method(self, method, obj, row):
+        """Call a column method defined on the container class (typically the view)."""
+        return method(obj, row)
 
     def get_report_data(self):
         main_queryset = self.main_queryset[: self.limit_records] if self.limit_records else self.main_queryset
@@ -1150,54 +1161,15 @@ class ListViewReportGenerator(ReportGenerator):
         # a list of method columns only gets model instances
         return queryset.values(*fields) if fields else queryset
 
-    def _get_record_data(self, obj, columns):
-        """
-        the function is run for every obj in the main_queryset
-        :param obj: current row
-        :param: columns： The columns we iterate on
-        :return: a dict object containing all needed data
-        """
-
-        data = {}
-        group_by_val = None
+    def _is_computed_column(self, col_data):
+        """A list row is a record: without a group by, columns are computed only in a time series report."""
         if self.group_by:
-            if self.group_by_field.related_model and "__" not in self.group_by:
-                primary_key_name = self.get_primary_key_name(self.group_by_field.related_model)
-            else:
-                primary_key_name = self.group_by_field_attname
+            return col_data.get("source", "") == "magic_field"
+        return bool(self.time_series_pattern)
 
-            column_data = obj.get(primary_key_name, obj.get("id"))
-            group_by_val = str(column_data)
-
-        for window, window_cols in columns:
-            for col_data in window_cols:
-                name = col_data["name"]
-
-                if col_data.get("source", "") == "attribute_field":
-                    data[name] = col_data["ref"](obj, data)
-                elif col_data.get("source", "") == "container_class_attribute_field":
-                    data[name] = col_data["ref"](obj)
-
-                elif (col_data.get("source", "") == "magic_field" and self.group_by) or (
-                    self.time_series_pattern and not self.group_by
-                ):
-                    source = self._report_fields_dependencies[window].get(name, False)
-                    if source:
-                        computation_class = self.report_fields_classes[source]
-                        value = computation_class.get_dependency_value(group_by_val, col_data["ref"].name)
-                    else:
-                        try:
-                            computation_class = self.report_fields_classes[name]
-                        except KeyError:
-                            continue
-                        value = computation_class.do_resolve(group_by_val, data)
-                    if self.swap_sign:
-                        value = -value
-                    data[name] = value
-
-                else:
-                    data[name] = obj[name]
-        return data
+    def _call_container_method(self, method, obj, row):
+        """List report views define column methods as ``method(self, obj)``."""
+        return method(obj)
 
     def _remove_order(self, main_queryset):
         return main_queryset
