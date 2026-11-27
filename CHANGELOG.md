@@ -18,6 +18,9 @@ All notable changes to this project will be documented in this file.
   checks ``queryset is None``. With both fixes a monthly time-series view request drops from 17
   queries to 10.
 - **Debit/credit balance** (`ComputationField.resolve`): `debit_value or 0 - credit_value or 0` ignored the credit side because of operator precedence; it is now `(debit_value or 0) - (credit_value or 0)`, so `__total__` and `__balance__` subtract credit values.
+- **The wheel no longer installs a top-level ``tests`` package.** ``setup.cfg`` now excludes ``tests``
+  and ``demo_proj`` from ``packages``, and ``slick_reporting.llm.evaluator`` looks up its fixture
+  models through the app registry and no longer imports ``tests.models``.
 
 
 ## [1.5.1] - 2026-11-18
