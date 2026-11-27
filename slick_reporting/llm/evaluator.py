@@ -15,8 +15,9 @@ labels, and answer correctness.  Per-call prompt/completion token counts
 (from the provider ``usage`` object), per-stage latencies, untruncated raw
 responses, and failed calls are all preserved on the result objects.
 
-This module is evaluation tooling; it is wired to the ``tests`` app models
-(``tests.SimpleSales`` and friends) which carry the deterministic fixture.
+This module is evaluation tooling; it looks up the ``tests`` app models
+(``tests.SimpleSales`` and friends) by label in the app registry, and runs
+where that app is installed (``run_benchmark.py``, the test suite).
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, ClassVar
 
+from django.apps import apps
 from django.conf import settings
 from django.utils import timezone
 
@@ -48,7 +50,9 @@ Q1_START = datetime.date(2026, 1, 1)
 Q1_END = datetime.date(2026, 3, 31)
 
 REPORT_MODEL = "tests.SimpleSales"
-CATALOG_MODELS = ["tests.SimpleSales", "tests.Client", "tests.Product"]
+CLIENT_MODEL = "tests.Client"
+PRODUCT_MODEL = "tests.Product"
+CATALOG_MODELS = [REPORT_MODEL, CLIENT_MODEL, PRODUCT_MODEL]
 
 #: Row keys holding the country label when grouping by ``client__country``.
 COUNTRY_ROW_KEYS = ("client__country", "country")
@@ -230,7 +234,9 @@ def create_fixture_data() -> None:
     Tables must already exist (the benchmark runs ``migrate --run-syncdb``;
     Django tests create them via the test runner).
     """
-    from tests.models import Client, Product, SimpleSales
+    SimpleSales = apps.get_model(REPORT_MODEL)
+    Product = apps.get_model(PRODUCT_MODEL)
+    Client = apps.get_model(CLIENT_MODEL)
 
     SimpleSales.objects.all().delete()
     Product.objects.filter(name__in=EVAL_PRODUCT_NAMES).delete()
@@ -564,9 +570,7 @@ def _plan_filter_matches_product(cfg: dict[str, Any], product_name: str | None) 
 def _product_ids_for_name(product_name: str) -> set | None:
     """Resolve a product name to database ids; None when no DB is available."""
     try:
-        from tests.models import Product
-
-        return set(Product.objects.filter(name=product_name).values_list("id", flat=True))
+        return set(apps.get_model(PRODUCT_MODEL).objects.filter(name=product_name).values_list("id", flat=True))
     except Exception:  # noqa: BLE001 - DB access is best-effort; any failure means "unknown ids"
         return None
 
