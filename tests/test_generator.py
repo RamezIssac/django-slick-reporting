@@ -1,14 +1,16 @@
 from datetime import datetime
 
 from django.db.models import Sum
-from django.test import TestCase
+from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured
+from django.test import SimpleTestCase, TestCase
 from django.utils.translation import gettext_lazy as _
 
 from slick_reporting.fields import ComputationField
 from slick_reporting.generator import ReportGenerator, ListViewReportGenerator
 from slick_reporting.helpers import get_foreign_keys
+from slick_reporting.registry import field_registry
 from .models import OrderLine, ComplexSales
-from .models import SimpleSales, Client
+from .models import SimpleSales, Client, Contact, Agent
 from .report_generators import (
     GeneratorWithAttrAsColumn,
     CrosstabOnClient,
@@ -522,3 +524,145 @@ class TestDateWindow(TestCase):
             response["metadata"]["date_window"]["label"],
             "From 2020-01-01 to 2020-12-31",
         )
+
+
+class CheckColumnsTest(SimpleTestCase):
+    """Pins the parsed output of `ReportGenerator.check_columns` for each kind of column."""
+
+    class Caller:
+        group_by_custom_querysets_column_verbose_name = "Custom Title"
+
+        def caller_attr(self, obj, row):
+            return ""
+
+        caller_attr.verbose_name = "Caller Attr"
+
+    class Container:
+        def container_attr(self, obj, row):
+            return ""
+
+    def check(self, columns, group_by="", report_model=SimpleSales, **kwargs):
+        return ReportGenerator.check_columns(self.Caller, columns, group_by, report_model, **kwargs)
+
+    def test_attribute_on_caller(self):
+        (col,) = self.check(["caller_attr"], container_class=self.Container)
+        self.assertEqual(
+            col,
+            {
+                "name": "caller_attr",
+                "verbose_name": "Caller Attr",
+                "source": "attribute_field",
+                "ref": self.Caller.caller_attr,
+                "type": "text",
+            },
+        )
+
+    def test_attribute_on_container_class(self):
+        (col,) = self.check(["container_attr"], container_class=self.Container)
+        self.assertEqual(
+            col,
+            {
+                "name": "container_attr",
+                "verbose_name": "container_attr",
+                "source": "container_class_attribute_field",
+                "ref": self.Container.container_attr,
+                "type": "text",
+            },
+        )
+
+    def test_container_attribute_reached_after_falsy_caller_attribute(self):
+        caller = type("FalsyCaller", (), {"value_attr": ""})
+        container = type("Container", (), {"value_attr": SimpleSales._meta.get_field("value")})
+        (col,) = ReportGenerator.check_columns(caller, ["value_attr"], "", SimpleSales, container_class=container)
+        self.assertEqual(col["source"], "database")
+        self.assertEqual(col["ref"], SimpleSales._meta.get_field("value"))
+        self.assertEqual(col["type"], "DecimalField")
+
+    def test_computation_field_class(self):
+        field_class = ComputationField.create(Sum, "value", name="check_cols_sum_value", verbose_name="Sum Value")
+        (col,) = self.check([field_class], group_by="client")
+        self.assertEqual(
+            col,
+            {
+                "name": "check_cols_sum_value",
+                "verbose_name": "Sum Value",
+                "source": "magic_field",
+                "ref": field_class,
+                "type": field_class.type,
+                "is_summable": field_class.is_summable,
+            },
+        )
+
+    def test_registered_computation_field_name(self):
+        (col,) = self.check(["__total__"], group_by="client")
+        total_class = field_registry.get_field_by_name("__total__")
+        self.assertEqual(col["source"], "magic_field")
+        self.assertIs(col["ref"], total_class)
+        self.assertEqual(col["verbose_name"], total_class.verbose_name)
+
+    def test_placeholders_are_skipped(self):
+        self.assertEqual(self.check(["__time_series__", "__crosstab__"], group_by="client"), [])
+
+    def test_database_field_on_report_model(self):
+        (col,) = self.check(["value"])
+        self.assertEqual(
+            col,
+            {
+                "name": "value",
+                "verbose_name": SimpleSales._meta.get_field("value").verbose_name,
+                "source": "database",
+                "ref": SimpleSales._meta.get_field("value"),
+                "type": "DecimalField",
+            },
+        )
+
+    def test_database_field_on_group_by_model(self):
+        name_col, sex_col = self.check(["name", "sex"], group_by="client")
+        self.assertEqual(name_col["ref"], Client._meta.get_field("name"))
+        self.assertEqual(name_col["type"], "CharField")
+        self.assertEqual(sex_col["type"], "choice")
+
+    def test_database_field_on_non_relation_group_by(self):
+        (col,) = self.check(["flag"], group_by="flag")
+        self.assertEqual(col["ref"], SimpleSales._meta.get_field("flag"))
+
+    def test_traversing_column(self):
+        (col,) = self.check(["contact__agent__name"], group_by="client")
+        self.assertEqual(col["ref"], Agent._meta.get_field("name"))
+        self.assertEqual(col["verbose_name"], Agent._meta.get_field("name").verbose_name)
+
+    def test_traversing_group_by(self):
+        (col,) = self.check(["address"], group_by="client__contact")
+        self.assertEqual(col["ref"], Contact._meta.get_field("address"))
+
+    def test_tuple_options_override_parsed_data(self):
+        parsed = self.check([("value", {"verbose_name": "Value!"}), ("__total__", {"is_summable": False})], group_by="")
+        self.assertEqual(parsed[0]["verbose_name"], "Value!")
+        self.assertIs(parsed[1]["is_summable"], False)
+
+    def test_index_added_for_custom_querysets(self):
+        columns = ["__total__"]
+        index_col, _total = self.check(columns, group_by_custom_querysets=[SimpleSales.objects.all()])
+        self.assertEqual(columns, ["__index__", "__total__"])
+        self.assertEqual(
+            index_col,
+            {"name": "__index__", "verbose_name": "Custom Title", "source": "database", "ref": "", "type": "text"},
+        )
+
+    def test_index_not_duplicated(self):
+        parsed = self.check(["__index__", "__total__"], group_by_custom_querysets=[SimpleSales.objects.all()])
+        self.assertEqual([col["name"] for col in parsed], ["__index__", "__total__"])
+
+    def test_index_tuple_takes_options(self):
+        # A tuple "__index__" is not seen by the membership check, so a plain one is still inserted first.
+        columns = [("__index__", {"verbose_name": "Group"}), "__total__"]
+        parsed = self.check(columns, group_by_custom_querysets=[SimpleSales.objects.all()])
+        self.assertEqual([col["verbose_name"] for col in parsed[:2]], ["Custom Title", "Group"])
+
+    def test_unknown_group_by_raises(self):
+        with self.assertRaisesMessage(ImproperlyConfigured, "Could not find the group_by field: `no_field`"):
+            self.check(["value"], group_by="no_field")
+
+    def test_unknown_column_raises(self):
+        with self.assertRaisesMessage(FieldDoesNotExist, 'Field "not_here" not found'):
+            self.check(["not_here"], group_by="client", container_class=self.Container)
