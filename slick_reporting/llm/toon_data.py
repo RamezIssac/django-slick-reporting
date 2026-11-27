@@ -65,15 +65,15 @@ def dumps_toon(obj):
     """
     Serialize to TOON (Token-Oriented Object Notation).
 
-    Requires the official ``toon-format`` package (``pip install
-    toon-format==1.1.0``); a clear error is raised when it is missing.
+    Requires the ``toon`` extra (``pip install "django-slick-reporting[toon]"``,
+    which pins ``toon-format==1.1.0``); a clear error is raised when it is missing.
     """
     try:
         import toon_format
     except ImportError as exc:  # pragma: no cover - depends on environment
         raise RuntimeError(
             f"TOON serialization requires the '{TOON_PACKAGE}' package. "
-            f"Install the pinned working release: pip install {TOON_PACKAGE_PIN}"
+            'Install the toon extra: pip install "django-slick-reporting[toon]"'
         ) from exc
     return toon_format.encode(normalize_jsonable(obj))
 
