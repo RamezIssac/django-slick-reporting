@@ -400,6 +400,13 @@ class ReportGenerator(ReportGeneratorAPI):
         main_queryset = main_queryset.order_by()
         return main_queryset
 
+    @staticmethod
+    def _exclusive_end(end_date):
+        """First instant after an inclusive end date: the next day for a ``date``, the next second for a datetime."""
+        if isinstance(end_date, datetime.datetime):
+            return end_date.replace(microsecond=0) + datetime.timedelta(seconds=1)
+        return end_date + datetime.timedelta(days=1)
+
     def _get_date_filters(self, start_date, end_date):
         """Lookups for a date window: ``start_date`` inclusive, ``end_date`` exclusive."""
         filters = {}
@@ -411,7 +418,8 @@ class ReportGenerator(ReportGeneratorAPI):
 
     def _filter_queryset(self, query):
         """Apply the report date window, ``kwargs_filters`` and ``q_filters`` to the queryset."""
-        filters = self._get_date_filters(self.start_date, self.end_date) if self.date_field else {}
+        end_date = self._exclusive_end(self.end_date)
+        filters = self._get_date_filters(self.start_date, end_date) if self.date_field else {}
         filters.update(self.kwargs_filters)
         if filters:
             query = query.filter(**filters)
@@ -516,7 +524,8 @@ class ReportGenerator(ReportGeneratorAPI):
 
                 q_filters = None
                 date_filter = self._get_date_filters(
-                    col_data.get("start_date", self.start_date), col_data.get("end_date", self.end_date)
+                    col_data.get("start_date", self.start_date),
+                    col_data.get("end_date", self._exclusive_end(self.end_date)),
                 )
                 date_filter.update(self.kwargs_filters)
                 if window == "crosstab" or col_data.get("computation_flag", "") == "crosstab":
@@ -867,7 +876,7 @@ class ReportGenerator(ReportGeneratorAPI):
 
         series = series or self.time_series_pattern
         start_date = start_date or self.start_date
-        end_date = end_date or self.end_date
+        end_date = self._exclusive_end(end_date or self.end_date)
         _values = []
 
         if series:
@@ -893,7 +902,7 @@ class ReportGenerator(ReportGeneratorAPI):
             done = False
 
             while not done:
-                to_date = start_date + time_delta
+                to_date = min(start_date + time_delta, end_date)
                 _values.append((start_date, to_date))
                 start_date = to_date
                 if to_date >= end_date:

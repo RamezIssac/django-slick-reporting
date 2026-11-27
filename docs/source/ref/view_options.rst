@@ -202,7 +202,11 @@ date_field
 ----------
 
 The date field to be used in filtering and computing.
-A row is in the report window when ``start_date <= date < end_date``: the start date is inclusive, the end date exclusive.
+Both ends are inclusive: a report covers rows from ``start_date`` up to and including the second shown in ``end_date``.
+The filter form's end date defaults to the end of today (23:59:59); a date typed without a time becomes 23:59:59 of that
+day, and a typed time is kept as typed (00:00 means midnight). In code, a ``date`` as ``end_date`` covers that whole day
+and a ``datetime`` covers up to and including that second. Time series periods stop at the report end, and each row
+counts in exactly one period.
 
 start_date_field_name
 ---------------------

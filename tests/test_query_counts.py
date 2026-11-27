@@ -13,7 +13,7 @@ class ReportQueryCountTest(BaseTestData, TestCase):
     computation field per column (time-series period, crosstab id or remainder), including required fields."""
 
     start_date = datetime.datetime(year, 1, 1)
-    end_date = datetime.datetime(year, 4, 1)
+    end_date = datetime.datetime(year, 3, 31, 23, 59, 59)
 
     def test_group_by(self):
         # 1 client rows + __balance__ 2 (itself, its required __fb__) + __total__ 1 (a plain Sum field here)
