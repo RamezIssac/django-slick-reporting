@@ -651,119 +651,114 @@ class ReportGenerator(ReportGeneratorAPI):
         :param group_by_custom_querysets a list of group by custom queries Or None.
         :return: List of dict, each dict contains relevant data to the respective field in `columns`
         """
-
-        group_by_model = None
         if group_by_custom_querysets and "__index__" not in columns:
             columns.insert(0, "__index__")
-
-        if group_by:
-            try:
-                group_by_field = next(
-                    x for x in report_model._meta.get_fields() if x.name == group_by.split("__")[0]
-                )
-            except StopIteration:
-                raise ImproperlyConfigured(
-                    f"ReportView {caller}: Could not find the group_by field: `{group_by}` in "
-                    f"report_model: `{report_model}`"
-                )
-            if group_by_field.is_relation:
-                group_by_model = group_by_field.related_model
-            else:
-                group_by_model = report_model
+        group_by_model = ReportGenerator._get_group_by_model(caller, group_by, report_model)
 
         parsed_columns = []
         for col in columns:
-            options = {}
-            if type(col) is tuple:
-                col, options = col
-
+            col, options = col if type(col) is tuple else (col, {})
             if col in ["__time_series__", "__crosstab__"]:
-                #     These are placeholder not real computation field
+                # These are placeholders, not real computation fields
                 continue
 
-            magic_field_class = None
-            attribute_field = None
-            is_container_class_attribute = False
-
-            if isinstance(col, str):
-                attribute_field = getattr(caller, col, None)
-                if attribute_field is None:
-                    is_container_class_attribute = True
-                    attribute_field = getattr(container_class, col, None)
-
-            elif issubclass(col, ComputationField):
-                magic_field_class = col
-
-            try:
-                magic_field_class = magic_field_class or field_registry.get_field_by_name(col)
-            except KeyError:
-                magic_field_class = None
-
-            if attribute_field:
+            col_data = ReportGenerator._parse_attribute_column(caller, col, container_class)
+            col_data = col_data or ReportGenerator._parse_computation_column(col)
+            if not col_data and group_by_custom_querysets and col == "__index__":
                 col_data = {
                     "name": col,
-                    "verbose_name": getattr(attribute_field, "verbose_name", col),
-                    "source": "container_class_attribute_field" if is_container_class_attribute else "attribute_field",
-                    "ref": attribute_field,
+                    "verbose_name": caller.group_by_custom_querysets_column_verbose_name,
+                    "source": "database",
+                    "ref": "",
                     "type": "text",
                 }
-            elif magic_field_class:
-                # a magic field
-                col_data = {
-                    "name": magic_field_class.name,
-                    "verbose_name": magic_field_class.verbose_name,
-                    "source": "magic_field",
-                    "ref": magic_field_class,
-                    "type": magic_field_class.type,
-                    "is_summable": magic_field_class.is_summable,
-                }
-            else:
-                # A database field
-                if group_by_custom_querysets and col == "__index__":
-                    # group by custom queryset special case: which is the index
-                    col_data = {
-                        "name": col,
-                        "verbose_name": caller.group_by_custom_querysets_column_verbose_name,
-                        "source": "database",
-                        "ref": "",
-                        "type": "text",
-                    }
-                    col_data.update(options)
-                    parsed_columns.append(col_data)
-                    continue
-
-                model_to_use = group_by_model if group_by and "__" not in group_by else report_model
-                group_by_str = str(group_by)
-                if "__" in group_by_str:
-                    related_model = get_field_from_query_text(group_by, model_to_use).related_model
-                    model_to_use = related_model if related_model else model_to_use
-
-                try:
-                    if "__" in col:
-                        # A traversing link order__client__email
-                        field = get_field_from_query_text(col, model_to_use)
-                    else:
-                        field = model_to_use._meta.get_field(col)
-                except FieldDoesNotExist:
-                    field = getattr(container_class, col, False)
-
-                    if not field:
-                        raise FieldDoesNotExist(
-                            f'Field "{col}" not found either as an attribute to the generator class {caller}, '
-                            f'{f"Container class {container_class}," if container_class else ""}'
-                            f'or a computation field, or a database column for the model "{model_to_use}"'
-                        )
-
-                col_data = {
-                    "name": col,
-                    "verbose_name": getattr(field, "verbose_name", col),
-                    "source": "database",
-                    "ref": field,
-                    "type": "choice" if field.choices else field.get_internal_type(),
-                }
-            col_data.update(options)
-            parsed_columns.append(col_data)
+            col_data = col_data or ReportGenerator._parse_database_column(
+                caller, col, group_by, group_by_model, report_model, container_class
+            )
+            parsed_columns.append({**col_data, **options})
         return parsed_columns
+
+    @staticmethod
+    def _get_group_by_model(caller, group_by, report_model):
+        if not group_by:
+            return None
+        group_by_name = group_by.split("__")[0]
+        group_by_field = next((x for x in report_model._meta.get_fields() if x.name == group_by_name), None)
+        if group_by_field is None:
+            raise ImproperlyConfigured(
+                f"ReportView {caller}: Could not find the group_by field: `{group_by}` in "
+                f"report_model: `{report_model}`"
+            )
+        return group_by_field.related_model if group_by_field.is_relation else report_model
+
+    @staticmethod
+    def _parse_attribute_column(caller, col, container_class):
+        """A method or attribute named `col` on the caller, or else on the container class."""
+        if not isinstance(col, str):
+            return None
+        source = "attribute_field"
+        attribute_field = getattr(caller, col, None)
+        if attribute_field is None:
+            source = "container_class_attribute_field"
+            attribute_field = getattr(container_class, col, None)
+        if not attribute_field:
+            return None
+        return {
+            "name": col,
+            "verbose_name": getattr(attribute_field, "verbose_name", col),
+            "source": source,
+            "ref": attribute_field,
+            "type": "text",
+        }
+
+    @staticmethod
+    def _parse_computation_column(col):
+        """A ComputationField subclass, or the name of one in the field registry."""
+        if not isinstance(col, str) and issubclass(col, ComputationField):
+            field_class = col
+        else:
+            try:
+                field_class = field_registry.get_field_by_name(col)
+            except KeyError:
+                return None
+        return {
+            "name": field_class.name,
+            "verbose_name": field_class.verbose_name,
+            "source": "magic_field",
+            "ref": field_class,
+            "type": field_class.type,
+            "is_summable": field_class.is_summable,
+        }
+
+    @staticmethod
+    def _parse_database_column(caller, col, group_by, group_by_model, report_model, container_class):
+        """A field on the group-by model (report model when not grouped), `__` traversal allowed."""
+        if group_by and "__" in group_by:
+            model_to_use = get_field_from_query_text(group_by, report_model).related_model or report_model
+        else:
+            model_to_use = group_by_model if group_by else report_model
+
+        try:
+            if "__" in col:
+                field = get_field_from_query_text(col, model_to_use)
+            else:
+                field = model_to_use._meta.get_field(col)
+        except FieldDoesNotExist:
+            field = getattr(container_class, col, False)
+            if not field:
+                raise FieldDoesNotExist(
+                    f'Field "{col}" not found either as an attribute to the generator class {caller}, '
+                    f'{f"Container class {container_class}," if container_class else ""}'
+                    f'or a computation field, or a database column for the model "{model_to_use}"'
+                )
+
+        return {
+            "name": col,
+            "verbose_name": getattr(field, "verbose_name", col),
+            "source": "database",
+            "ref": field,
+            "type": "choice" if field.choices else field.get_internal_type(),
+        }
 
     def _parse(self):
         self.parsed_columns = self.check_columns(
