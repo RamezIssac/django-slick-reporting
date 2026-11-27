@@ -44,7 +44,7 @@ class TestGroupByDateBoundaries(DateBoundaryTestBase):
             end_date=END,
         )
         totals = {self.key_of(row["id"], self.clients): row["__total__"] for row in report.get_report_data()}
-        self.assertEqual(totals, {"mid": 50, "end": 0})
+        self.assertEqual(totals, {"start": 100, "mid": 50})
 
 
 class TestPrecomputedCrosstabDateBoundaries(DateBoundaryTestBase):
@@ -65,7 +65,7 @@ class TestPrecomputedCrosstabDateBoundaries(DateBoundaryTestBase):
         for row in data:
             product_key = self.key_of(row["id"], self.products)
             values[product_key] = row[f"valueCT{self.clients[product_key].pk}"]
-        self.assertEqual(values, {"mid": 50, "end": 200})
+        self.assertEqual(values, {"start": 100, "mid": 50})
 
 
 class TestListReportDateBoundaries(DateBoundaryTestBase):
@@ -81,10 +81,10 @@ class TestListReportDateBoundaries(DateBoundaryTestBase):
         return sorted(row["slug"] for row in report.get_report_data())
 
     def test_list_report(self):
-        self.assertEqual(self.get_slugs(), ["sale-end", "sale-mid"])
+        self.assertEqual(self.get_slugs(), ["sale-mid", "sale-start"])
 
     def test_list_report_q_filters(self):
-        self.assertEqual(self.get_slugs(q_filters=[Q(slug="sale-mid")]), ["sale-end", "sale-mid"])
+        self.assertEqual(self.get_slugs(q_filters=[Q(slug="sale-mid")]), ["sale-mid"])
 
 
 class ListContainer:
@@ -115,7 +115,7 @@ class TestRecordDataColumns(DateBoundaryTestBase):
             end_date=END,
             container_class=ListContainer(),
         )
-        self.assertEqual(sorted(row["slug_upper"] for row in report.get_report_data()), ["SALE-END", "SALE-MID"])
+        self.assertEqual(sorted(row["slug_upper"] for row in report.get_report_data()), ["SALE-MID", "SALE-START"])
 
     def test_list_report_of_method_columns_only_gets_instances(self):
         report = ListViewReportGenerator(
@@ -126,7 +126,7 @@ class TestRecordDataColumns(DateBoundaryTestBase):
             end_date=END,
             container_class=ListContainer(),
         )
-        self.assertEqual(sorted(row["instance_slug"] for row in report.get_report_data()), ["sale-end", "sale-mid"])
+        self.assertEqual(sorted(row["instance_slug"] for row in report.get_report_data()), ["sale-mid", "sale-start"])
 
     def test_list_report_generator_method(self):
         report = ListGeneratorWithAttribute(
@@ -136,8 +136,7 @@ class TestRecordDataColumns(DateBoundaryTestBase):
             start_date=START,
             end_date=END,
         )
-        with self.assertRaises(TypeError):
-            report.get_report_data()
+        self.assertEqual(sorted(row["slug_title"] for row in report.get_report_data()), ["Sale-Mid", "Sale-Start"])
 
     def test_group_by_report_container_method(self):
         report = ReportGenerator(
@@ -150,7 +149,7 @@ class TestRecordDataColumns(DateBoundaryTestBase):
             container_class=GroupByContainer(),
         )
         self.assertEqual(
-            sorted(row["name_and_total"] for row in report.get_report_data()), ["Client end: 0", "Client mid: 50"]
+            sorted(row["name_and_total"] for row in report.get_report_data()), ["Client mid: 50", "Client start: 100"]
         )
 
 

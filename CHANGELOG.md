@@ -6,6 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Report rows use the same date window as the computed figures: ``start_date`` inclusive, ``end_date``
+  exclusive.** Group-by and list reports selected rows with ``start < date <= end`` and the precomputed
+  crosstab with ``start <= date <= end``, while computation fields sum ``start <= date < end``. A group
+  whose only row is dated exactly ``start_date`` now appears with its total (it was dropped), and a row
+  dated exactly ``end_date`` no longer appears (in a group-by report it showed a total of 0).
+- **List reports apply ``q_filters``** (``ListViewReportGenerator`` ignored them).
+- **Generator method columns on list reports** are called as ``method(obj, row)``; they raised
+  ``TypeError`` before.
 - **Empty ``doc_type_minus_list`` / ``doc_type_plus_list`` no longer run that side unfiltered**: with
   one list set and the other empty, the empty side ran over every row (an expense total with only a
   plus list returned 0 because every row also counted as credit). An empty side now contributes 0.

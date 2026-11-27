@@ -201,7 +201,8 @@ The callable should accept the following arguments
 date_field
 ----------
 
-The date field to be used in filtering and computing
+The date field to be used in filtering and computing.
+A row is in the report window when ``start_date <= date < end_date``: the start date is inclusive, the end date exclusive.
 
 start_date_field_name
 ---------------------

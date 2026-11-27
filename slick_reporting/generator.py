@@ -410,8 +410,8 @@ class ReportGenerator(ReportGeneratorAPI):
         filters = {}
         if self.date_field:
             filters = {
-                f"{self.start_date_field_name}__gt": self.start_date,
-                f"{self.end_date_field_name}__lte": self.end_date,
+                f"{self.start_date_field_name}__gte": self.start_date,
+                f"{self.end_date_field_name}__lt": self.end_date,
             }
         filters.update(self.kwargs_filters)
 
@@ -424,12 +424,12 @@ class ReportGenerator(ReportGeneratorAPI):
         return query.values()
 
     def _apply_precomputed_queryset_options(self, query):
-        """Apply filters for precomputed crosstab data fetch, using __gte/__lte boundaries."""
+        """Apply filters for precomputed crosstab data fetch, using __gte/__lt boundaries."""
         filters = {}
         if self.date_field:
             filters = {
                 f"{self.start_date_field_name}__gte": self.start_date,
-                f"{self.end_date_field_name}__lte": self.end_date,
+                f"{self.end_date_field_name}__lt": self.end_date,
             }
         filters.update(self.kwargs_filters)
         if filters:
@@ -1175,13 +1175,15 @@ class ListViewReportGenerator(ReportGenerator):
         filters = {}
         if self.date_field:
             filters = {
-                f"{self.date_field}__gt": self.start_date,
-                f"{self.date_field}__lte": self.end_date,
+                f"{self.date_field}__gte": self.start_date,
+                f"{self.date_field}__lt": self.end_date,
             }
         filters.update(self.kwargs_filters)
 
         if filters:
             query = query.filter(**filters)
+        if self.q_filters:
+            query = query.filter(*self.q_filters)
         if fields:
             return query.values(*fields)
         return query
@@ -1210,8 +1212,7 @@ class ListViewReportGenerator(ReportGenerator):
                 name = col_data["name"]
 
                 if col_data.get("source", "") == "attribute_field":
-                    data[name] = col_data["ref"](self, obj, data)
-                    # changed line
+                    data[name] = col_data["ref"](obj, data)
                 elif col_data.get("source", "") == "container_class_attribute_field":
                     data[name] = col_data["ref"](obj)
 
