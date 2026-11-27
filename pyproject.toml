@@ -8,3 +8,8 @@ line-length = 120
 
 [tool.ruff]
 line-length = 120
+
+[tool.deptry.per_rule_ignores]
+# toon_format is the optional ``toon`` extra in setup.cfg (deptry reads requirements.txt), imported lazily
+DEP001 = ["toon_format"]
+DEP003 = ["toon_format"]

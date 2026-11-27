@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Dependencies**: `pytz` is no longer installed (nothing imports it). The TOON prompt serializer's
+  `toon-format==1.1.0` is now the `toon` extra: `pip install "django-slick-reporting[toon]"`.
+
 ### Fixed
 
 - **Empty ``doc_type_minus_list`` / ``doc_type_plus_list`` no longer run that side unfiltered**: with
