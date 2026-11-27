@@ -1,5 +1,6 @@
 import datetime
 import logging
+import warnings
 from dataclasses import dataclass
 from inspect import isclass
 
@@ -158,8 +159,8 @@ class ReportGenerator(ReportGeneratorAPI):
     """
 
     field_registry_class = field_registry
-    """You can have a custom computation field locator! It only needs a `get_field_by_name(string)` 
-    and returns a ReportField`"""
+    """The registry used to resolve string column names to computation fields.
+    It only needs a `get_field_by_name(name)` method returning a ComputationField class."""
 
     def __init__(
         self,
@@ -213,7 +214,7 @@ class ReportGenerator(ReportGeneratorAPI):
         :param crosstab_ids:
         :param crosstab_compute_remainder:
         :param swap_sign:
-        :param show_empty_records:
+        :param show_empty_records: Deprecated, has no effect.
         :param base_model:
         :param print_flag:
         :param doc_type_plus_list:
@@ -309,7 +310,6 @@ class ReportGenerator(ReportGeneratorAPI):
                 f"be set for {container_class or self}"
             )
 
-        self._prepared_results = {}
         self.report_fields_classes = {}
 
         self._report_fields_dependencies = {
@@ -317,7 +317,6 @@ class ReportGenerator(ReportGeneratorAPI):
             "crosstab": {},
             "normal": {},
         }
-        self.existing_dependencies = {"series": [], "matrix": [], "normal": []}
 
         self.print_flag = print_flag or self.print_flag
 
@@ -347,8 +346,12 @@ class ReportGenerator(ReportGeneratorAPI):
         self.swap_sign = self.swap_sign or swap_sign
         self.limit_records = self.limit_records or limit_records
 
-        # todo delete this
-        self.show_empty_records = False  # show_empty_records if show_empty_records else self.show_empty_records
+        if show_empty_records is not None:
+            warnings.warn(
+                "`show_empty_records` has no effect and will be removed in the next release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         # Preparing actions
         self._parse()
@@ -633,8 +636,9 @@ class ReportGenerator(ReportGeneratorAPI):
         """
         return row_obj
 
-    @staticmethod
+    @classmethod
     def check_columns(
+        cls,
         caller,
         columns,
         group_by,
@@ -695,7 +699,7 @@ class ReportGenerator(ReportGeneratorAPI):
                 magic_field_class = col
 
             try:
-                magic_field_class = magic_field_class or field_registry.get_field_by_name(col)
+                magic_field_class = magic_field_class or cls.field_registry_class.get_field_by_name(col)
             except KeyError:
                 magic_field_class = None
 
@@ -821,7 +825,7 @@ class ReportGenerator(ReportGeneratorAPI):
                 magic_field_class = None
 
                 if isinstance(col, str):
-                    magic_field_class = field_registry.get_field_by_name(col)
+                    magic_field_class = self.field_registry_class.get_field_by_name(col)
                 elif issubclass(col, ComputationField):
                     magic_field_class = col
 
@@ -933,7 +937,7 @@ class ReportGenerator(ReportGeneratorAPI):
             for col in report_columns:
                 magic_field_class = None
                 if isinstance(col, str):
-                    magic_field_class = field_registry.get_field_by_name(col)
+                    magic_field_class = self.field_registry_class.get_field_by_name(col)
                 elif issubclass(col, ComputationField):
                     magic_field_class = col
 
