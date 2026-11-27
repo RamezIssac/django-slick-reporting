@@ -4,17 +4,6 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 
 
-def get_calculation_annotation(calculation_field, calculation_method):
-    """
-    Returns the default django annotation
-    @param calculation_field: the field to calculate ex 'value'
-    @param calculation_method: the aggregation method ex: Sum
-    @return: the annotation ex value__sum
-    """
-
-    return f"{calculation_field.lower()}__{calculation_method.name.lower()}"
-
-
 def get_foreign_keys(model):
     """
     Scans a model and return an Ordered Dictionary with the foreign keys found

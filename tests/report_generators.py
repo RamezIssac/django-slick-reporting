@@ -410,9 +410,3 @@ class ProductClientSalesMatrixwSimpleSales2(ReportGenerator):
 
 class GeneratorClassWithAttrsAs(ReportGenerator):
     columns = ["get_icon", "slug", "name"]
-
-
-class ClientTotalBalancesWithShowEmptyFalse(ClientTotalBalance):
-    report_slug = None
-    default_order_by = "-__balance__"
-    show_empty_records = False

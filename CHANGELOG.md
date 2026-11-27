@@ -18,6 +18,19 @@ All notable changes to this project will be documented in this file.
   checks ``queryset is None``. With both fixes a monthly time-series view request drops from 17
   queries to 10.
 - **Debit/credit balance** (`ComputationField.resolve`): `debit_value or 0 - credit_value or 0` ignored the credit side because of operator precedence; it is now `(debit_value or 0) - (credit_value or 0)`, so `__total__` and `__balance__` subtract credit values.
+- **``ReportGenerator.field_registry_class`` is now used**: string columns in ``columns``,
+  ``time_series_columns`` and ``crosstab_columns`` resolve through it. Before, the attribute was
+  documented but every lookup went to the global ``field_registry``.
+
+### Deprecated
+
+- **``ReportGenerator(show_empty_records=...)``** has had no effect and now emits a
+  ``DeprecationWarning``. The argument will be removed in the next release.
+
+### Removed
+
+- ``slick_reporting.helpers.get_calculation_annotation`` (unused) and the unused ``ReportGenerator``
+  attributes ``_prepared_results`` and ``existing_dependencies``.
 
 
 ## [1.5.1] - 2026-11-18

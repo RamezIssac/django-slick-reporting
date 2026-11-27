@@ -13,7 +13,7 @@ from slick_reporting.fields import ComputationField, BalanceReportField
 from slick_reporting.generator import ReportGenerator
 from slick_reporting.templatetags.slick_reporting_tags import get_widget
 from slick_reporting.views import ReportView
-from slick_reporting.registry import field_registry
+from slick_reporting.registry import ReportFieldRegistry, field_registry
 from tests.report_generators import (
     ClientTotalBalance,
     ProductClientSalesMatrix2,
@@ -404,20 +404,12 @@ class ReportTest(BaseTestData, TestCase):
         self.assertEqual(data[0]["__total__CT%s" % self.client1.pk], 300)
         self.assertEqual(data[0]["__total__CT%s" % self.client2.pk], 600)
 
-    def test_show_empty_records(self):
-        report = report_generators.ClientTotalBalance()
-        data = report.get_report_data()
-        with_show_empty_len = len(data)
-        wo_show_empty = report_generators.ClientTotalBalance(show_empty_records=False)
-        self.assertNotEqual(with_show_empty_len, wo_show_empty)
-        # self.assertEqual(data[0].get('__balance__'), 300, data[0])
+    def test_show_empty_records_is_deprecated(self):
+        with self.assertWarns(DeprecationWarning):
+            ClientTotalBalance(show_empty_records=False)
 
     def test_filters(self):
-        report = ClientTotalBalance(kwargs_filters={"client": self.client1.pk}, show_empty_records=True)
-        data = report.get_report_data()
-        self.assertEqual(len(data), 1, data)
-
-        report = ClientTotalBalance(kwargs_filters={"client": self.client1.pk}, show_empty_records=False)
+        report = ClientTotalBalance(kwargs_filters={"client": self.client1.pk})
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
@@ -447,11 +439,11 @@ class ReportTest(BaseTestData, TestCase):
         # self.assertEqual(view_report_data['data'], data)
 
     def test_filter_as_int_n_list(self):
-        report = ClientTotalBalance(kwargs_filters={"client": self.client1.pk}, show_empty_records=True)
+        report = ClientTotalBalance(kwargs_filters={"client": self.client1.pk})
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
-        report = ClientTotalBalance(kwargs_filters={"client_id__in": [self.client1.pk]}, show_empty_records=True)
+        report = ClientTotalBalance(kwargs_filters={"client_id__in": [self.client1.pk]})
         data = report.get_report_data()
         self.assertEqual(len(data), 1, data)
 
@@ -837,6 +829,30 @@ class TestReportFieldRegistry(TestCase):
 
         name = ComputationField.create(Sum, "value")
         self.assertNotIn(name, field_registry.get_all_report_fields_names())
+
+
+class TestCustomFieldRegistryClass(TestCase):
+    def test_generator_resolves_columns_from_its_field_registry_class(self):
+        custom_registry = ReportFieldRegistry()
+        custom_registry.register(ComputationField.create(Sum, "value", name="__custom_value__"))
+
+        class CustomRegistryReport(ReportGenerator):
+            field_registry_class = custom_registry
+            report_model = SimpleSales
+            date_field = "doc_date"
+            group_by = "client"
+            columns = ["name", "__custom_value__", "__time_series__", "__crosstab__"]
+            time_series_pattern = "monthly"
+            time_series_columns = ["__custom_value__"]
+            crosstab_field = "product"
+            crosstab_columns = ["__custom_value__"]
+
+        self.assertNotIn("__custom_value__", field_registry.get_all_report_fields_names())
+        report = CustomRegistryReport(crosstab_ids=[])
+        names = [c["name"] for c in report.get_list_display_columns()]
+        self.assertIn("__custom_value__", names)
+        self.assertTrue(any(n.startswith("__custom_value__TS") for n in names), names)
+        self.assertTrue(any(n.startswith("__custom_value__CT") for n in names), names)
 
 
 class TestGroupByDate(TestCase):
