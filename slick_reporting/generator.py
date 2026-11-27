@@ -400,47 +400,40 @@ class ReportGenerator(ReportGeneratorAPI):
         main_queryset = main_queryset.order_by()
         return main_queryset
 
+    @staticmethod
+    def _exclusive_end(end_date):
+        """First instant after an inclusive end date: the next day for a ``date``, the next second for a datetime."""
+        if isinstance(end_date, datetime.datetime):
+            return end_date.replace(microsecond=0) + datetime.timedelta(seconds=1)
+        return end_date + datetime.timedelta(days=1)
+
+    def _get_date_filters(self, start_date, end_date):
+        """Lookups for a date window: ``start_date`` inclusive, ``end_date`` exclusive."""
+        filters = {}
+        if self.start_date_field_name:
+            filters[f"{self.start_date_field_name}__gte"] = start_date
+        if self.end_date_field_name:
+            filters[f"{self.end_date_field_name}__lt"] = end_date
+        return filters
+
+    def _filter_queryset(self, query):
+        """Apply the report date window, ``kwargs_filters`` and ``q_filters`` to the queryset."""
+        end_date = self._exclusive_end(self.end_date)
+        filters = self._get_date_filters(self.start_date, end_date) if self.date_field else {}
+        filters.update(self.kwargs_filters)
+        if filters:
+            query = query.filter(**filters)
+        if self.q_filters:
+            query = query.filter(*self.q_filters)
+        return query
+
     def _apply_queryset_options(self, query, fields=None):
-        """
-        Apply the filters to the main queryset which will computed results be mapped to
-        :param query:
-        :param fields:
-        :return:
-        """
-        filters = {}
-        if self.date_field:
-            filters = {
-                f"{self.start_date_field_name}__gt": self.start_date,
-                f"{self.end_date_field_name}__lte": self.end_date,
-            }
-        filters.update(self.kwargs_filters)
-
-        if filters:
-            query = query.filter(**filters)
-        if self.q_filters:
-            query = query.filter(*self.q_filters)
-        if fields:
-            return query.values(*fields)
-        return query.values()
-
-    def _apply_precomputed_queryset_options(self, query):
-        """Apply filters for precomputed crosstab data fetch, using __gte/__lte boundaries."""
-        filters = {}
-        if self.date_field:
-            filters = {
-                f"{self.start_date_field_name}__gte": self.start_date,
-                f"{self.end_date_field_name}__lte": self.end_date,
-            }
-        filters.update(self.kwargs_filters)
-        if filters:
-            query = query.filter(**filters)
-        if self.q_filters:
-            query = query.filter(*self.q_filters)
-        return query.values()
+        """Filter the main queryset the computed results are mapped to, as ``values()`` dicts."""
+        return self._filter_queryset(query).values(*(fields or []))
 
     def _build_precomputed_crosstab_data(self, queryset):
         """Pre-fetch all rows and build the precomputed crosstab lookup dict."""
-        filtered_qs = self._apply_precomputed_queryset_options(queryset)
+        filtered_qs = self._apply_queryset_options(queryset)
         rows = filtered_qs.values(self.group_by_field_attname, self.crosstab_field, *self.crosstab_columns)
 
         crosstab_values_set = set()
@@ -530,12 +523,10 @@ class ReportGenerator(ReportGeneratorAPI):
                 )
 
                 q_filters = None
-                date_filter = {}
-                if self.start_date_field_name:
-                    date_filter[f"{self.start_date_field_name}__gte"] = col_data.get("start_date", self.start_date)
-                if self.end_date_field_name:
-                    date_filter[f"{self.end_date_field_name}__lt"] = col_data.get("end_date", self.end_date)
-
+                date_filter = self._get_date_filters(
+                    col_data.get("start_date", self.start_date),
+                    col_data.get("end_date", self._exclusive_end(self.end_date)),
+                )
                 date_filter.update(self.kwargs_filters)
                 if window == "crosstab" or col_data.get("computation_flag", "") == "crosstab":
                     q_filters, kw_filters = col_data["queryset_filters"]
@@ -585,12 +576,13 @@ class ReportGenerator(ReportGeneratorAPI):
                     group_data = self._precomputed_crosstab_data.get(group_by_val, {})
                     data[name] = group_data.get(crosstab_val, {}).get(crosstab_col, 0)
 
-                elif col_data.get("source", "") in ("attribute_field", "container_class_attribute_field"):
+                elif col_data.get("source", "") == "attribute_field":
                     data[name] = col_data["ref"](obj, data)
 
-                elif (
-                    col_data.get("source", "") == "magic_field" and (self.group_by or self.group_by_custom_querysets)
-                ) or (not (self.group_by or self.group_by_custom_querysets)):
+                elif col_data.get("source", "") == "container_class_attribute_field":
+                    data[name] = self._call_container_method(col_data["ref"], obj, data)
+
+                elif self._is_computed_column(col_data):
                     source = self._report_fields_dependencies[window].get(name, False)
 
                     if source:
@@ -610,6 +602,16 @@ class ReportGenerator(ReportGeneratorAPI):
                 else:
                     data[name] = obj.get(name, "")
         return data
+
+    def _is_computed_column(self, col_data):
+        """Grouped reports compute their computation fields; an ungrouped report computes every column."""
+        if self.group_by or self.group_by_custom_querysets:
+            return col_data.get("source", "") == "magic_field"
+        return True
+
+    def _call_container_method(self, method, obj, row):
+        """Call a column method defined on the container class (typically the view)."""
+        return method(obj, row)
 
     def get_report_data(self):
         main_queryset = self.main_queryset[: self.limit_records] if self.limit_records else self.main_queryset
@@ -874,7 +876,7 @@ class ReportGenerator(ReportGeneratorAPI):
 
         series = series or self.time_series_pattern
         start_date = start_date or self.start_date
-        end_date = end_date or self.end_date
+        end_date = self._exclusive_end(end_date or self.end_date)
         _values = []
 
         if series:
@@ -900,7 +902,7 @@ class ReportGenerator(ReportGeneratorAPI):
             done = False
 
             while not done:
-                to_date = start_date + time_delta
+                to_date = min(start_date + time_delta, end_date)
                 _values.append((start_date, to_date))
                 start_date = to_date
                 if to_date >= end_date:
@@ -1163,78 +1165,20 @@ class ReportGenerator(ReportGeneratorAPI):
 
 class ListViewReportGenerator(ReportGenerator):
     def prepare_queryset(self, queryset):
-        return self._apply_queryset_options(queryset, self.get_database_columns())
+        fields = self.get_database_columns()
+        queryset = self._filter_queryset(queryset)
+        # a list of method columns only gets model instances
+        return queryset.values(*fields) if fields else queryset
 
-    def _apply_queryset_options(self, query, fields=None):
-        """
-        Apply the filters to the main queryset which will computed results be mapped to
-        :param query:
-        :param fields:
-        :return:
-        """
-        filters = {}
-        if self.date_field:
-            filters = {
-                f"{self.date_field}__gt": self.start_date,
-                f"{self.date_field}__lte": self.end_date,
-            }
-        filters.update(self.kwargs_filters)
-
-        if filters:
-            query = query.filter(**filters)
-        if fields:
-            return query.values(*fields)
-        return query
-
-    def _get_record_data(self, obj, columns):
-        """
-        the function is run for every obj in the main_queryset
-        :param obj: current row
-        :param: columns： The columns we iterate on
-        :return: a dict object containing all needed data
-        """
-
-        data = {}
-        group_by_val = None
+    def _is_computed_column(self, col_data):
+        """A list row is a record: without a group by, columns are computed only in a time series report."""
         if self.group_by:
-            if self.group_by_field.related_model and "__" not in self.group_by:
-                primary_key_name = self.get_primary_key_name(self.group_by_field.related_model)
-            else:
-                primary_key_name = self.group_by_field_attname
+            return col_data.get("source", "") == "magic_field"
+        return bool(self.time_series_pattern)
 
-            column_data = obj.get(primary_key_name, obj.get("id"))
-            group_by_val = str(column_data)
-
-        for window, window_cols in columns:
-            for col_data in window_cols:
-                name = col_data["name"]
-
-                if col_data.get("source", "") == "attribute_field":
-                    data[name] = col_data["ref"](self, obj, data)
-                    # changed line
-                elif col_data.get("source", "") == "container_class_attribute_field":
-                    data[name] = col_data["ref"](obj)
-
-                elif (col_data.get("source", "") == "magic_field" and self.group_by) or (
-                    self.time_series_pattern and not self.group_by
-                ):
-                    source = self._report_fields_dependencies[window].get(name, False)
-                    if source:
-                        computation_class = self.report_fields_classes[source]
-                        value = computation_class.get_dependency_value(group_by_val, col_data["ref"].name)
-                    else:
-                        try:
-                            computation_class = self.report_fields_classes[name]
-                        except KeyError:
-                            continue
-                        value = computation_class.do_resolve(group_by_val, data)
-                    if self.swap_sign:
-                        value = -value
-                    data[name] = value
-
-                else:
-                    data[name] = obj[name]
-        return data
+    def _call_container_method(self, method, obj, row):
+        """List report views define column methods as ``method(self, obj)``."""
+        return method(obj)
 
     def _remove_order(self, main_queryset):
         return main_queryset

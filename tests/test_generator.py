@@ -167,7 +167,7 @@ class GeneratorReportStructureTest(BaseTestData, TestCase):
         self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates))
 
         dates = report._get_time_series_dates("daily")
-        self.assertEqual(len(dates), 365, len(dates))
+        self.assertEqual(len(dates), 366, len(dates))
         self.assertIsNotNone(report.get_time_series_field_verbose_name(TotalReportField, dates[0], 0, dates, "daily"))
 
         dates = report._get_time_series_dates("weekly")

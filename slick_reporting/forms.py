@@ -1,3 +1,4 @@
+import datetime
 from collections import OrderedDict
 
 from crispy_forms.helper import FormHelper
@@ -14,6 +15,33 @@ TIME_SERIES_CHOICES = (
     ("annually", _("Yearly")),
     ("daily", _("Daily")),
 )
+
+
+class EndDateTimeField(forms.DateTimeField):
+    """An end date typed without a time means the end of that day, 23:59:59; a typed time is kept."""
+
+    def _is_date_only(self, value):
+        if value in self.empty_values:
+            return False
+        if isinstance(value, str):
+            try:
+                forms.DateField().to_python(value)
+            except forms.ValidationError:
+                return False
+            return True
+        return isinstance(value, datetime.date) and not isinstance(value, datetime.datetime)
+
+    def to_python(self, value):
+        result = super().to_python(value)
+        if result is not None and self._is_date_only(value):
+            result = result.replace(hour=23, minute=59, second=59, microsecond=0)
+        return result
+
+    def bound_data(self, data, initial):
+        # show a date-only input back as the end of that day
+        if self._is_date_only(data):
+            return self.to_python(data)
+        return super().bound_data(data, initial)
 
 
 def default_formfield_callback(f, **kwargs):
@@ -282,7 +310,7 @@ def report_form_factory(
             widget=forms.DateTimeInput(attrs={"autocomplete": "off"}),
         )
     if add_end_date:
-        fields["end_date"] = forms.DateTimeField(
+        fields["end_date"] = EndDateTimeField(
             required=False,
             label=_("To  date"),
             initial=initial.get("end_date", "") or app_settings.SLICK_REPORTING_SETTINGS["DEFAULT_END_DATE_TIME"],

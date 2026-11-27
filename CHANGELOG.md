@@ -6,6 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Report rows use the same date window as the computed figures.** Group-by and list reports selected rows
+  with ``start < date <= end`` and the precomputed crosstab with ``start <= date <= end``, while computation
+  fields summed ``start <= date < end``. Every filter now uses one window. A group whose only row is dated
+  exactly ``start_date`` now appears with its total (it was dropped).
+- **The end date is inclusive to the second it shows.** The form's end date defaults to the end of today
+  (23:59:59, was now); a date typed without a time becomes 23:59:59 of that day; a typed time is kept. A ``date``
+  passed as ``end_date`` covers that whole day, a ``datetime`` covers up to and including that second. A report
+  from 2020-01-01 to 2020-12-31 now includes rows dated 2020-12-31.
+- **The last time series period stops at the report end date.** A monthly series from January 1 to December 15
+  built a December 1 to January 1 period and summed rows after the end date; the periods now sum to ``__total__``.
+- **List reports apply ``q_filters``** (``ListViewReportGenerator`` ignored them).
+- **Generator method columns on list reports** are called as ``method(obj, row)``; they raised
+  ``TypeError`` before.
 - **Empty ``doc_type_minus_list`` / ``doc_type_plus_list`` no longer run that side unfiltered**: with
   one list set and the other empty, the empty side ran over every row (an expense total with only a
   plus list returned 0 because every row also counted as credit). An empty side now contributes 0.
